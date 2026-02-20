@@ -2,9 +2,19 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import {
+  getMerchants,
+  getMerchantById,
+  getCategories,
+  getPublishedNews,
+  getNewsById,
+  getPublishedEvents,
+  getEventById,
+  createContactRequest,
+  createMembershipRequest,
+} from "./db";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -17,12 +27,71 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  // Merchants routes
+  merchants: router({
+    list: publicProcedure.query(async () => {
+      return getMerchants();
+    }),
+    getById: publicProcedure.input((val: unknown) => {
+      if (typeof val === "number") return val;
+      throw new Error("Invalid input");
+    }).query(async ({ input }) => {
+      return getMerchantById(input);
+    }),
+  }),
+
+  // Categories routes
+  categories: router({
+    list: publicProcedure.query(async () => {
+      return getCategories();
+    }),
+  }),
+
+  // News routes
+  news: router({
+    list: publicProcedure.query(async () => {
+      return getPublishedNews();
+    }),
+    getById: publicProcedure.input((val: unknown) => {
+      if (typeof val === "number") return val;
+      throw new Error("Invalid input");
+    }).query(async ({ input }) => {
+      return getNewsById(input);
+    }),
+  }),
+
+  // Events routes
+  events: router({
+    list: publicProcedure.query(async () => {
+      return getPublishedEvents();
+    }),
+    getById: publicProcedure.input((val: unknown) => {
+      if (typeof val === "number") return val;
+      throw new Error("Invalid input");
+    }).query(async ({ input }) => {
+      return getEventById(input);
+    }),
+  }),
+
+  // Contact requests
+  contact: router({
+    submit: publicProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return createContactRequest(input as any);
+    }),
+  }),
+
+  // Membership requests
+  membership: router({
+    request: publicProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return createMembershipRequest(input as any);
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

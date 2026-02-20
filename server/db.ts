@@ -1,6 +1,22 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import {
+  InsertUser,
+  users,
+  merchants,
+  InsertMerchant,
+  categories,
+  news,
+  InsertNews,
+  events,
+  InsertEvent,
+  contactRequests,
+  InsertContactRequest,
+  membershipRequests,
+  InsertMembershipRequest,
+  gallery,
+  InsertGallery,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +105,136 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Merchants queries
+export async function getMerchants(filter?: { category?: string; search?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  let query = db.select().from(merchants).where(eq(merchants.status, 'approved'));
+  
+  if (filter?.category) {
+    query = db.select().from(merchants)
+      .where(eq(merchants.businessCategory, filter.category));
+  }
+  
+  const results = await query;
+  return results;
+}
+
+export async function getMerchantById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(merchants).where(eq(merchants.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getMerchantByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(merchants).where(eq(merchants.userId, userId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createMerchant(data: InsertMerchant) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  const result = await db.insert(merchants).values(data);
+  return result;
+}
+
+export async function updateMerchant(id: number, data: Partial<InsertMerchant>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.update(merchants).set(data).where(eq(merchants.id, id));
+}
+
+// Categories queries
+export async function getCategories() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(categories);
+}
+
+// News queries
+export async function getPublishedNews(limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(news)
+    .where(eq(news.status, 'published'))
+    .limit(limit);
+}
+
+export async function getNewsById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(news).where(eq(news.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// Events queries
+export async function getPublishedEvents() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(events).where(eq(events.status, 'published'));
+}
+
+export async function getEventById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(events).where(eq(events.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// Contact requests
+export async function createContactRequest(data: InsertContactRequest) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  return await db.insert(contactRequests).values(data);
+}
+
+// Membership requests
+export async function createMembershipRequest(data: InsertMembershipRequest) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  return await db.insert(membershipRequests).values(data);
+}
+
+export async function getMembershipRequests() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(membershipRequests);
+}
+
+// Gallery queries
+export async function getGalleryByMerchant(merchantId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(gallery).where(eq(gallery.merchantId, merchantId));
+}
+
+export async function getGalleryByEvent(eventId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(gallery).where(eq(gallery.eventId, eventId));
+}
+
+export async function createGalleryItem(data: InsertGallery) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  return await db.insert(gallery).values(data);
+}
