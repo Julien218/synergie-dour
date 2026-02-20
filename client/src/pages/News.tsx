@@ -21,8 +21,8 @@ export default function News() {
             <ArrowLeft className="mr-2 w-4 h-4" />
             Retour
           </Button>
-          <h1 className="text-4xl font-bold mb-2 text-amber-300">Actualités</h1>
-          <p className="text-amber-100">Restez informé des dernières nouvelles de Synergie Dour</p>
+          <h1 className="text-4xl font-bold mb-2 text-[#D4AF37]">Actualités</h1>
+          <p className="text-[#F0E68C]">Restez informé des dernières nouvelles de Synergie Dour</p>
         </div>
       </div>
 

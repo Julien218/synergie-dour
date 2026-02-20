@@ -81,7 +81,7 @@ export default function Membership() {
                 <ArrowLeft className="mr-2 w-4 h-4" />
                 Retour
               </Button>
-              <h1 className="text-4xl font-bold mb-2 text-amber-300">Demande d'Adhésion</h1>
+              <h1 className="text-4xl font-bold mb-2 text-[#D4AF37]">Demande d'Adhésion</h1>
             </div>
           </div>
 
@@ -129,8 +129,8 @@ export default function Membership() {
               <ArrowLeft className="mr-2 w-4 h-4" />
               Retour
             </Button>
-            <h1 className="text-4xl font-bold mb-2 text-amber-300">Demande d'Adhésion</h1>
-            <p className="text-amber-100">Rejoignez Synergie Dour et bénéficiez de nos services</p>
+            <h1 className="text-4xl font-bold mb-2 text-[#D4AF37]">Demande d'Adhésion</h1>
+            <p className="text-[#F0E68C]">Rejoignez Synergie Dour et bénéficiez de nos services</p>
           </div>
         </div>
 

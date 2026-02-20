@@ -16,16 +16,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white py-20 px-4">
+      {/* Hero Section with Logo */}
+      <section className="relative bg-gradient-to-br from-[#001a4d] via-[#003d99] to-[#001a4d] text-white py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <div className="space-y-2">
-                <h1 className="text-5xl md:text-6xl font-bold leading-tight">
+                <h1 className="text-5xl md:text-6xl font-bold leading-tight text-[#D4AF37]">
                   Synergie Dour
                 </h1>
-                <p className="text-xl text-blue-100">Commerçants & Indépendants Réunis</p>
+                <p className="text-xl text-[#F0E68C]">Commerçants & Indépendants Réunis</p>
               </div>
               <p className="text-lg text-blue-50 leading-relaxed">
                 Découvrez une plateforme dédiée à la valorisation du commerce local à Dour. Connectez-vous avec les commerçants de votre région et participez à la dynamique économique locale.
@@ -34,7 +34,7 @@ export default function Home() {
                 <Button 
                   size="lg" 
                   onClick={() => setLocation("/merchants")}
-                  className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
+                  className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a4d] font-semibold"
                 >
                   Découvrir l'Annuaire
                   <ArrowRight className="ml-2 w-5 h-5" />
@@ -51,7 +51,7 @@ export default function Home() {
             </div>
             <div className="hidden md:flex items-center justify-center">
               <img 
-                src="/logo-synergie-dour.jpeg" 
+                src="/logo-transparent.png" 
                 alt="Synergie Dour" 
                 className="h-80 w-80 object-contain drop-shadow-2xl"
               />
@@ -61,224 +61,129 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="bg-white py-12 px-4 border-b border-amber-200">
+      <section className="bg-white py-12 px-4 border-b border-[#D4AF37]">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="text-4xl font-bold text-amber-600 mb-2">{merchants.length}+</div>
+              <div className="text-4xl font-bold text-[#D4AF37] mb-2">{merchants.length}+</div>
               <p className="text-gray-600">Commerçants Membres</p>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-blue-900 mb-2">{events.length}</div>
+              <div className="text-4xl font-bold text-[#001a4d] mb-2">{events.length}</div>
               <p className="text-gray-600">Événements Organisés</p>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-amber-600 mb-2">100%</div>
+              <div className="text-4xl font-bold text-[#D4AF37] mb-2">100%</div>
               <p className="text-gray-600">Engagement Local</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* About Section */}
-      <section className="py-16 px-4 bg-gradient-to-b from-white to-blue-50">
+      {/* Featured Merchants */}
+      <section className="py-16 px-4 bg-gradient-to-b from-white to-gray-50">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-4xl font-bold text-blue-900 mb-6">À Propos de Synergie Dour</h2>
-              <div className="space-y-4 text-gray-700">
-                <p>
-                  Synergie Dour est une association dédiée à la promotion et au développement du commerce local dans la commune de Dour. Notre mission est de créer une synergie entre les commerçants et indépendants pour renforcer le tissu économique local.
-                </p>
-                <p>
-                  Nous croyons en la force de la collaboration et en l'importance de soutenir les entreprises locales. Grâce à cette plateforme, nous facilitons les échanges, partageons les bonnes pratiques et organisons des événements fédérateurs.
-                </p>
-                <p>
-                  Engagés dans le développement durable, nous valorisons les initiatives écologiques et responsables de nos membres.
-                </p>
-              </div>
+          <h2 className="text-3xl font-bold text-[#001a4d] mb-2">Nos Commerçants</h2>
+          <p className="text-gray-600 mb-8">Découvrez les meilleurs commerces de Dour</p>
+          
+          {merchants.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">Aucun commerçant pour le moment. Revenez bientôt !</p>
             </div>
-            <div className="grid grid-cols-1 gap-4">
-              <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white">
-                <CardHeader>
-                  <Store className="w-8 h-8 text-amber-600 mb-2" />
-                  <CardTitle className="text-blue-900">Commerce Local</CardTitle>
-                </CardHeader>
-                <CardContent className="text-gray-600">
-                  Soutenir les commerces de proximité et dynamiser l'économie locale.
-                </CardContent>
-              </Card>
-              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
-                <CardHeader>
-                  <Users className="w-8 h-8 text-blue-900 mb-2" />
-                  <CardTitle className="text-blue-900">Collaboration</CardTitle>
-                </CardHeader>
-                <CardContent className="text-gray-600">
-                  Créer des synergies entre commerçants pour une meilleure visibilité.
-                </CardContent>
-              </Card>
-              <Card className="border-green-200 bg-gradient-to-br from-green-50 to-white">
-                <CardHeader>
-                  <Zap className="w-8 h-8 text-green-600 mb-2" />
-                  <CardTitle className="text-blue-900">Durabilité</CardTitle>
-                </CardHeader>
-                <CardContent className="text-gray-600">
-                  Promouvoir des pratiques commerciales durables et responsables.
-                </CardContent>
-              </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {merchants.slice(0, 3).map((merchant) => (
+                <Card 
+                  key={merchant.id} 
+                  className="hover:shadow-lg transition-shadow border-[#D4AF37] cursor-pointer"
+                  onClick={() => setLocation("/merchants")}
+                >
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-[#001a4d]">{merchant.businessName}</CardTitle>
+                    <CardDescription className="text-[#D4AF37]">{merchant.businessCategory}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {merchant.phone && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Phone className="w-4 h-4 text-[#D4AF37]" />
+                        {merchant.phone}
+                      </div>
+                    )}
+                    {merchant.email && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Mail className="w-4 h-4 text-[#D4AF37]" />
+                        {merchant.email}
+                      </div>
+                    )}
+                    {merchant.address && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <MapPin className="w-4 h-4 text-[#D4AF37]" />
+                        {merchant.address}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </div>
+          )}
         </div>
       </section>
 
-      {/* Featured Merchants */}
-      {merchants.length > 0 && (
-        <section className="py-16 px-4 bg-white">
-          <div className="container mx-auto max-w-6xl">
-            <div className="flex items-center justify-between mb-12">
-              <h2 className="text-4xl font-bold text-blue-900">Nos Commerçants</h2>
-              <Button 
-                onClick={() => setLocation("/merchants")}
-                variant="outline" 
-                className="border-amber-500 text-amber-600 hover:bg-amber-50"
-              >
-                Voir l'Annuaire Complet
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {merchants.slice(0, 6).map((merchant) => (
-                <div 
-                  key={merchant.id} 
-                  onClick={() => setLocation(`/merchants/${merchant.id}`)}
-                  className="cursor-pointer"
-                >
-                  <Card className="h-full hover:shadow-lg transition-shadow border-amber-100">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-blue-900">{merchant.businessName}</CardTitle>
-                          <CardDescription className="text-amber-600">
-                            {merchant.businessCategory}
-                          </CardDescription>
-                        </div>
-                        {merchant.isVerified && (
-                          <Badge className="bg-green-500 text-white ml-2">Vérifié</Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <p className="text-sm text-gray-600 line-clamp-2">{merchant.description}</p>
-                      <div className="space-y-2 text-sm text-gray-500">
-                        {merchant.address && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-amber-600" />
-                            <span>{merchant.address}</span>
-                          </div>
-                        )}
-                        {merchant.phone && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-amber-600" />
-                            <span>{merchant.phone}</span>
-                          </div>
-                        )}
-                        {merchant.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-amber-600" />
-                            <span className="truncate">{merchant.email}</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Latest News */}
-      {news.length > 0 && (
-        <section className="py-16 px-4 bg-blue-50">
-          <div className="container mx-auto max-w-6xl">
-            <div className="flex items-center justify-between mb-12">
-              <h2 className="text-4xl font-bold text-blue-900">Actualités</h2>
-              <Button 
-                onClick={() => setLocation("/news")}
-                variant="outline" 
-                className="border-amber-500 text-amber-600 hover:bg-amber-50"
-              >
-                Toutes les Actualités
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
+      <section className="py-16 px-4 bg-white">
+        <div className="container mx-auto max-w-6xl">
+          <h2 className="text-3xl font-bold text-[#001a4d] mb-2">Dernières Actualités</h2>
+          <p className="text-gray-600 mb-8">Restez informé des nouvelles de Synergie Dour</p>
+          
+          {news.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">Aucune actualité pour le moment.</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {news.slice(0, 3).map((article) => (
-                <div 
-                  key={article.id} 
-                  onClick={() => setLocation(`/news/${article.id}`)}
-                  className="cursor-pointer"
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {news.slice(0, 2).map((article) => (
+                <Card 
+                  key={article.id}
+                  className="hover:shadow-lg transition-shadow border-[#D4AF37] cursor-pointer overflow-hidden"
+                  onClick={() => setLocation("/news")}
                 >
-                  <Card className="h-full hover:shadow-lg transition-shadow border-amber-100 overflow-hidden">
-                    {article.image && (
-                      <div className="h-48 bg-gradient-to-br from-amber-200 to-blue-200 overflow-hidden">
-                        <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    <CardHeader>
-                      <CardTitle className="text-blue-900 line-clamp-2">{article.title}</CardTitle>
-                      <CardDescription>
-                        {article.publishedAt ? new Date(article.publishedAt).toLocaleDateString('fr-FR') : 'À venir'}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-600 line-clamp-3">{article.excerpt || article.content}</p>
-                    </CardContent>
-                  </Card>
-                </div>
+                  {article.image && (
+                    <div className="h-40 bg-gradient-to-br from-[#D4AF37] to-[#001a4d] overflow-hidden">
+                      <img
+                        src={article.image}
+                        alt={article.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <CardHeader>
+                    <CardTitle className="text-[#001a4d] line-clamp-2">{article.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600 line-clamp-2">{article.excerpt || article.content}</p>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-          </div>
-        </section>
-      )}
+          )}
+        </div>
+      </section>
 
       {/* CTA Section */}
-      <section className="py-16 px-4 bg-gradient-to-r from-blue-900 to-blue-800 text-white">
+      <section className="bg-gradient-to-r from-[#001a4d] to-[#003d99] text-white py-16 px-4">
         <div className="container mx-auto max-w-6xl text-center">
-          <h2 className="text-4xl font-bold mb-6">Prêt à Rejoindre Synergie Dour ?</h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Que vous soyez commerçant, artisan ou indépendant, rejoignez notre communauté et bénéficiez de nos services.
+          <h2 className="text-3xl font-bold mb-4 text-[#D4AF37]">Rejoignez Synergie Dour</h2>
+          <p className="text-lg text-[#F0E68C] mb-8 max-w-2xl mx-auto">
+            Faites partie de notre communauté de commerçants et indépendants. Ensemble, valorisons le commerce local !
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {isAuthenticated ? (
-              <Button 
-                size="lg" 
-                onClick={() => setLocation("/dashboard")}
-                className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
-              >
-                Accéder au Tableau de Bord
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            ) : (
-              <Button 
-                size="lg" 
-                onClick={() => window.location.href = getLoginUrl()}
-                className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
-              >
-                Se Connecter
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            )}
-            <Button 
-              size="lg" 
-              onClick={() => setLocation("/membership")}
-              variant="outline" 
-              className="border-white text-white hover:bg-white/10"
-            >
-              Demander l'Adhésion
-            </Button>
-          </div>
+          <Button 
+            size="lg"
+            onClick={() => setLocation("/membership")}
+            className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a4d] font-semibold"
+          >
+            Demander l'Adhésion
+            <ArrowRight className="ml-2 w-5 h-5" />
+          </Button>
         </div>
       </section>
     </div>
