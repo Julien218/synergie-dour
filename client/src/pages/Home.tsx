@@ -19,43 +19,12 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-[#001a3d] via-[#003d99] to-[#001a3d] text-white py-20 px-4">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <h1 className="text-5xl md:text-6xl font-bold leading-tight text-[#D4AF37]">
-                  Synergie Dour
-                </h1>
-                <p className="text-xl text-[#D4AF37]">Commerçants & Indépendants Réunis</p>
-              </div>
-              <p className="text-lg text-blue-50 leading-relaxed">
-                Découvrez une plateforme dédiée à la valorisation du commerce local à Dour. Connectez-vous avec les commerçants de votre région et participez à la dynamique économique locale.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Button 
-                  size="lg" 
-                  onClick={() => setLocation("/merchants")}
-                  className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a3d] font-semibold"
-                >
-                  Découvrir l'Annuaire
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-                <Button 
-                  size="lg" 
-                  onClick={() => setLocation("/membership")}
-                  variant="outline" 
-                  className="border-white text-white hover:bg-white/10"
-                >
-                  Rejoindre l'Association
-                </Button>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center justify-center">
-              <img 
-                src="/logo-full.png" 
-                alt="Synergie Dour" 
-                className="h-80 w-80 object-contain drop-shadow-2xl"
-              />
-            </div>
+          <div className="flex items-center justify-center min-h-96">
+            <img 
+              src="/logo-full.png" 
+              alt="Synergie Dour" 
+              className="h-96 w-96 object-contain drop-shadow-2xl"
+            />
           </div>
         </div>
       </section>
