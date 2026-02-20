@@ -50,7 +50,11 @@ export default function Home() {
               </div>
             </div>
             <div className="hidden md:flex items-center justify-center">
-              <div className="w-64 h-64 bg-gradient-to-br from-amber-400 to-amber-500 rounded-full opacity-20 blur-3xl"></div>
+              <img 
+                src="/logo-synergie-dour.jpeg" 
+                alt="Synergie Dour" 
+                className="h-80 w-80 object-contain drop-shadow-2xl"
+              />
             </div>
           </div>
         </div>

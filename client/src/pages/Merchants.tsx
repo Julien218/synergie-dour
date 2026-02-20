@@ -30,7 +30,7 @@ export default function Merchants() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-12 px-4">
+      <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-8 px-4">
         <div className="container mx-auto max-w-6xl">
           <Button 
             onClick={() => setLocation("/")}
@@ -40,8 +40,8 @@ export default function Merchants() {
             <ArrowLeft className="mr-2 w-4 h-4" />
             Retour
           </Button>
-          <h1 className="text-4xl font-bold mb-2">Annuaire des Commerçants</h1>
-          <p className="text-blue-100">Découvrez tous les commerçants et indépendants de Dour</p>
+          <h1 className="text-4xl font-bold mb-2 text-amber-300">Annuaire des Commerçants</h1>
+          <p className="text-amber-100">Découvrez tous les commerçants et indépendants de Dour</p>
         </div>
       </div>
 

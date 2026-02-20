@@ -65,8 +65,8 @@ export default function Contact() {
               <ArrowLeft className="mr-2 w-4 h-4" />
               Retour
             </Button>
-            <h1 className="text-4xl font-bold mb-2">Nous Contacter</h1>
-            <p className="text-blue-100">Avez-vous des questions ? Contactez-nous directement</p>
+            <h1 className="text-4xl font-bold mb-2 text-amber-300">Nous Contacter</h1>
+            <p className="text-amber-100">Avez-vous des questions ? Contactez-nous directement</p>
           </div>
         </div>
 

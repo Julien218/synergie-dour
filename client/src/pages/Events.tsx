@@ -2,10 +2,11 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { Calendar, MapPin, Clock, ArrowLeft, ArrowRight } from "lucide-react";
 
 export default function Events() {
+  const [, setLocation] = useLocation();
   const { data: events = [], isLoading } = trpc.events.list.useQuery();
 
   const isEventUpcoming = (startDate: Date) => {
@@ -17,14 +18,16 @@ export default function Events() {
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-12 px-4">
         <div className="container mx-auto max-w-6xl">
-          <Link href="/">
-            <Button variant="ghost" className="text-white hover:bg-white/10 mb-6">
-              <ArrowLeft className="mr-2 w-4 h-4" />
-              Retour
-            </Button>
-          </Link>
-          <h1 className="text-4xl font-bold mb-2">Événements</h1>
-          <p className="text-blue-100">Découvrez les événements organisés par Synergie Dour</p>
+          <Button 
+            onClick={() => setLocation("/")}
+            variant="ghost" 
+            className="text-white hover:bg-white/10 mb-6"
+          >
+            <ArrowLeft className="mr-2 w-4 h-4" />
+            Retour
+          </Button>
+          <h1 className="text-4xl font-bold mb-2 text-amber-300">Evénements</h1>
+          <p className="text-amber-100">Découvrez les événements organisés par Synergie Dour</p>
         </div>
       </div>
 
@@ -46,8 +49,8 @@ export default function Events() {
                 const eventDate = new Date(event.startDate);
 
                 return (
-                  <Link key={event.id} href={`/events/${event.id}`}>
-                    <Card className="hover:shadow-lg transition-shadow border-amber-100 cursor-pointer overflow-hidden">
+                  <div key={event.id} onClick={() => setLocation(`/events/${event.id}`)} className="cursor-pointer">
+                    <Card className="hover:shadow-lg transition-shadow border-amber-100 overflow-hidden">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
                         {event.image && (
                           <div className="h-48 md:h-auto bg-gradient-to-br from-amber-200 to-blue-200 overflow-hidden">
@@ -113,7 +116,7 @@ export default function Events() {
                         </div>
                       </div>
                     </Card>
-                  </Link>
+                  </div>
                 );
               })}
             </div>

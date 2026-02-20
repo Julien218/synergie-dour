@@ -1,10 +1,11 @@
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { Calendar, User, ArrowLeft, ArrowRight } from "lucide-react";
 
 export default function News() {
+  const [, setLocation] = useLocation();
   const { data: news = [], isLoading } = trpc.news.list.useQuery();
 
   return (
@@ -12,14 +13,16 @@ export default function News() {
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-12 px-4">
         <div className="container mx-auto max-w-6xl">
-          <Link href="/">
-            <Button variant="ghost" className="text-white hover:bg-white/10 mb-6">
-              <ArrowLeft className="mr-2 w-4 h-4" />
-              Retour
-            </Button>
-          </Link>
-          <h1 className="text-4xl font-bold mb-2">Actualités</h1>
-          <p className="text-blue-100">Restez informé des dernières nouvelles de Synergie Dour</p>
+          <Button 
+            onClick={() => setLocation("/")}
+            variant="ghost" 
+            className="text-white hover:bg-white/10 mb-6"
+          >
+            <ArrowLeft className="mr-2 w-4 h-4" />
+            Retour
+          </Button>
+          <h1 className="text-4xl font-bold mb-2 text-amber-300">Actualités</h1>
+          <p className="text-amber-100">Restez informé des dernières nouvelles de Synergie Dour</p>
         </div>
       </div>
 
@@ -37,8 +40,8 @@ export default function News() {
           ) : (
             <div className="space-y-6">
               {news.map((article) => (
-                <Link key={article.id} href={`/news/${article.id}`}>
-                  <Card className="hover:shadow-lg transition-shadow border-amber-100 cursor-pointer overflow-hidden">
+                <div key={article.id} onClick={() => setLocation(`/news/${article.id}`)} className="cursor-pointer">
+                  <Card className="hover:shadow-lg transition-shadow border-amber-100 overflow-hidden">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
                       {article.image && (
                         <div className="h-48 md:h-auto bg-gradient-to-br from-amber-200 to-blue-200 overflow-hidden">
@@ -80,7 +83,7 @@ export default function News() {
                       </div>
                     </div>
                   </Card>
-                </Link>
+                </div>
               ))}
             </div>
           )}

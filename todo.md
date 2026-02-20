@@ -37,3 +37,11 @@
 
 ## Bugs à corriger
 - [x] Corriger l'erreur des balises <a> imbriquées dans Home.tsx, Merchants.tsx, Contact.tsx et Membership.tsx
+
+## Phase 6 : Intégration du logo officiel
+- [x] Copier le logo officiel dans le répertoire public
+- [x] Remplacer le logo "SD" par le logo officiel dans PublicLayout
+- [x] Adapter la palette de couleurs du site (bleu marine + or)
+- [x] Mettre à jour le header et footer avec le logo officiel
+- [x] Appliquer l'identité visuelle sur toutes les pages (Home, Merchants, News, Events, Contact, Membership)
+- [ ] Tester l'affichage du logo sur tous les appareils
