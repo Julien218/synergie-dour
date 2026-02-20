@@ -32,17 +32,13 @@ export function PublicLayout({ children }: PublicLayoutProps) {
             {/* Logo */}
             <div 
               onClick={() => setLocation("/")}
-              className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity"
             >
               <img 
-                src="/logo-transparent.png" 
+                src="/logo-full.png" 
                 alt="Synergie Dour" 
-                className="h-12 w-12 object-contain drop-shadow-md"
+                className="h-14 w-14 object-contain drop-shadow-md"
               />
-              <div className="hidden sm:block">
-                <div className="font-bold text-blue-900 text-sm leading-tight">Synergie Dour</div>
-                <div className="text-xs text-amber-600 font-medium">Commerçants & Indépendants</div>
-              </div>
             </div>
 
             {/* Desktop Menu */}
