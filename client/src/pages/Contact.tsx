@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PublicLayout } from "@/components/PublicLayout";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { ArrowLeft, Mail, Phone, MapPin, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Contact() {
+  const [, setLocation] = useLocation();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -56,12 +57,14 @@ export default function Contact() {
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-12 px-4">
           <div className="container mx-auto max-w-6xl">
-            <Link href="/">
-              <Button variant="ghost" className="text-white hover:bg-white/10 mb-6">
-                <ArrowLeft className="mr-2 w-4 h-4" />
-                Retour
-              </Button>
-            </Link>
+            <Button 
+              onClick={() => setLocation("/")}
+              variant="ghost" 
+              className="text-white hover:bg-white/10 mb-6"
+            >
+              <ArrowLeft className="mr-2 w-4 h-4" />
+              Retour
+            </Button>
             <h1 className="text-4xl font-bold mb-2">Nous Contacter</h1>
             <p className="text-blue-100">Avez-vous des questions ? Contactez-nous directement</p>
           </div>

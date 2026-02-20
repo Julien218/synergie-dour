@@ -34,3 +34,6 @@
 - [ ] Vérifier la responsivité et l'accessibilité
 - [ ] Optimiser les performances
 - [ ] Créer le checkpoint final
+
+## Bugs à corriger
+- [x] Corriger l'erreur des balises <a> imbriquées dans Home.tsx, Merchants.tsx, Contact.tsx et Membership.tsx

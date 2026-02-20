@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { Store, Users, Zap, ArrowRight, MapPin, Phone, Mail } from "lucide-react";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const { data: merchants = [] } = trpc.merchants.list.useQuery();
   const { data: news = [] } = trpc.news.list.useQuery();
   const { data: events = [] } = trpc.events.list.useQuery();
@@ -30,17 +31,22 @@ export default function Home() {
                 Découvrez une plateforme dédiée à la valorisation du commerce local à Dour. Connectez-vous avec les commerçants de votre région et participez à la dynamique économique locale.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Link href="/merchants">
-                  <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold">
-                    Découvrir l'Annuaire
-                    <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </Link>
-                <Link href="/membership">
-                  <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
-                    Rejoindre l'Association
-                  </Button>
-                </Link>
+                <Button 
+                  size="lg" 
+                  onClick={() => setLocation("/merchants")}
+                  className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
+                >
+                  Découvrir l'Annuaire
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+                <Button 
+                  size="lg" 
+                  onClick={() => setLocation("/membership")}
+                  variant="outline" 
+                  className="border-white text-white hover:bg-white/10"
+                >
+                  Rejoindre l'Association
+                </Button>
               </div>
             </div>
             <div className="hidden md:flex items-center justify-center">
@@ -127,17 +133,23 @@ export default function Home() {
           <div className="container mx-auto max-w-6xl">
             <div className="flex items-center justify-between mb-12">
               <h2 className="text-4xl font-bold text-blue-900">Nos Commerçants</h2>
-              <Link href="/merchants">
-                <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50">
-                  Voir l'Annuaire Complet
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
+              <Button 
+                onClick={() => setLocation("/merchants")}
+                variant="outline" 
+                className="border-amber-500 text-amber-600 hover:bg-amber-50"
+              >
+                Voir l'Annuaire Complet
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {merchants.slice(0, 6).map((merchant) => (
-                <Link key={merchant.id} href={`/merchants/${merchant.id}`}>
-                  <Card className="h-full hover:shadow-lg transition-shadow border-amber-100 cursor-pointer">
+                <div 
+                  key={merchant.id} 
+                  onClick={() => setLocation(`/merchants/${merchant.id}`)}
+                  className="cursor-pointer"
+                >
+                  <Card className="h-full hover:shadow-lg transition-shadow border-amber-100">
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -175,7 +187,7 @@ export default function Home() {
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
+                </div>
               ))}
             </div>
           </div>
@@ -188,17 +200,23 @@ export default function Home() {
           <div className="container mx-auto max-w-6xl">
             <div className="flex items-center justify-between mb-12">
               <h2 className="text-4xl font-bold text-blue-900">Actualités</h2>
-              <Link href="/news">
-                <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50">
-                  Toutes les Actualités
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
+              <Button 
+                onClick={() => setLocation("/news")}
+                variant="outline" 
+                className="border-amber-500 text-amber-600 hover:bg-amber-50"
+              >
+                Toutes les Actualités
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {news.slice(0, 3).map((article) => (
-                <Link key={article.id} href={`/news/${article.id}`}>
-                  <Card className="h-full hover:shadow-lg transition-shadow border-amber-100 cursor-pointer overflow-hidden">
+                <div 
+                  key={article.id} 
+                  onClick={() => setLocation(`/news/${article.id}`)}
+                  className="cursor-pointer"
+                >
+                  <Card className="h-full hover:shadow-lg transition-shadow border-amber-100 overflow-hidden">
                     {article.image && (
                       <div className="h-48 bg-gradient-to-br from-amber-200 to-blue-200 overflow-hidden">
                         <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
@@ -214,7 +232,7 @@ export default function Home() {
                       <p className="text-sm text-gray-600 line-clamp-3">{article.excerpt || article.content}</p>
                     </CardContent>
                   </Card>
-                </Link>
+                </div>
               ))}
             </div>
           </div>
@@ -230,25 +248,32 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isAuthenticated ? (
-              <Link href="/dashboard">
-                <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold">
-                  Accéder au Tableau de Bord
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-            ) : (
-              <a href={getLoginUrl()}>
-                <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold">
-                  Se Connecter
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </a>
-            )}
-            <Link href="/membership">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
-                Demander l'Adhésion
+              <Button 
+                size="lg" 
+                onClick={() => setLocation("/dashboard")}
+                className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
+              >
+                Accéder au Tableau de Bord
+                <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
-            </Link>
+            ) : (
+              <Button 
+                size="lg" 
+                onClick={() => window.location.href = getLoginUrl()}
+                className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
+              >
+                Se Connecter
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            )}
+            <Button 
+              size="lg" 
+              onClick={() => setLocation("/membership")}
+              variant="outline" 
+              className="border-white text-white hover:bg-white/10"
+            >
+              Demander l'Adhésion
+            </Button>
           </div>
         </div>
       </section>
