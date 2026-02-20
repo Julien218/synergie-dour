@@ -43,17 +43,17 @@
 }
 
 :root {
-  --primary: #001a4d;
+  --primary: #001a3d;
   --primary-foreground: #D4AF37;
-  --sidebar-primary: #001a4d;
+  --sidebar-primary: #001a3d;
   --sidebar-primary-foreground: #D4AF37;
   --chart-1: #D4AF37;
   --chart-2: #F0E68C;
   --chart-3: #0066CC;
-  --chart-4: #001a4d;
-  --chart-5: #001a4d;
+  --chart-4: #001a3d;
+  --chart-5: #001a3d;
   --radius: 0.65rem;
-  --background: oklch(1 0 0);
+  --background: #001a3d;
   --foreground: oklch(0.235 0.015 65);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.235 0.015 65);
@@ -174,4 +174,56 @@
       max-width: 1280px; /* Standard content width */
     }
   }
+}
+
+/* Apply logo background to all pages */
+body {
+  background-image: url('/logo-background.jpeg');
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 40%;
+  background-color: #001a3d;
+  opacity: 1;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/logo-background.jpeg');
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 40%;
+  opacity: 0.08;
+  pointer-events: none;
+  z-index: -1;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure text is readable over the background */
+.min-h-screen {
+  background-color: rgba(0, 26, 61, 0.95);
+}
+
+.bg-background {
+  background-color: rgba(0, 26, 61, 0.95);
+}
+
+.bg-white {
+  background-color: rgba(255, 255, 255, 0.98);
+}
+
+.bg-gradient-to-br,
+.bg-gradient-to-r,
+.bg-gradient-to-b {
+  background-blend-mode: overlay;
 }

@@ -16,8 +16,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section with Logo */}
-      <section className="relative bg-gradient-to-br from-[#001a4d] via-[#003d99] to-[#001a4d] text-white py-20 px-4">
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-[#001a3d] via-[#003d99] to-[#001a3d] text-white py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
@@ -34,7 +34,7 @@ export default function Home() {
                 <Button 
                   size="lg" 
                   onClick={() => setLocation("/merchants")}
-                  className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a4d] font-semibold"
+                  className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a3d] font-semibold"
                 >
                   Découvrir l'Annuaire
                   <ArrowRight className="ml-2 w-5 h-5" />
@@ -61,7 +61,7 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="bg-white py-12 px-4 border-b border-[#D4AF37]">
+      <section className="bg-white/95 py-12 px-4 border-b border-[#D4AF37]">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
@@ -69,7 +69,7 @@ export default function Home() {
               <p className="text-gray-600">Commerçants Membres</p>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-[#001a4d] mb-2">{events.length}</div>
+              <div className="text-4xl font-bold text-[#001a3d] mb-2">{events.length}</div>
               <p className="text-gray-600">Événements Organisés</p>
             </div>
             <div className="text-center">
@@ -81,9 +81,9 @@ export default function Home() {
       </section>
 
       {/* Featured Merchants */}
-      <section className="py-16 px-4 bg-gradient-to-b from-white to-gray-50">
+      <section className="py-16 px-4 bg-gradient-to-b from-white/95 to-gray-50/95">
         <div className="container mx-auto max-w-6xl">
-          <h2 className="text-3xl font-bold text-[#001a4d] mb-2">Nos Commerçants</h2>
+          <h2 className="text-3xl font-bold text-[#001a3d] mb-2">Nos Commerçants</h2>
           <p className="text-gray-600 mb-8">Découvrez les meilleurs commerces de Dour</p>
           
           {merchants.length === 0 ? (
@@ -95,11 +95,11 @@ export default function Home() {
               {merchants.slice(0, 3).map((merchant) => (
                 <Card 
                   key={merchant.id} 
-                  className="hover:shadow-lg transition-shadow border-[#D4AF37] cursor-pointer"
+                  className="hover:shadow-lg transition-shadow border-[#D4AF37] cursor-pointer bg-white/95"
                   onClick={() => setLocation("/merchants")}
                 >
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-[#001a4d]">{merchant.businessName}</CardTitle>
+                    <CardTitle className="text-[#001a3d]">{merchant.businessName}</CardTitle>
                     <CardDescription className="text-[#D4AF37]">{merchant.businessCategory}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -130,9 +130,9 @@ export default function Home() {
       </section>
 
       {/* Latest News */}
-      <section className="py-16 px-4 bg-white">
+      <section className="py-16 px-4 bg-white/95">
         <div className="container mx-auto max-w-6xl">
-          <h2 className="text-3xl font-bold text-[#001a4d] mb-2">Dernières Actualités</h2>
+          <h2 className="text-3xl font-bold text-[#001a3d] mb-2">Dernières Actualités</h2>
           <p className="text-gray-600 mb-8">Restez informé des nouvelles de Synergie Dour</p>
           
           {news.length === 0 ? (
@@ -144,11 +144,11 @@ export default function Home() {
               {news.slice(0, 2).map((article) => (
                 <Card 
                   key={article.id}
-                  className="hover:shadow-lg transition-shadow border-[#D4AF37] cursor-pointer overflow-hidden"
+                  className="hover:shadow-lg transition-shadow border-[#D4AF37] cursor-pointer overflow-hidden bg-white/95"
                   onClick={() => setLocation("/news")}
                 >
                   {article.image && (
-                    <div className="h-40 bg-gradient-to-br from-[#D4AF37] to-[#001a4d] overflow-hidden">
+                    <div className="h-40 bg-gradient-to-br from-[#D4AF37] to-[#001a3d] overflow-hidden">
                       <img
                         src={article.image}
                         alt={article.title}
@@ -157,7 +157,7 @@ export default function Home() {
                     </div>
                   )}
                   <CardHeader>
-                    <CardTitle className="text-[#001a4d] line-clamp-2">{article.title}</CardTitle>
+                    <CardTitle className="text-[#001a3d] line-clamp-2">{article.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-gray-600 line-clamp-2">{article.excerpt || article.content}</p>
@@ -170,7 +170,7 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gradient-to-r from-[#001a4d] to-[#003d99] text-white py-16 px-4">
+      <section className="bg-gradient-to-r from-[#001a3d] to-[#003d99] text-white py-16 px-4">
         <div className="container mx-auto max-w-6xl text-center">
           <h2 className="text-3xl font-bold mb-4 text-[#D4AF37]">Rejoignez Synergie Dour</h2>
           <p className="text-lg text-[#F0E68C] mb-8 max-w-2xl mx-auto">
@@ -179,7 +179,7 @@ export default function Home() {
           <Button 
             size="lg"
             onClick={() => setLocation("/membership")}
-            className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a4d] font-semibold"
+            className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a3d] font-semibold"
           >
             Demander l'Adhésion
             <ArrowRight className="ml-2 w-5 h-5" />
