@@ -153,7 +153,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
               <h3 className="font-bold text-lg mb-4">Synergie Dour</h3>
-              <p className="text-blue-100 text-sm">
+              <p className="text-[#D4AF37] text-sm">
                 Commerçants & Indépendants Réunis. Valorisons ensemble le commerce local.
               </p>
             </div>

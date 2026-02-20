@@ -25,7 +25,7 @@ export default function Home() {
                 <h1 className="text-5xl md:text-6xl font-bold leading-tight text-[#D4AF37]">
                   Synergie Dour
                 </h1>
-                <p className="text-xl text-[#F0E68C]">Commerçants & Indépendants Réunis</p>
+                <p className="text-xl text-[#D4AF37]">Commerçants & Indépendants Réunis</p>
               </div>
               <p className="text-lg text-blue-50 leading-relaxed">
                 Découvrez une plateforme dédiée à la valorisation du commerce local à Dour. Connectez-vous avec les commerçants de votre région et participez à la dynamique économique locale.
