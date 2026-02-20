@@ -34,11 +34,11 @@ export function PublicLayout({ children }: PublicLayoutProps) {
               onClick={() => setLocation("/")}
               className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity"
             >
-              <img 
-                src="/logo-full.png" 
-                alt="Synergie Dour" 
-                className="h-14 w-14 object-contain drop-shadow-md"
-              />
+            <img 
+              src="/logo-official.png" 
+              alt="Synergie Dour" 
+              className="h-10 w-10 object-contain"
+            />
             </div>
 
             {/* Desktop Menu */}
