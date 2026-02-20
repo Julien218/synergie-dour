@@ -45,3 +45,15 @@
 - [x] Mettre à jour le header et footer avec le logo officiel
 - [x] Appliquer l'identité visuelle sur toutes les pages (Home, Merchants, News, Events, Contact, Membership)
 - [ ] Tester l'affichage du logo sur tous les appareils
+
+## Phase 7 : Rendre toutes les fonctionnalités opérationnelles
+- [x] Implémenter la gestion complète des actualités (Admin : créer, modifier, supprimer)
+- [x] Implémenter la gestion complète des événements (Admin : créer, modifier, supprimer)
+- [x] Implémenter la gestion complète des commerçants (Admin : créer, modifier, supprimer, approuver)
+- [x] Implémenter la gestion du profil commerçant (Merchant : modifier ses informations)
+- [ ] Implémenter la galerie photos avec upload (Admin et Merchant)
+- [x] Implémenter la gestion des demandes d'adhésion (Admin : voir, approuver, refuser)
+- [x] Implémenter la gestion des demandes de contact (Admin : voir, répondre)
+- [x] Implémenter les statistiques du tableau de bord (nombre de commerçants, événements, actualités, demandes)
+- [x] Tester toutes les fonctionnalités CRUD
+- [x] Créer le checkpoint final avec toutes les fonctionnalités opérationnelles

@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, router, adminProcedure, protectedProcedure } from "./_core/trpc";
 import {
   getMerchants,
   getMerchantById,
@@ -12,6 +12,25 @@ import {
   getEventById,
   createContactRequest,
   createMembershipRequest,
+  getAllNews,
+  createNews,
+  updateNews,
+  deleteNews,
+  getAllEvents,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  getAllMerchants,
+  createMerchant,
+  updateMerchant,
+  deleteMerchant,
+  getContactRequests,
+  updateContactRequest,
+  deleteContactRequest,
+  getMembershipRequests,
+  updateMembershipRequest,
+  deleteMembershipRequest,
+  getMerchantByUserId,
 } from "./db";
 
 export const appRouter = router({
@@ -38,6 +57,41 @@ export const appRouter = router({
     }).query(async ({ input }) => {
       return getMerchantById(input);
     }),
+    // Admin routes
+    listAll: adminProcedure.query(async () => {
+      return getAllMerchants();
+    }),
+    create: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return createMerchant(input as any);
+    }),
+    update: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }: any) => {
+      const { id, ...data } = input;
+      return updateMerchant(id, data);
+    }),
+    delete: adminProcedure.input((val: unknown) => {
+      if (typeof val === "number") return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return deleteMerchant(input);
+    }),
+    // Merchant routes
+    getMyProfile: protectedProcedure.query(async ({ ctx }) => {
+      return getMerchantByUserId(ctx.user.id);
+    }),
+    updateMyProfile: protectedProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ ctx, input }: any) => {
+      const merchant = await getMerchantByUserId(ctx.user.id);
+      if (!merchant) throw new Error("Merchant profile not found");
+      return updateMerchant(merchant.id, input);
+    }),
   }),
 
   // Categories routes
@@ -58,6 +112,29 @@ export const appRouter = router({
     }).query(async ({ input }) => {
       return getNewsById(input);
     }),
+    // Admin routes
+    listAll: adminProcedure.query(async () => {
+      return getAllNews();
+    }),
+    create: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return createNews(input as any);
+    }),
+    update: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }: any) => {
+      const { id, ...data } = input;
+      return updateNews(id, data);
+    }),
+    delete: adminProcedure.input((val: unknown) => {
+      if (typeof val === "number") return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return deleteNews(input);
+    }),
   }),
 
   // Events routes
@@ -71,6 +148,29 @@ export const appRouter = router({
     }).query(async ({ input }) => {
       return getEventById(input);
     }),
+    // Admin routes
+    listAll: adminProcedure.query(async () => {
+      return getAllEvents();
+    }),
+    create: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return createEvent(input as any);
+    }),
+    update: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }: any) => {
+      const { id, ...data } = input;
+      return updateEvent(id, data);
+    }),
+    delete: adminProcedure.input((val: unknown) => {
+      if (typeof val === "number") return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return deleteEvent(input);
+    }),
   }),
 
   // Contact requests
@@ -81,6 +181,23 @@ export const appRouter = router({
     }).mutation(async ({ input }) => {
       return createContactRequest(input as any);
     }),
+    // Admin routes
+    listAll: adminProcedure.query(async () => {
+      return getContactRequests();
+    }),
+    update: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }: any) => {
+      const { id, ...data } = input;
+      return updateContactRequest(id, data);
+    }),
+    delete: adminProcedure.input((val: unknown) => {
+      if (typeof val === "number") return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return deleteContactRequest(input);
+    }),
   }),
 
   // Membership requests
@@ -90,6 +207,23 @@ export const appRouter = router({
       throw new Error("Invalid input");
     }).mutation(async ({ input }) => {
       return createMembershipRequest(input as any);
+    }),
+    // Admin routes
+    listAll: adminProcedure.query(async () => {
+      return getMembershipRequests();
+    }),
+    update: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }: any) => {
+      const { id, ...data } = input;
+      return updateMembershipRequest(id, data);
+    }),
+    delete: adminProcedure.input((val: unknown) => {
+      if (typeof val === "number") return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return deleteMembershipRequest(input);
     }),
   }),
 });

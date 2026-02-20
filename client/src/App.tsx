@@ -8,6 +8,10 @@ import Events from "@/pages/Events";
 import Contact from "@/pages/Contact";
 import Membership from "@/pages/Membership";
 import Dashboard from "@/pages/Dashboard";
+import ManageNews from "@/pages/ManageNews";
+import ManageEvents from "@/pages/ManageEvents";
+import ManageMerchants from "@/pages/ManageMerchants";
+import ManageRequests from "@/pages/ManageRequests";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -52,6 +56,18 @@ function Router() {
       </Route>
       <Route path="/dashboard">
         {() => <Dashboard />}
+      </Route>
+      <Route path="/dashboard/news">
+        {() => <ManageNews />}
+      </Route>
+      <Route path="/dashboard/events">
+        {() => <ManageEvents />}
+      </Route>
+      <Route path="/dashboard/merchants">
+        {() => <ManageMerchants />}
+      </Route>
+      <Route path="/dashboard/requests">
+        {() => <ManageRequests />}
       </Route>
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}

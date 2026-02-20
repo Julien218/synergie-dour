@@ -151,24 +151,24 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* Analytics */}
+              {/* Requests Management */}
               <Card className="border-amber-200">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-amber-600" />
-                      <CardTitle>Statistiques</CardTitle>
+                      <Users className="w-5 h-5 text-amber-600" />
+                      <CardTitle>Demandes</CardTitle>
                     </div>
                   </div>
-                  <CardDescription>Analyser les performances</CardDescription>
+                  <CardDescription>Gérer les demandes d'adhésion et de contact</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-gray-600">
-                    Consultez les statistiques et les performances de la plateforme.
+                    Consultez et gérez les demandes d'adhésion et de contact.
                   </p>
-                  <Link href="/dashboard/analytics">
+                  <Link href="/dashboard/requests">
                     <Button className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900">
-                      Voir les Statistiques
+                      Gérer les Demandes
                       <ArrowRight className="ml-2 w-4 h-4" />
                     </Button>
                   </Link>

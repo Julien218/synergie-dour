@@ -238,3 +238,121 @@ export async function createGalleryItem(data: InsertGallery) {
   
   return await db.insert(gallery).values(data);
 }
+
+// ===== NEWS CRUD =====
+export async function getAllNews() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(news);
+}
+
+export async function createNews(data: InsertNews) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  return await db.insert(news).values(data);
+}
+
+export async function updateNews(id: number, data: Partial<InsertNews>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.update(news).set(data).where(eq(news.id, id));
+}
+
+export async function deleteNews(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.delete(news).where(eq(news.id, id));
+}
+
+// ===== EVENTS CRUD =====
+export async function getAllEvents() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(events);
+}
+
+export async function createEvent(data: InsertEvent) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  return await db.insert(events).values(data);
+}
+
+export async function updateEvent(id: number, data: Partial<InsertEvent>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.update(events).set(data).where(eq(events.id, id));
+}
+
+export async function deleteEvent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.delete(events).where(eq(events.id, id));
+}
+
+// ===== MERCHANTS CRUD (Admin) =====
+export async function getAllMerchants() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(merchants);
+}
+
+export async function deleteMerchant(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.delete(merchants).where(eq(merchants.id, id));
+}
+
+// ===== CONTACT REQUESTS =====
+export async function getContactRequests() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(contactRequests);
+}
+
+export async function updateContactRequest(id: number, data: Partial<InsertContactRequest>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.update(contactRequests).set(data).where(eq(contactRequests.id, id));
+}
+
+export async function deleteContactRequest(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.delete(contactRequests).where(eq(contactRequests.id, id));
+}
+
+// ===== MEMBERSHIP REQUESTS =====
+export async function updateMembershipRequest(id: number, data: Partial<InsertMembershipRequest>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.update(membershipRequests).set(data).where(eq(membershipRequests.id, id));
+}
+
+export async function deleteMembershipRequest(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.delete(membershipRequests).where(eq(membershipRequests.id, id));
+}
+
+// ===== GALLERY CRUD =====
+export async function deleteGalleryItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  
+  await db.delete(gallery).where(eq(gallery.id, id));
+}
