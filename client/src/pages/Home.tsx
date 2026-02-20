@@ -21,7 +21,7 @@ export default function Home() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex items-center justify-center min-h-96">
             <img 
-              src="/logo-official.png" 
+              src="/logo-full.png" 
               alt="Synergie Dour" 
               className="h-96 w-96 object-contain drop-shadow-2xl"
             />
