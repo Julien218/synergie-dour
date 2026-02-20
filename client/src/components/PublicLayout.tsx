@@ -35,7 +35,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
               className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity"
             >
               <img 
-                src="/logo-full.png" 
+                src="/logo.png" 
                 alt="Synergie Dour" 
                 className="h-14 w-14 object-contain drop-shadow-md"
               />
