@@ -6,8 +6,8 @@ export const ENV = {
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
 
   // Auth Synergie Dour
-  superAdminEmail: process.env.SUPER_ADMIN_EMAIL ?? "",
-  adminInvites: process.env.ADMIN_INVITES === "true",
+superAdminEmail: process.env.SUPER_ADMIN_EMAIL ?? "",
+adminInvites: process.env.ADMIN_INVITES === "true",
 
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
