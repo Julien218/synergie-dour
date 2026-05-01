@@ -12,6 +12,8 @@ import ManageNews from "@/pages/ManageNews";
 import ManageEvents from "@/pages/ManageEvents";
 import ManageMerchants from "@/pages/ManageMerchants";
 import ManageRequests from "@/pages/ManageRequests";
+import Legal from "@/pages/Legal";
+import Privacy from "@/pages/Privacy";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -54,6 +56,14 @@ function Router() {
       <Route path="/membership">
         {() => <Membership />}
       </Route>
+      <Route path="/legal">
+        {() => <Legal />}
+      </Route>
+      <Route path="/privacy">
+        {() => <Privacy />}
+      </Route>
+      
+      {/* Routes Dashboard */}
       <Route path="/dashboard">
         {() => <Dashboard />}
       </Route>
@@ -69,8 +79,17 @@ function Router() {
       <Route path="/dashboard/requests">
         {() => <ManageRequests />}
       </Route>
+
+      {/* Route de secours pour le callback OAuth pour éviter la 404 React */}
+      <Route path="/api/oauth/callback">
+        {() => (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+          </div>
+        )}
+      </Route>
+
       <Route path="/404" component={NotFound} />
-      {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
   );
