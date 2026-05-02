@@ -24,6 +24,16 @@ export default function Legal() {
             <h2 className="text-xl font-semibold text-blue-800">3. Propriété Intellectuelle</h2>
             <p>L'ensemble de ce site, y compris les textes, logos, photos et codes sources, relève de la législation sur le droit d'auteur et la propriété intellectuelle. Toute reproduction, même partielle, est interdite sans l'accord préalable de Synergie Dour ou de ses partenaires (Js-Innov.IA).</p>
           </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-blue-800">4. Responsabilité</h2>
+            <p>Synergie Dour décline toute responsabilité concernant l'exactitude, la complétude ou la pertinence des informations publiées sur ce site. L'utilisation de ce site est à vos risques et périls.</p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-blue-800">5. Contact</h2>
+            <p>Pour toute question concernant ces mentions légales, veuillez nous contacter à : <strong>info@synergiedour.be</strong></p>
+          </section>
         </div>
       </div>
     </PublicLayout>
