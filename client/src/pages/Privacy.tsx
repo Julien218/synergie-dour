@@ -31,6 +31,16 @@ export default function Privacy() {
             <h2 className="text-xl font-semibold text-blue-800">4. Cookies</h2>
             <p>Ce site utilise des cookies essentiels au bon fonctionnement technique et, avec votre accord, des cookies de mesure d'audience anonymes.</p>
           </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-blue-800">5. Sécurité des données</h2>
+            <p>Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données contre l'accès non autorisé, la modification ou la destruction.</p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-blue-800">6. Délégué à la Protection des Données</h2>
+            <p>Pour toute question relative à la protection de vos données personnelles, vous pouvez contacter notre DPO : <strong>dpo@synergiedour.be</strong></p>
+          </section>
         </div>
       </div>
     </PublicLayout>
