@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { Footer } from "@/components/Footer";
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -17,8 +18,10 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
   const navItems = [
     { label: "Annuaire", href: "/merchants" },
+    { label: "Ressources", href: "/resources" },
     { label: "Actualités", href: "/news" },
     { label: "Événements", href: "/events" },
+    { label: "L'association", href: "/about" },
     { label: "Adhésion", href: "/membership" },
     { label: "Contact", href: "/contact" },
   ];
@@ -147,77 +150,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       {/* Main Content */}
       <main className="flex-1">{children}</main>
 
-      {/* Footer */}
-      <footer className="bg-blue-900 text-white py-12 px-4 mt-16">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="font-bold text-lg mb-4">Synergie Dour</h3>
-              <p className="text-[#D4AF37] text-sm">
-                Commerçants & Indépendants Réunis. Valorisons ensemble le commerce local.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4 text-amber-400">Liens Rapides</h4>
-              <ul className="space-y-2 text-sm text-blue-100">
-                {navItems.slice(0, 3).map((item) => (
-                  <li key={item.href}>
-                    <button
-                      onClick={() => setLocation(item.href)}
-                      className="hover:text-amber-400 transition-colors font-medium"
-                    >
-                      {item.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4 text-amber-400">Adhésion</h4>
-              <ul className="space-y-2 text-sm text-blue-100">
-                <li>
-                  <button
-                    onClick={() => setLocation("/membership")}
-                    className="hover:text-amber-400 transition-colors font-medium"
-                  >
-                    Rejoindre
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => setLocation("/contact")}
-                    className="hover:text-amber-400 transition-colors font-medium"
-                  >
-                    Nous Contacter
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4 text-amber-400">Contact</h4>
-              <p className="text-sm text-blue-100">
-                <strong>Adresse :</strong> Dour, Belgique
-              </p>
-              <p className="text-sm text-blue-100 mt-2">
-                <strong>Email :</strong> info@synergiedour.be
-              </p>
-            </div>
-          </div>
-          <div className="border-t border-blue-800 pt-8">
-            <div className="flex flex-col md:flex-row items-center justify-between text-sm text-blue-100">
-              <p>&copy; 2026 Synergie Dour. Tous droits réservés.</p>
-              <div className="flex gap-6 mt-4 md:mt-0">
-                <a href="#" className="hover:text-amber-400 transition-colors">
-                  Mentions légales
-                </a>
-                <a href="#" className="hover:text-amber-400 transition-colors">
-                  Politique de confidentialité
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -155,3 +155,108 @@ export const gallery = mysqlTable("gallery", {
 
 export type Gallery = typeof gallery.$inferSelect;
 export type InsertGallery = typeof gallery.$inferInsert;
+
+// =============================================================================
+//  RESSOURCES
+// =============================================================================
+
+export const resources = mysqlTable("resources", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 200 }).notNull().unique(),
+  title: varchar("title", { length: 255 }).notNull(),
+  summary: varchar("summary", { length: 500 }).notNull(),
+  category: mysqlEnum("category", ["starter", "gestion", "developpement", "difficulte"]).notNull(),
+  tags: json("tags").$type<string[]>().notNull(),
+  verifiedAt: varchar("verifiedAt", { length: 10 }).notNull(),
+  content: text("content").notNull(),
+  links: json("links").$type<Array<{ label: string; url: string; type?: "officiel" | "partenaire" }>>().notNull(),
+  localContacts: json("localContacts").$type<string[] | null>(),
+  status: mysqlEnum("status", ["draft", "published", "archived"]).default("published").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Resource = typeof resources.$inferSelect;
+export type InsertResource = typeof resources.$inferInsert;
+
+// =============================================================================
+//  PENDING CHANGES (file d'attente de l'agent)
+// =============================================================================
+
+export const pendingChanges = mysqlTable("pending_changes", {
+  id: int("id").autoincrement().primaryKey(),
+  resourceId: int("resourceId").notNull().references(() => resources.id),
+  kind: mysqlEnum("kind", ["minor", "major"]).notNull(),
+  proposal: text("proposal").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  reviewedBy: int("reviewedBy").references(() => users.id),
+  reviewNote: text("reviewNote"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PendingChange = typeof pendingChanges.$inferSelect;
+export type InsertPendingChange = typeof pendingChanges.$inferInsert;
+
+// =============================================================================
+//  AUDIT LOGS
+// =============================================================================
+
+export const auditLogs = mysqlTable("audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  resourceId: int("resourceId").references(() => resources.id),
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+  payload: text("payload").notNull(),
+  triggeredBy: int("triggeredBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+// =============================================================================
+//  MEMBERSHIPS (adhésions ASBL payantes)
+// =============================================================================
+
+export const memberships = mysqlTable("memberships", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  merchantId: int("merchantId").references(() => merchants.id),
+  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).notNull(),
+  status: mysqlEnum("status", ["pending_payment", "active", "expired", "cancelled"]).default("pending_payment").notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 100 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 100 }),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 100 }),
+  startsAt: timestamp("startsAt"),
+  expiresAt: timestamp("expiresAt"),
+  amountCents: int("amountCents").notNull().default(5000),
+  currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Membership = typeof memberships.$inferSelect;
+export type InsertMembership = typeof memberships.$inferInsert;
+
+// =============================================================================
+//  PAYMENTS (journal comptabilité ASBL)
+// =============================================================================
+
+export const payments = mysqlTable("payments", {
+  id: int("id").autoincrement().primaryKey(),
+  membershipId: int("membershipId").references(() => memberships.id),
+  userId: int("userId").references(() => users.id),
+  stripeEventId: varchar("stripeEventId", { length: 100 }).notNull().unique(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 100 }),
+  stripeInvoiceId: varchar("stripeInvoiceId", { length: 100 }),
+  amountCents: int("amountCents").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
+  feeJsInnovCents: int("feeJsInnovCents").notNull().default(150),
+  netToAsblCents: int("netToAsblCents").notNull(),
+  status: mysqlEnum("status", ["succeeded", "refunded", "failed"]).notNull(),
+  paymentMethod: varchar("paymentMethod", { length: 50 }),
+  paidAt: timestamp("paidAt").defaultNow().notNull(),
+});
+
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = typeof payments.$inferInsert;

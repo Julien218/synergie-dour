@@ -7,11 +7,19 @@ import News from "@/pages/News";
 import Events from "@/pages/Events";
 import Contact from "@/pages/Contact";
 import Membership from "@/pages/Membership";
+import MembershipSuccess from "@/pages/MembershipSuccess";
+import MembershipCancelled from "@/pages/MembershipCancelled";
 import Dashboard from "@/pages/Dashboard";
 import ManageNews from "@/pages/ManageNews";
 import ManageEvents from "@/pages/ManageEvents";
 import ManageMerchants from "@/pages/ManageMerchants";
 import ManageRequests from "@/pages/ManageRequests";
+import MembershipRequestsAdmin from "@/pages/MembershipRequestsAdmin";
+import AgentDashboard from "@/pages/AgentDashboard";
+import MemberDashboard from "@/pages/MemberDashboard";
+import Resources from "@/pages/Resources";
+import Resource from "@/pages/Resource";
+import About from "@/pages/About";
 import Legal from "@/pages/Legal";
 import Privacy from "@/pages/Privacy";
 import { PublicLayout } from "@/components/PublicLayout";
@@ -56,6 +64,21 @@ function Router() {
       <Route path="/membership">
         {() => <Membership />}
       </Route>
+      <Route path="/membership/success">
+        {() => <MembershipSuccess />}
+      </Route>
+      <Route path="/membership/cancelled">
+        {() => <MembershipCancelled />}
+      </Route>
+      <Route path="/resources/:slug">
+        {() => <PublicLayout><Resource /></PublicLayout>}
+      </Route>
+      <Route path="/resources">
+        {() => <PublicLayout><Resources /></PublicLayout>}
+      </Route>
+      <Route path="/about">
+        {() => <PublicLayout><About /></PublicLayout>}
+      </Route>
       <Route path="/legal">
         {() => <Legal />}
       </Route>
@@ -78,6 +101,15 @@ function Router() {
       </Route>
       <Route path="/dashboard/requests">
         {() => <ManageRequests />}
+      </Route>
+      <Route path="/dashboard/membership-requests">
+        {() => <MembershipRequestsAdmin />}
+      </Route>
+      <Route path="/dashboard/agent">
+        {() => <AgentDashboard />}
+      </Route>
+      <Route path="/dashboard/members">
+        {() => <MemberDashboard />}
       </Route>
 
       {/* Route de secours pour le callback OAuth pour éviter la 404 React */}
