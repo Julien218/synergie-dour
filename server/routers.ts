@@ -1,5 +1,6 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { loginWithPassword, registerWithPassword, SESSION_COOKIE, SESSION_DURATION_MS, signSession } from "./authService";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, adminProcedure, protectedProcedure } from "./_core/trpc";
 import {
@@ -37,12 +38,26 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    register: publicProcedure.input((val: any) => val).mutation(async ({ input, ctx }) => {
+      const user = await registerWithPassword(input);
+      if (!user) throw new Error("Unable to create user");
+      const token = await signSession(user);
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(SESSION_COOKIE, token, { ...cookieOptions, maxAge: SESSION_DURATION_MS, path: "/" });
+      return user;
+    }),
+    login: publicProcedure.input((val: any) => val).mutation(async ({ input, ctx }) => {
+      const user = await loginWithPassword(input);
+      const token = await signSession(user);
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(SESSION_COOKIE, token, { ...cookieOptions, maxAge: SESSION_DURATION_MS, path: "/" });
+      return user;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      ctx.res.clearCookie(SESSION_COOKIE, { ...cookieOptions, maxAge: -1 });
+      return { success: true } as const;
     }),
   }),
 
