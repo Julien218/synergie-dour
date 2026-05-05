@@ -15,6 +15,13 @@
       "when": 1771612086227,
       "tag": "0001_same_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1777980061227,
+      "tag": "0002_optimal_lady_bullseye",
+      "breakpoints": true
     }
   ]
 }
