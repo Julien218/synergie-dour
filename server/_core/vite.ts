@@ -51,7 +51,7 @@ export function serveStatic(app: Express) {
   const distPath =
     process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "../public");
+      : path.resolve(import.meta.dirname, "./public");
 
   console.log(`[serveStatic] NODE_ENV=${process.env.NODE_ENV}`);
   console.log(`[serveStatic] import.meta.dirname=${import.meta.dirname}`);
