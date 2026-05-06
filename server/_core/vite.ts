@@ -48,13 +48,12 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath =
-    process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
+  // process.cwd() est toujours la racine du projet (/app sur Railway),
+  // ce qui est plus fiable qu'import.meta.dirname dans un bundle esbuild.
+  const distPath = path.resolve(process.cwd(), "dist", "public");
   if (!fs.existsSync(distPath)) {
     console.error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
+      `[serveStatic] Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
 
