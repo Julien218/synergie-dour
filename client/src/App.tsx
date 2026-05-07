@@ -22,6 +22,7 @@ import Resource from "@/pages/Resource";
 import About from "@/pages/About";
 import Legal from "@/pages/Legal";
 import Privacy from "@/pages/Privacy";
+import Login from "@/pages/Login";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -86,6 +87,11 @@ function Router() {
         {() => <Privacy />}
       </Route>
       
+      {/* Login route */}
+      <Route path="/login">
+        {() => <Login />}
+      </Route>
+
       {/* Routes Dashboard */}
       <Route path="/dashboard">
         {() => <Dashboard />}
