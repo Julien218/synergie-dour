@@ -200,17 +200,22 @@ export default function About() {
             </p>
             <p>
               <strong className="text-[#001a3d]">Siège social :</strong>{" "}
-              <span className="text-gray-500 italic">à compléter</span>
+              Grand Place, 9 à 7370 Dour
             </p>
             <p>
               <strong className="text-[#001a3d]">Numéro d'entreprise :</strong>{" "}
-              <span className="text-gray-500 italic">à compléter</span>
+              BE 1036.801.623
             </p>
             <p>
               <strong className="text-[#001a3d]">Publication des statuts :</strong>{" "}
-              <span className="text-gray-500 italic">
-                lien Moniteur belge à compléter
-              </span>
+              <a
+                href="https://www.ejustice.just.fgov.be/cgi_tsv/article.pl?language=fr&btw_search=1036801623&page=1&la_search=f&caller=list&=0&view_numac=1036801623&view_numac=1036801623&btw=1036801623"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#003d99] underline hover:text-[#001a3d] transition-colors"
+              >
+                Moniteur belge
+              </a>
             </p>
           </div>
           <p className="text-sm text-gray-600 mt-4">
