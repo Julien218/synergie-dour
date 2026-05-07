@@ -207,6 +207,15 @@ export default function About() {
               <span className="text-gray-500 italic">à compléter</span>
             </p>
             <p>
+              <strong className="text-[#001a3d]">Téléphone :</strong>{" "}
+              <a
+                href="tel:0475426942"
+                className="text-[#003d99] hover:underline"
+              >
+                0475 42 69 42
+              </a>
+            </p>
+            <p>
               <strong className="text-[#001a3d]">Publication des statuts :</strong>{" "}
               <span className="text-gray-500 italic">
                 lien Moniteur belge à compléter
