@@ -2,7 +2,6 @@ import { ReactNode } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Footer } from "@/components/Footer";
@@ -78,7 +77,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 </>
               ) : (
                 <Button 
-                  onClick={() => window.location.href = getLoginUrl()}
+                  onClick={() => setLocation("/login")}
                   className="bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
                 >
                   Se Connecter
@@ -135,7 +134,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                   </>
                 ) : (
                   <Button 
-                    onClick={() => window.location.href = getLoginUrl()}
+                    onClick={() => setLocation("/login")}
                     className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
                   >
                     Se Connecter
