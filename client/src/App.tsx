@@ -20,6 +20,8 @@ import MemberDashboard from "@/pages/MemberDashboard";
 import Resources from "@/pages/Resources";
 import Resource from "@/pages/Resource";
 import About from "@/pages/About";
+import Knowledge from "@/pages/Knowledge";
+import AiContext from "@/pages/AiContext";
 import Legal from "@/pages/Legal";
 import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
