@@ -125,12 +125,30 @@ export default function Home() {
               <p className="text-gray-600">Fiches d'information</p>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-[#001a3d] mb-2">{merchants.length}</div>
-              <p className="text-gray-600">Commerçants membres</p>
+              {merchants.length > 0 ? (
+                <>
+                  <div className="text-4xl font-bold text-[#001a3d] mb-2">{merchants.length}</div>
+                  <p className="text-gray-600">Commerçants membres</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-4xl font-bold text-[#001a3d] mb-2">🚀</div>
+                  <p className="text-gray-600">Membres en cours d'inscription</p>
+                </>
+              )}
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-[#D4AF37] mb-2">{events.length}</div>
-              <p className="text-gray-600">Événements à venir</p>
+              {events.length > 0 ? (
+                <>
+                  <div className="text-4xl font-bold text-[#D4AF37] mb-2">{events.length}</div>
+                  <p className="text-gray-600">Événements à venir</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-4xl font-bold text-[#D4AF37] mb-2">📅</div>
+                  <p className="text-gray-600">Événements à venir</p>
+                </>
+              )}
             </div>
           </div>
         </div>
