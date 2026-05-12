@@ -60,6 +60,11 @@ export function Footer() {
                   L'association
                 </button>
               </li>
+              <li>
+                <button onClick={() => setLocation("/knowledge")} className="text-blue-100 hover:text-[#D4AF37] transition-colors">
+                  Base de connaissances
+                </button>
+              </li>
             </ul>
           </div>
 
