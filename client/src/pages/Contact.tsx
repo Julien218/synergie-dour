@@ -84,8 +84,8 @@ export default function Contact() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <a href="mailto:info@synergiedour.be" className="text-blue-900 hover:text-amber-600">
-                      info@synergiedour.be
+                    <a href="mailto:olivier.trevis@outlook.be" className="text-blue-900 hover:text-amber-600">
+                      olivier.trevis@outlook.be
                     </a>
                   </CardContent>
                 </Card>
@@ -98,8 +98,8 @@ export default function Contact() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <a href="tel:+32123456789" className="text-blue-900 hover:text-amber-600">
-                      +32 1 23 45 67 89
+                    <a href="tel:+32475426942" className="text-blue-900 hover:text-amber-600">
+                      0475/42.69.42
                     </a>
                   </CardContent>
                 </Card>
@@ -174,7 +174,7 @@ export default function Contact() {
                           onChange={(e) =>
                             setFormData({ ...formData, phone: e.target.value })
                           }
-                          placeholder="+32 1 23 45 67 89"
+                          placeholder="0475/42.69.42"
                           className="border-amber-200 focus:border-amber-500"
                         />
                       </div>
@@ -230,3 +230,4 @@ export default function Contact() {
     </PublicLayout>
   );
 }
+
