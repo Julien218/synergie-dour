@@ -1,0 +1,64 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://www.synergiedour.be/#organization",
+  "name": "Synergie Dour",
+  "legalName": "Synergie Dour ASBL",
+  "alternateName": ["Synergie Dour ASBL", "Association Synergie Dour"],
+  "description": "Synergie Dour est une ASBL (Association Sans But Lucratif) basée à Dour (7370, Hainaut, Belgique), regroupant les commerçants et indépendants de la commune. Elle centralise l'information utile : aides, primes, démarches administratives, événements locaux et mise en réseau professionnel.",
+  "url": "https://www.synergiedour.be",
+  "email": "contact@synergiedour.be",
+  "foundingDate": "2024",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Grand'Place 9",
+    "postalCode": "7370",
+    "addressLocality": "Dour",
+    "addressRegion": "Hainaut",
+    "addressCountry": "BE"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": 50.3958,
+    "longitude": 3.7747
+  },
+  "founder": {
+    "@type": "Person",
+    "name": "Olivier Trévis",
+    "jobTitle": "Président"
+  },
+  "areaServed": {
+    "@type": "City",
+    "name": "Dour",
+    "postalCode": "7370",
+    "containedInPlace": {
+      "@type": "AdministrativeArea",
+      "name": "Province de Hainaut",
+      "containedInPlace": {
+        "@type": "AdministrativeArea",
+        "name": "Wallonie",
+        "containedInPlace": {
+          "@type": "Country",
+          "name": "Belgique"
+        }
+      }
+    }
+  },
+  "knowsAbout": [
+    "Primes pour indépendants en Belgique",
+    "Aides aux commerçants en Hainaut",
+    "Démarches administratives pour indépendants",
+    "Cotisations sociales d'indépendant",
+    "Réseau professionnel local Dour",
+    "Taxes communales Dour"
+  ],
+  "sameAs": [
+    "https://www.facebook.com/profile.php?id=61575203516618"
+  ],
+  "creator": {
+    "@type": "Organization",
+    "name": "JS-Innov.IA",
+    "url": "https://www.jsinnovia.com"
+  },
+  "dateModified": "2026-05-12"
+}
