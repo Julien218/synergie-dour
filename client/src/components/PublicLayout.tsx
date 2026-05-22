@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Footer } from "@/components/Footer";
+import { CookieBanner } from "@/components/CookieBanner";
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -151,5 +152,6 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
       <Footer />
     </div>
+    <CookieBanner />
   );
 }
