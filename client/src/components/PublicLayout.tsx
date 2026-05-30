@@ -27,6 +27,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
   ];
 
   return (
+    <>
     <div className="min-h-screen flex flex-col">
       {/* Navigation */}
       <nav className="bg-white border-b border-amber-200 sticky top-0 z-50">
@@ -153,5 +154,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       <Footer />
     </div>
     <CookieBanner />
+    </>
   );
 }
+
