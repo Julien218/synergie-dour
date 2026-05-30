@@ -4,7 +4,6 @@ import type { User } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { sdk } from "./sdk";
 import { SESSION_COOKIE, verifySessionToken } from "../authService";
 
 export type TrpcContext = {
@@ -25,10 +24,6 @@ export async function createContext(opts: CreateExpressContextOptions): Promise<
         const row = await db.select().from(users).where(eq(users.id, uid)).limit(1);
         user = row[0] ?? null;
       }
-    }
-
-    if (!user) {
-      user = await sdk.authenticateRequest(opts.req);
     }
   } catch {
     user = null;
