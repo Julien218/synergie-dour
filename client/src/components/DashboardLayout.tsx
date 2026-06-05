@@ -30,7 +30,8 @@ import {
   FileText, 
   Calendar, 
   ClipboardList,
-  Image
+  Image,
+  Building2
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -112,6 +113,7 @@ function DashboardLayoutContent({
     { icon: ClipboardList, label: "Demandes", path: "/dashboard/requests" },
     { icon: FileText, label: "Actualités", path: "/dashboard/news" },
     { icon: Calendar, label: "Événements", path: "/dashboard/events" },
+    { icon: Building2, label: "Locaux à Louer", path: "/dashboard/locaux" },
   ];
 
   const merchantMenuItems = [
