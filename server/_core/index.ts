@@ -41,13 +41,13 @@ async function initDatabase() {
     return;
   }
   try {
-    const sslEnabled = process.env.MYSQL_SSL === "true" || databaseUrl.includes("proxy.rlwy");
+    // Railway MySQL 9.x requiert TLS (même réseau interne)
     const pool = mysql.createPool({
-      uri: databaseUrl.replace(/\?[^?]*$/, ""),
-      ssl: sslEnabled ? { rejectUnauthorized: false } : undefined,
+      uri: databaseUrl.split("?")[0],
+      ssl: { rejectUnauthorized: false },
       waitForConnections: true,
-      connectionLimit: 5,
-      connectTimeout: 20000,
+      connectionLimit: 3,
+      connectTimeout: 30000,
     });
     const db = drizzle(pool as any);
     // Création des tables si absentes (idempotent)
