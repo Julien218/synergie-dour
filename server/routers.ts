@@ -244,7 +244,6 @@ export const appRouter = router({
       return deleteMembershipRequest(input);
     }),
   }),
-,
 
   // Locaux commerciaux — annonces propriétaires
   locaux: router({
