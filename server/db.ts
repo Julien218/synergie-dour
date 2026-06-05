@@ -312,7 +312,21 @@ export async function deleteGalleryItem(id: number) {
 export async function createLocalRequest(data: InsertLocalRequest) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  const [result] = await db.insert(localRequests).values(data);
+  // Sanitiser l input : ne garder que les colonnes connues de la table
+  const clean: InsertLocalRequest = {
+    titre: data.titre,
+    adresse: data.adresse,
+    village: data.village,
+    surface: data.surface ?? undefined,
+    loyer: data.loyer ?? undefined,
+    type_bien: data.type_bien,
+    description: data.description ?? undefined,
+    nom_proprietaire: data.nom_proprietaire,
+    telephone_proprietaire: data.telephone_proprietaire,
+    email_proprietaire: data.email_proprietaire,
+    status: data.status ?? "pending",
+  };
+  const [result] = await db.insert(localRequests).values(clean);
   return result;
 }
 
