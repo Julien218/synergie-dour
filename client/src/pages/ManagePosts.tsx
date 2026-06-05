@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/hooks/useAuth";
-import { Navigate } from "react-router-dom";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useLocation } from "wouter";
 
-const DAYS = ["", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const DAYS: Record<number, string> = { 1: "Lundi", 2: "Mardi", 3: "Mercredi", 4: "Jeudi", 5: "Vendredi" };
 const STATUS_LABELS: Record<string, string> = {
   draft: "En attente",
   approved: "Approuvé",
@@ -19,6 +19,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function ManagePosts() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -32,11 +33,12 @@ export default function ManagePosts() {
   });
 
   if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
-    return <Navigate to="/dashboard" />;
+    navigate("/dashboard");
+    return null;
   }
 
-  const { data: allPosts, refetch } = trpc.posts.listAll.useQuery();
-  const { data: pendingPosts } = trpc.posts.listPending.useQuery();
+  const { data: allPostsRaw, refetch } = trpc.posts.listAll.useQuery();
+  const { data: pendingPostsRaw } = trpc.posts.listPending.useQuery();
   const updateStatus = trpc.posts.updateStatus.useMutation({ onSuccess: () => refetch() });
   const createPost = trpc.posts.create.useMutation({
     onSuccess: () => {
@@ -47,8 +49,9 @@ export default function ManagePosts() {
   });
   const deletePost = trpc.posts.delete.useMutation({ onSuccess: () => refetch() });
 
-  const posts = (activeTab === "pending" ? pendingPosts : allPosts) ?? [];
-  const postList = Array.isArray(posts) ? posts : (posts as any)[0] ?? [];
+  const allPosts: any[] = Array.isArray(allPostsRaw) ? allPostsRaw : (allPostsRaw as any)?.[0] ?? [];
+  const pendingPosts: any[] = Array.isArray(pendingPostsRaw) ? pendingPostsRaw : (pendingPostsRaw as any)?.[0] ?? [];
+  const postList = activeTab === "pending" ? pendingPosts : allPosts;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -56,6 +59,7 @@ export default function ManagePosts() {
       <div className="bg-[#0D1B3E] text-white px-6 py-5">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div>
+            <button onClick={() => navigate("/dashboard")} className="text-blue-300 text-sm mb-2 hover:underline">← Dashboard</button>
             <h1 className="text-2xl font-bold">Posts Réseaux Sociaux</h1>
             <p className="text-blue-200 text-sm mt-1">Validation et planification hebdomadaire</p>
           </div>
@@ -83,7 +87,7 @@ export default function ManagePosts() {
               />
               <textarea
                 className="border rounded-lg px-3 py-2 text-sm h-32"
-                placeholder="Contenu (texte pour Facebook/Instagram)..."
+                placeholder="Contenu du post (Facebook/Instagram)..."
                 value={newPost.content}
                 onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
               />
@@ -93,7 +97,7 @@ export default function ManagePosts() {
                   value={newPost.day_of_week}
                   onChange={(e) => setNewPost({ ...newPost, day_of_week: parseInt(e.target.value) })}
                 >
-                  {[1,2,3,4,5].map((d) => (
+                  {[1, 2, 3, 4, 5].map((d) => (
                     <option key={d} value={d}>{DAYS[d]}</option>
                   ))}
                 </select>
@@ -130,8 +134,8 @@ export default function ManagePosts() {
               activeTab === "pending" ? "bg-[#0D1B3E] text-white" : "bg-white text-gray-600 border hover:bg-gray-50"
             }`}
           >
-            En attente de validation
-            {pendingPosts && Array.isArray(pendingPosts) && pendingPosts.length > 0 && (
+            En attente
+            {pendingPosts.length > 0 && (
               <span className="ml-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">
                 {pendingPosts.length}
               </span>
@@ -147,11 +151,10 @@ export default function ManagePosts() {
           </button>
         </div>
 
-        {/* Liste des posts */}
+        {/* Liste */}
         {postList.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center text-gray-400">
             <p className="text-lg">Aucun post à afficher</p>
-            <p className="text-sm mt-1">Créez un nouveau post ou attendez les soumissions automatiques.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -163,18 +166,18 @@ export default function ManagePosts() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="bg-[#0D1B3E] text-white text-xs font-bold px-3 py-1 rounded-full">
-                      {DAYS[post.day_of_week]}
+                      {DAYS[post.day_of_week] ?? `Jour ${post.day_of_week}`}
                     </div>
                     <div>
                       <p className="font-semibold text-gray-800">{post.title}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {post.scheduled_time?.slice(0, 5)} · {post.platforms}
+                        {String(post.scheduled_time ?? "").slice(0, 5)} · {post.platforms}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`text-xs px-3 py-1 rounded-full font-semibold ${STATUS_COLORS[post.status]}`}>
-                      {STATUS_LABELS[post.status]}
+                    <span className={`text-xs px-3 py-1 rounded-full font-semibold ${STATUS_COLORS[post.status] ?? ""}`}>
+                      {STATUS_LABELS[post.status] ?? post.status}
                     </span>
                     <span className="text-gray-400 text-sm">{expandedId === post.id ? "▲" : "▼"}</span>
                   </div>
@@ -205,7 +208,7 @@ export default function ManagePosts() {
                           onClick={() => updateStatus.mutate({ id: post.id, status: "published" })}
                           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
                         >
-                          🚀 Marquer comme publié
+                          🚀 Marquer publié
                         </button>
                       )}
                       {post.status !== "draft" && (
@@ -218,7 +221,7 @@ export default function ManagePosts() {
                       )}
                       <button
                         onClick={() => {
-                          if (confirm("Supprimer ce post ?")) deletePost.mutate({ id: post.id });
+                          if (confirm("Supprimer ce post définitivement ?")) deletePost.mutate({ id: post.id });
                         }}
                         className="ml-auto bg-gray-100 hover:bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm transition"
                       >
