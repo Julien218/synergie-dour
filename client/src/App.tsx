@@ -26,6 +26,7 @@ import Legal from "@/pages/Legal";
 import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
 import SoumettreLocal from "@/pages/SoumettreLocal";
+import ManageLocaux from "@/pages/ManageLocaux";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -116,6 +117,9 @@ function Router() {
       </Route>
       <Route path="/dashboard/agent">
         {() => <AgentDashboard />}
+      </Route>
+      <Route path="/dashboard/locaux">
+        {() => <ManageLocaux />}
       </Route>
       <Route path="/dashboard/members">
         {() => <MemberDashboard />}
