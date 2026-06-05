@@ -262,3 +262,27 @@ export const payments = mysqlTable("payments", {
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
+
+// =============================================================================
+//  LOCAL REQUESTS (annonces locaux commerciaux soumises par propriétaires)
+// =============================================================================
+
+export const localRequests = mysqlTable("local_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  titre: varchar("titre", { length: 255 }).notNull(),
+  adresse: varchar("adresse", { length: 255 }).notNull(),
+  village: varchar("village", { length: 100 }).notNull(),
+  surface: varchar("surface", { length: 50 }),
+  loyer: varchar("loyer", { length: 50 }),
+  type_bien: varchar("type_bien", { length: 100 }).notNull(),
+  description: text("description"),
+  nom_proprietaire: varchar("nom_proprietaire", { length: 255 }).notNull(),
+  telephone_proprietaire: varchar("telephone_proprietaire", { length: 30 }).notNull(),
+  email_proprietaire: varchar("email_proprietaire", { length: 320 }).notNull(),
+  status: mysqlEnum("status", ["pending", "published", "rejected"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LocalRequest = typeof localRequests.$inferSelect;
+export type InsertLocalRequest = typeof localRequests.$inferInsert;
