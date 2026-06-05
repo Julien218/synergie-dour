@@ -139,24 +139,27 @@ async function startServer() {
 
   // Endpoint de debug DB (temporaire)
   app.get("/api/debug/db", async (req, res) => {
-    const url = process.env.DATABASE_URL || "non définie";
-    const maskedUrl = url.replace(/:([^:@]+)@/, ":***@");
-    const results: Record<string, string> = { url: maskedUrl };
-    // Test 1: connection directe mysql2
-    try {
-      const mysql2 = await import("mysql2/promise");
-      const conn = await mysql2.createConnection({
-        uri: url.split("?")[0],
-        ssl: { rejectUnauthorized: false },
-        connectTimeout: 10000,
-      });
-      const [rows] = await conn.execute("SHOW TABLES");
-      results.tables = JSON.stringify(rows);
-      results.status = "OK";
-      await conn.end();
-    } catch(e: any) {
-      results.status = "FAIL";
-      results.error = e.message;
+    const mysql2 = await import("mysql2/promise");
+    const results: Record<string, any> = {};
+    const urlsToTest = [
+      process.env.DATABASE_URL,
+      process.env.MYSQL_PUBLIC_URL,
+      "***REMOVED_SECRET_JS_INNOVIA***",
+    ].filter(Boolean) as string[];
+    for (const rawUrl of urlsToTest) {
+      const key = rawUrl.includes("railway.internal") ? "internal" : rawUrl.includes("proxy.rlwy") ? "proxy" : "other";
+      try {
+        const conn = await mysql2.createConnection({
+          uri: rawUrl.split("?")[0],
+          ssl: { rejectUnauthorized: false },
+          connectTimeout: 8000,
+        });
+        const [rows] = await conn.execute("SHOW TABLES");
+        results[key] = { status: "OK", tables: (rows as any[]).length };
+        await conn.end();
+      } catch(e: any) {
+        results[key] = { status: "FAIL", error: e.message?.slice(0,80) };
+      }
     }
     res.json(results);
   });
