@@ -264,6 +264,62 @@ export const appRouter = router({
       return updateLocalRequest(id, data);
     }),
   }),
+  // =====================================================================
+  // POSTS PLANIFIÉS — Validation Olivier → Publication réseaux sociaux
+  // =====================================================================
+  posts: router({
+    listAll: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      return db.execute('SELECT * FROM scheduled_posts ORDER BY day_of_week, scheduled_time');
+    }),
+
+    listPending: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      const [rows] = await db.execute("SELECT * FROM scheduled_posts WHERE status = 'draft' ORDER BY day_of_week");
+      return rows;
+    }),
+
+    updateStatus: adminProcedure.input((val: unknown) => {
+      if (typeof val === 'object' && val !== null) return val;
+      throw new Error('Invalid input');
+    }).mutation(async ({ input, ctx }: any) => {
+      const { id, status } = input;
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      await db.execute(
+        'UPDATE scheduled_posts SET status=?, approved_by=?, approved_at=?, updatedAt=? WHERE id=?',
+        [status, ctx.user.id, now, now, id]
+      );
+      return { success: true };
+    }),
+
+    create: adminProcedure.input((val: unknown) => {
+      if (typeof val === 'object' && val !== null) return val;
+      throw new Error('Invalid input');
+    }).mutation(async ({ input }: any) => {
+      const { title, content, day_of_week, scheduled_time, platforms, source_type } = input;
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      await db.execute(
+        'INSERT INTO scheduled_posts (title, content, day_of_week, scheduled_time, platforms, status, source_type) VALUES (?, ?, ?, ?, ?, 'draft', ?)',
+        [title, content, day_of_week, scheduled_time || '09:00:00', platforms || 'facebook,instagram', source_type || 'manual']
+      );
+      return { success: true };
+    }),
+
+    delete: adminProcedure.input((val: unknown) => {
+      if (typeof val === 'object' && val !== null) return val;
+      throw new Error('Invalid input');
+    }).mutation(async ({ input }: any) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      await db.execute('DELETE FROM scheduled_posts WHERE id=?', [input.id]);
+      return { success: true };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
