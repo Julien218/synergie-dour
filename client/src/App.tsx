@@ -27,6 +27,7 @@ import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
 import SoumettreLocal from "@/pages/SoumettreLocal";
 import ManageLocaux from "@/pages/ManageLocaux";
+import ManagePosts from "@/pages/ManagePosts";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
