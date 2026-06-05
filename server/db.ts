@@ -26,13 +26,14 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     const mysql2 = await import("mysql2/promise");
+    // Railway MySQL 9.x nécessite TLS même sur réseau interne
     const pool = mysql2.createPool({
       uri: process.env.DATABASE_URL.split("?")[0],
-      ssl: process.env.MYSQL_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+      ssl: { rejectUnauthorized: false },
       waitForConnections: true,
       connectionLimit: 5,
-      connectTimeout: 20000,
-      acquireTimeout: 20000,
+      connectTimeout: 30000,
+      acquireTimeout: 30000,
     });
     _db = drizzle(pool as any);
   }
