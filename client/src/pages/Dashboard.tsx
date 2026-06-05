@@ -110,6 +110,32 @@ export default function Dashboard() {
                   </Link>
                 </CardContent>
               </Card>
+              <Card className="border-amber-200">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-600 text-xl">📱</span>
+                    <CardTitle>Posts Réseaux Sociaux</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/dashboard/posts">
+                    <Button className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900">Valider les posts</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+              <Card className="border-amber-200">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-600 text-xl">🏪</span>
+                    <CardTitle>Locaux Commerciaux</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/dashboard/locaux">
+                    <Button className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900">Gérer les annonces</Button>
+                  </Link>
+                </CardContent>
+              </Card>
            </div>
         )}
 
