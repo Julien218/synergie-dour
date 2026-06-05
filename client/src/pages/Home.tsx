@@ -26,6 +26,7 @@ export default function Home() {
   const { data: events = [] } = trpc.events.list.useQuery();
 
   return (
+    <>
     <div className="min-h-screen bg-background">
       {/* Hero Section — repositionné sur la vraie mission */}
       <section className="relative bg-gradient-to-br from-[#001a3d] via-[#003d99] to-[#001a3d] text-white py-20 px-4">
@@ -286,6 +287,7 @@ export default function Home() {
       </section>
     </div>
     <LocalFlottant />
+    </>
   );
 }
 
