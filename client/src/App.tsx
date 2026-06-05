@@ -25,6 +25,7 @@ import AiContext from "@/pages/AiContext";
 import Legal from "@/pages/Legal";
 import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
+import SoumettreLocal from "@/pages/SoumettreLocal";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -121,6 +122,11 @@ function Router() {
       </Route>
 
       {/* Route de secours pour le callback OAuth pour éviter la 404 React */}
+      {/* Page formulaire local commercial */}
+      <Route path="/louer-mon-local">
+        {() => <SoumettreLocal />}
+      </Route>
+
       <Route path="/api/oauth/callback">
         {() => (
           <div className="flex items-center justify-center min-h-screen">
@@ -149,3 +155,4 @@ function App() {
 }
 
 export default App;
+
