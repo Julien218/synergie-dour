@@ -32,6 +32,9 @@ import {
   updateMembershipRequest,
   deleteMembershipRequest,
   getMerchantByUserId,
+  createLocalRequest,
+  getLocalRequests,
+  updateLocalRequest,
 } from "./db";
 
 export const appRouter = router({
@@ -239,6 +242,27 @@ export const appRouter = router({
       throw new Error("Invalid input");
     }).mutation(async ({ input }) => {
       return deleteMembershipRequest(input);
+    }),
+  }),
+,
+
+  // Locaux commerciaux — annonces propriétaires
+  locaux: router({
+    submit: publicProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      return createLocalRequest(input as any);
+    }),
+    listAll: adminProcedure.query(async () => {
+      return getLocalRequests();
+    }),
+    updateStatus: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }: any) => {
+      const { id, ...data } = input;
+      return updateLocalRequest(id, data);
     }),
   }),
 });
