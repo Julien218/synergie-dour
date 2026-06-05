@@ -137,6 +137,30 @@ async function startServer() {
     })
   );
 
+  // Endpoint de debug DB (temporaire)
+  app.get("/api/debug/db", async (req, res) => {
+    const url = process.env.DATABASE_URL || "non définie";
+    const maskedUrl = url.replace(/:([^:@]+)@/, ":***@");
+    const results: Record<string, string> = { url: maskedUrl };
+    // Test 1: connection directe mysql2
+    try {
+      const mysql2 = await import("mysql2/promise");
+      const conn = await mysql2.createConnection({
+        uri: url.split("?")[0],
+        ssl: { rejectUnauthorized: false },
+        connectTimeout: 10000,
+      });
+      const [rows] = await conn.execute("SHOW TABLES");
+      results.tables = JSON.stringify(rows);
+      results.status = "OK";
+      await conn.end();
+    } catch(e: any) {
+      results.status = "FAIL";
+      results.error = e.message;
+    }
+    res.json(results);
+  });
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
