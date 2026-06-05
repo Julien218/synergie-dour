@@ -41,8 +41,15 @@ async function initDatabase() {
     return;
   }
   try {
-    const pool = mysql.createPool(databaseUrl);
-    const db = drizzle(pool);
+    const sslEnabled = process.env.MYSQL_SSL === "true" || databaseUrl.includes("proxy.rlwy");
+    const pool = mysql.createPool({
+      uri: databaseUrl.replace(/\?[^?]*$/, ""),
+      ssl: sslEnabled ? { rejectUnauthorized: false } : undefined,
+      waitForConnections: true,
+      connectionLimit: 5,
+      connectTimeout: 20000,
+    });
+    const db = drizzle(pool as any);
     // Création des tables si absentes (idempotent)
     try {
       const conn = await pool.getConnection();
