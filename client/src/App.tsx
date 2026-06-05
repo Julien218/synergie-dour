@@ -122,6 +122,9 @@ function Router() {
       <Route path="/dashboard/locaux">
         {() => <ManageLocaux />}
       </Route>
+      <Route path="/dashboard/posts">
+        {() => <ManagePosts />}
+      </Route>
       <Route path="/dashboard/members">
         {() => <MemberDashboard />}
       </Route>
