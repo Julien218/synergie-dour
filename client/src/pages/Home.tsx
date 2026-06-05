@@ -16,6 +16,7 @@ import {
   Clock,
 } from "lucide-react";
 import { RESOURCES } from "@/data/resources";
+import { LocalFlottant } from "@/components/LocalFlottant";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
@@ -284,6 +285,7 @@ export default function Home() {
         </div>
       </section>
     </div>
+    <LocalFlottant />
   );
 }
 
@@ -296,3 +298,4 @@ function categoryLabel(category: string): string {
   };
   return labels[category] ?? category;
 }
+
