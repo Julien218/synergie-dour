@@ -1,5 +1,12 @@
 import "dotenv/config";
 import express from "express";
+import { migrate } from "drizzle-orm/mysql2/migrator";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
+import crypto from "node:crypto";
+import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { users } from "../../drizzle/schema";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -27,7 +34,58 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+
+async function initDatabase() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.warn("[DB] DATABASE_URL non définie — base de données désactivée");
+    return;
+  }
+  try {
+    const pool = mysql.createPool(databaseUrl);
+    const db = drizzle(pool);
+    // Migrations auto
+    try {
+      await migrate(db, { migrationsFolder: "./drizzle" });
+      console.log("[DB] Migrations appliquées ✅");
+    } catch (e: any) {
+      console.warn("[DB] Migration skipped:", e.message?.slice(0,100));
+    }
+    // Seed super admin si absent
+    try {
+      const existing = await db.select().from(users).where(eq(users.email, process.env.SUPER_ADMIN_EMAIL || "julien.pagin.pv@gmail.com")).limit(1);
+      if (!existing[0]) {
+        const salt = crypto.randomBytes(16).toString("hex");
+        const hash = crypto.scryptSync("Synergie2025!", salt, 64).toString("hex");
+        await db.insert(users).values({
+          openId: "local_" + nanoid(21),
+          name: "Julien Pagin",
+          email: process.env.SUPER_ADMIN_EMAIL || "julien.pagin.pv@gmail.com",
+          loginMethod: "password",
+          passwordHash: salt + ":" + hash,
+          lastSignedIn: new Date(),
+          role: "super_admin",
+        } as any);
+        console.log("[DB] Super admin créé ✅");
+      } else {
+        if (existing[0].role !== "super_admin") {
+          await db.update(users).set({ role: "super_admin" }).where(eq(users.id, existing[0].id));
+          console.log("[DB] Rôle super_admin appliqué ✅");
+        } else {
+          console.log("[DB] Super admin déjà présent ✅");
+        }
+      }
+    } catch(e: any) {
+      console.warn("[DB] Seed skipped:", e.message?.slice(0,100));
+    }
+    await pool.end();
+  } catch (e: any) {
+    console.error("[DB] Erreur init:", e.message?.slice(0,200));
+  }
+}
+
 async function startServer() {
+  await initDatabase();
   const app = express();
   const server = createServer(app);
   
