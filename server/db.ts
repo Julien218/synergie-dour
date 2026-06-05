@@ -16,6 +16,8 @@ import {
   InsertMembershipRequest,
   gallery,
   InsertGallery,
+  localRequests,
+  InsertLocalRequest,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -300,4 +302,23 @@ export async function deleteGalleryItem(id: number) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
   await db.delete(gallery).where(eq(gallery.id, id));
+}
+
+export async function createLocalRequest(data: InsertLocalRequest) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [result] = await db.insert(localRequests).values(data);
+  return result;
+}
+
+export async function getLocalRequests() {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  return db.select().from(localRequests).orderBy(localRequests.createdAt);
+}
+
+export async function updateLocalRequest(id: number, data: Partial<InsertLocalRequest>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(localRequests).set(data).where(eq(localRequests.id, id));
 }
