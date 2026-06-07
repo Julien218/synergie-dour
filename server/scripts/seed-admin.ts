@@ -33,7 +33,7 @@ const ADMIN_ROLE = "super_admin" as const;
 // Mot de passe temporaire — à changer après la première connexion.
 // Généré de façon déterministe à partir d'un secret aléatoire embarqué ici
 // pour que le script soit auto-suffisant sans variable d'environnement dédiée.
-const TEMP_PASSWORD = "Synergie2025!";
+const TEMP_PASSWORD = process.env.ADMIN_SEED_PASSWORD || "CHANGE_ME_IN_ENV";
 
 // ---------------------------------------------------------------------------
 // Utilitaires de hachage (identiques à authService.ts)
