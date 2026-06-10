@@ -85,7 +85,7 @@ export default function ManageLocaux() {
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-400">
             <Clock className="w-3 h-3" />
-            {new Date(annonce.createdAt).toLocaleDateString("fr-BE")}
+            {new Date(annonce.createdAt).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           </div>
         </CardContent>
       </Card>
@@ -199,7 +199,7 @@ export default function ManageLocaux() {
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Soumis le</p>
-                  <p className="font-medium text-gray-800">{new Date(selected.createdAt).toLocaleDateString("fr-BE")}</p>
+                  <p className="font-medium text-gray-800">{new Date(selected.createdAt).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
                 </div>
               </div>
 
