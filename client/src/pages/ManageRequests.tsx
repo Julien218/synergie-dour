@@ -99,7 +99,7 @@ export default function ManageRequests() {
                         <CardDescription>{request.businessCategory}</CardDescription>
                       </div>
                       <Badge variant="secondary">
-                        {new Date(request.createdAt).toLocaleDateString('fr-FR')}
+                        {new Date(request.createdAt).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -149,7 +149,7 @@ export default function ManageRequests() {
                         <CardDescription>{request.subject || "Sans sujet"}</CardDescription>
                       </div>
                       <Badge variant="secondary">
-                        {new Date(request.createdAt).toLocaleDateString('fr-FR')}
+                        {new Date(request.createdAt).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </Badge>
                     </div>
                   </CardHeader>
