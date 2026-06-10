@@ -4,16 +4,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Link } from "wouter";
-import { Users, FileText, Calendar, Store, ArrowRight } from "lucide-react";
+import { Users, FileText, Calendar, Store, ArrowRight, Mail, Bell } from "lucide-react";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const { data: merchants = [] } = trpc.merchants.list.useQuery();
   const { data: news = [] } = trpc.news.list.useQuery();
   const { data: events = [] } = trpc.events.list.useQuery();
-
-  // Correction : Autoriser admin ET super_admin
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const { data: inboxCount = { contacts: 0, memberships: 0, total: 0 } } =
+    trpc.inbox.unreadCount.useQuery(undefined, { enabled: isAdmin, refetchInterval: 30000 });
   const isMerchant = user?.role === "user";
 
   return (
@@ -78,6 +78,29 @@ export default function Dashboard() {
                 </Link>
               </CardContent>
             </Card>
+            <Card className={`border-2 ${inboxCount.total > 0 ? "border-red-300 bg-red-50/40 shadow-md" : "border-amber-200"} relative`}>
+              {inboxCount.total > 0 && (
+                <span className="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold animate-pulse z-10">
+                  {inboxCount.total}
+                </span>
+              )}
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-blue-600" />
+                  <CardTitle className="text-sm font-medium text-gray-600">Boîte de réception</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-3xl font-bold ${inboxCount.total > 0 ? "text-red-500" : "text-blue-900"}`}>
+                  {inboxCount.total > 0 ? `${inboxCount.total} non lu${inboxCount.total > 1 ? "s" : ""}` : "Aucun"}
+                </div>
+                <Link href="/dashboard/inbox">
+                  <Button variant="link" className="px-0 text-amber-600 h-auto">
+                    Ouvrir <ArrowRight className="ml-1 w-3 h-3"/>
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -101,7 +124,7 @@ export default function Dashboard() {
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-amber-600" />
-                    <CardTitle>Demandes d'adhésion</CardTitle>
+                    <CardTitle>Demandes d&apos;adhésion</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
