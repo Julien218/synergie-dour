@@ -144,13 +144,11 @@ function PendingChangeCard({
                 {change.resource?.title ?? `Fiche #${change.resourceId}`}
               </CardTitle>
               <CardDescription className="mt-1">
-                Détecté le {new Date(change.createdAt).toLocaleDateString("fr-BE", {
-                  day: "numeric",
+                Détecté le {new Date(change.createdAt).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "numeric",
                   month: "long",
                   year: "numeric",
                   hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                  minute: "2-digit", })}
               </CardDescription>
             </div>
           </div>
