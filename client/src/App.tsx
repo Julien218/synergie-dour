@@ -17,6 +17,7 @@ import ManageRequests from "@/pages/ManageRequests";
 import MembershipRequestsAdmin from "@/pages/MembershipRequestsAdmin";
 import AgentDashboard from "@/pages/AgentDashboard";
 import MemberDashboard from "@/pages/MemberDashboard";
+import InboxPage from "@/pages/InboxPage";
 import Resources from "@/pages/Resources";
 import Resource from "@/pages/Resource";
 import About from "@/pages/About";
@@ -91,7 +92,7 @@ function Router() {
       <Route path="/privacy">
         {() => <Privacy />}
       </Route>
-      
+
       {/* Login route */}
       <Route path="/login">
         {() => <Login />}
@@ -100,6 +101,9 @@ function Router() {
       {/* Routes Dashboard */}
       <Route path="/dashboard">
         {() => <Dashboard />}
+      </Route>
+      <Route path="/dashboard/inbox">
+        {() => <InboxPage />}
       </Route>
       <Route path="/dashboard/news">
         {() => <ManageNews />}
@@ -129,7 +133,6 @@ function Router() {
         {() => <MemberDashboard />}
       </Route>
 
-      {/* Route de secours pour le callback OAuth pour éviter la 404 React */}
       {/* Page formulaire local commercial */}
       <Route path="/louer-mon-local">
         {() => <SoumettreLocal />}
@@ -163,4 +166,3 @@ function App() {
 }
 
 export default App;
-
