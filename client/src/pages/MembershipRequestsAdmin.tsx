@@ -113,11 +113,9 @@ function RequestCard({ request, onAction }: { request: RequestData; onAction: ()
           <div className="text-right text-sm text-gray-500">
             <p className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              {new Date(request.createdAt).toLocaleDateString("fr-BE", {
-                day: "numeric",
+              {new Date(request.createdAt).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "numeric",
                 month: "long",
-                year: "numeric",
-              })}
+                year: "numeric", })}
             </p>
           </div>
         </div>
