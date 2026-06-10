@@ -328,3 +328,81 @@ export async function sendWeeklyAgentReportEmail(input: {
     html,
   });
 }
+
+/* ------------------------------------------------------------------------- */
+/* 7. NOTIFICATION ADMIN — nouveau message ou nouvelle adhésion               */
+/* ------------------------------------------------------------------------- */
+
+export async function sendAdminNewMessageNotification(input: {
+  type: "contact" | "membership";
+  name: string;
+  email: string;
+  subject?: string;
+  businessName?: string;
+  message?: string;
+}): Promise<void> {
+  if (ADMIN_NOTIF.length === 0) return; // Pas de destinataires configurés
+
+  const isContact = input.type === "contact";
+  const typeLabel = isContact ? "Message de contact" : "Demande d'adhésion";
+  const iconEmoji = isContact ? "📬" : "🤝";
+  const accentColor = isContact ? "#003d99" : "#D4AF37";
+
+  const detailsHtml = isContact ? `
+    <tr>
+      <td style="padding: 6px 0; color: #666; font-size: 14px; width: 130px;">Sujet</td>
+      <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 600;">${input.subject ?? "—"}</td>
+    </tr>
+    ${input.message ? `
+    <tr>
+      <td colspan="2" style="padding: 12px 0 0;">
+        <div style="background: #f5f7fa; border-left: 3px solid ${accentColor}; padding: 12px 16px; border-radius: 4px; color: #333; font-size: 14px; line-height: 1.6;">
+          ${input.message}
+        </div>
+      </td>
+    </tr>` : ""}
+  ` : `
+    <tr>
+      <td style="padding: 6px 0; color: #666; font-size: 14px; width: 130px;">Entreprise</td>
+      <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 600;">${input.businessName ?? "—"}</td>
+    </tr>
+    ${input.message ? `
+    <tr>
+      <td colspan="2" style="padding: 12px 0 0;">
+        <div style="background: #f5f7fa; border-left: 3px solid ${accentColor}; padding: 12px 16px; border-radius: 4px; color: #333; font-size: 14px; line-height: 1.6;">
+          ${input.message}
+        </div>
+      </td>
+    </tr>` : ""}
+  `;
+
+  const html = emailLayout(`
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+      <div style="background: ${accentColor}; color: white; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; text-align: center; line-height: 48px;">
+        ${iconEmoji}
+      </div>
+      <div>
+        <h2 style="color: #001a3d; font-size: 20px; margin: 0 0 4px;">${typeLabel}</h2>
+        <p style="color: #666; font-size: 13px; margin: 0;">Reçu le ${new Date().toLocaleDateString("fr-BE", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+      </div>
+    </div>
+    <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+      <tr>
+        <td style="padding: 6px 0; color: #666; font-size: 14px; width: 130px;">Nom</td>
+        <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 600;">${input.name}</td>
+      </tr>
+      <tr>
+        <td style="padding: 6px 0; color: #666; font-size: 14px;">Email</td>
+        <td style="padding: 6px 0;"><a href="mailto:${input.email}" style="color: #003d99; font-size: 14px;">${input.email}</a></td>
+      </tr>
+      ${detailsHtml}
+    </table>
+  `, { label: "Voir dans le dashboard", url: `${APP_URL}/dashboard/inbox` });
+
+  await resend.emails.send({
+    from: FROM_NOREPLY,
+    to: ADMIN_NOTIF,
+    subject: `${iconEmoji} [Synergie Dour] ${typeLabel} — ${input.name}`,
+    html,
+  });
+}
