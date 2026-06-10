@@ -12,10 +12,15 @@ import {
 } from "lucide-react";
 
 function formatDate(d: string | Date) {
-  return new Date(d).toLocaleDateString("fr-BE", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
+  return new Date(d).toLocaleString("fr-BE", {
+    timeZone: "Europe/Brussels",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
+});
 }
 
 function StatusBadge({ status }: { status: string }) {
