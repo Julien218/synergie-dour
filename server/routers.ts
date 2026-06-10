@@ -36,6 +36,7 @@ import {
   getLocalRequests,
   updateLocalRequest,
 } from "./db";
+import { sendAdminNewMessageNotification } from "./email/notifications";
 
 export const appRouter = router({
   system: systemRouter,
@@ -196,8 +197,16 @@ export const appRouter = router({
     submit: publicProcedure.input((val: unknown) => {
       if (typeof val === "object" && val !== null) return val;
       throw new Error("Invalid input");
-    }).mutation(async ({ input }) => {
-      return createContactRequest(input as any);
+    }).mutation(async ({ input }: any) => {
+      const result = await createContactRequest(input as any);
+      sendAdminNewMessageNotification({
+        type: "contact",
+        name: input.name ?? "",
+        email: input.email ?? "",
+        subject: input.subject ?? "",
+        message: input.message ?? "",
+      }).catch(() => {});
+      return result;
     }),
     // Admin routes
     listAll: adminProcedure.query(async () => {
@@ -233,7 +242,7 @@ export const appRouter = router({
       return v;
     }).mutation(async ({ input }) => {
       const data = input as any;
-      return createMembershipRequest({
+      const memberResult = await createMembershipRequest({
         businessName:        data.businessName,
         businessCategory:    data.businessCategory    || "",
         structureType:       data.structureType       || null,
@@ -251,6 +260,14 @@ export const appRouter = router({
         acceptsEmailContact: data.acceptsEmailContact ? 1 : 0,
         rgpdConsent:         data.rgpdConsent         ? 1 : 0,
       });
+      sendAdminNewMessageNotification({
+        type: "membership",
+        name: data.contactName ?? "",
+        email: data.email ?? "",
+        businessName: data.businessName ?? "",
+        message: data.message ?? "",
+      }).catch(() => {});
+      return memberResult;
     }),
     // Admin routes
     listAll: adminProcedure.query(async () => {
@@ -348,5 +365,19 @@ export const appRouter = router({
     }),
   }),
 });
+
+
+  // ── INBOX — compteur messages non lus ──────────────────────────────────
+  inbox: router({
+    unreadCount: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { contacts: 0, memberships: 0, total: 0 };
+      const [cr] = await db.execute("SELECT COUNT(*) as count FROM contact_requests WHERE status = 'new'");
+      const [mr] = await db.execute("SELECT COUNT(*) as count FROM membership_requests WHERE status = 'pending'");
+      const c = Number((cr as any[])[0]?.count ?? 0);
+      const m = Number((mr as any[])[0]?.count ?? 0);
+      return { contacts: c, memberships: m, total: c + m };
+    }),
+  }),
 
 export type AppRouter = typeof appRouter;
