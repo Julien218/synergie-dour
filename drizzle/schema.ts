@@ -124,15 +124,32 @@ export type InsertContactRequest = typeof contactRequests.$inferInsert;
 /**
  * Membership requests table - stores adhesion requests
  */
+/**
+ * Membership requests table — enrichie pour indépendants, PME, ASBL, professions libérales
+ * Migration: 0004_membership_enriched.sql
+ */
 export const membershipRequests = mysqlTable("membership_requests", {
   id: int("id").autoincrement().primaryKey(),
+  // Informations entreprise
   businessName: varchar("businessName", { length: 255 }).notNull(),
   businessCategory: varchar("businessCategory", { length: 100 }).notNull(),
+  structureType: varchar("structureType", { length: 50 }),         // Indépendant, PME, ASBL...
+  vatNumber: varchar("vatNumber", { length: 50 }),                 // TVA/BCE optionnel
+  sector: varchar("sector", { length: 100 }),                      // Secteur d'activité
+  website: varchar("website", { length: 255 }),                    // Site web optionnel
+  socialMedia: varchar("socialMedia", { length: 255 }),            // @handle ou URL réseaux
+  employeeCount: varchar("employeeCount", { length: 20 }),         // 0, 1-5, 6-20...
+  // Coordonnées
   contactName: varchar("contactName", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
   address: varchar("address", { length: 255 }).notNull(),
+  // Finalisation
   message: text("message"),
+  howDidYouHear: varchar("howDidYouHear", { length: 100 }),        // Source de découverte
+  acceptsEmailContact: int("acceptsEmailContact").default(0).notNull(),
+  rgpdConsent: int("rgpdConsent").default(1).notNull(),
+  // Statut
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
