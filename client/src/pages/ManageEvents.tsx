@@ -203,7 +203,7 @@ export default function ManageEvents() {
                     <CardTitle>{event.title}</CardTitle>
                     <CardDescription>
                       {event.location && `📍 ${event.location} • `}
-                      {event.startDate && new Date(event.startDate).toLocaleDateString('fr-FR')}
+                      {event.startDate && new Date(event.startDate).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </CardDescription>
                   </div>
                   <Badge variant={event.status === "published" ? "default" : "secondary"}>
