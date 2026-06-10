@@ -218,13 +218,39 @@ export const appRouter = router({
     }),
   }),
 
-  // Membership requests
+  // Membership requests — enrichi (indépendants, PME, ASBL, professions libérales)
   membership: router({
     request: publicProcedure.input((val: unknown) => {
-      if (typeof val === "object" && val !== null) return val;
-      throw new Error("Invalid input");
+      if (typeof val !== "object" || val === null) throw new Error("Invalid input");
+      const v = val as Record<string, unknown>;
+      // Champs obligatoires
+      if (!v.businessName || typeof v.businessName !== "string") throw new Error("businessName requis");
+      if (!v.contactName  || typeof v.contactName  !== "string") throw new Error("contactName requis");
+      if (!v.email        || typeof v.email        !== "string") throw new Error("email requis");
+      if (!v.phone        || typeof v.phone        !== "string") throw new Error("phone requis");
+      if (!v.address      || typeof v.address      !== "string") throw new Error("address requis");
+      if (!v.rgpdConsent) throw new Error("Le consentement RGPD est obligatoire");
+      return v;
     }).mutation(async ({ input }) => {
-      return createMembershipRequest(input as any);
+      const data = input as any;
+      return createMembershipRequest({
+        businessName:        data.businessName,
+        businessCategory:    data.businessCategory    || "",
+        structureType:       data.structureType       || null,
+        vatNumber:           data.vatNumber           || null,
+        sector:              data.sector              || null,
+        website:             data.website             || null,
+        socialMedia:         data.socialMedia         || null,
+        employeeCount:       data.employeeCount       || null,
+        contactName:         data.contactName,
+        email:               data.email,
+        phone:               data.phone,
+        address:             data.address,
+        message:             data.message             || null,
+        howDidYouHear:       data.howDidYouHear       || null,
+        acceptsEmailContact: data.acceptsEmailContact ? 1 : 0,
+        rgpdConsent:         data.rgpdConsent         ? 1 : 0,
+      });
     }),
     // Admin routes
     listAll: adminProcedure.query(async () => {
