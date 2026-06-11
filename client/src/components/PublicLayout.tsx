@@ -18,6 +18,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
   const navItems = [
     { label: "Annuaire", href: "/merchants" },
+    { label: "Locaux à louer", href: "/locaux" },
     { label: "Ressources", href: "/resources" },
     { label: "Actualités", href: "/news" },
     { label: "Événements", href: "/events" },
