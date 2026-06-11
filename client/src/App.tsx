@@ -28,6 +28,7 @@ import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
 import SoumettreLocal from "@/pages/SoumettreLocal";
 import ManageLocaux from "@/pages/ManageLocaux";
+import LocauxCommerciaux from "@/pages/LocauxCommerciaux";
 import ManagePosts from "@/pages/ManagePosts";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
@@ -134,6 +135,9 @@ function Router() {
       </Route>
 
       {/* Page formulaire local commercial */}
+      <Route path="/locaux">
+        <LocauxCommerciaux />
+      </Route>
       <Route path="/louer-mon-local">
         {() => <SoumettreLocal />}
       </Route>
