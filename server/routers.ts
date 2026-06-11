@@ -296,6 +296,15 @@ export const appRouter = router({
     }).mutation(async ({ input }) => {
       return createLocalRequest(input as any);
     }),
+    // Query publique — annonces publiées uniquement
+    listPublished: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const [rows] = await db.execute(
+        "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, createdAt FROM local_requests WHERE status = 'published' ORDER BY createdAt DESC"
+      );
+      return rows as any[];
+    }),
     listAll: adminProcedure.query(async () => {
       return getLocalRequests();
     }),
