@@ -7,8 +7,8 @@ on:
     branches: [main, master]
 
 jobs:
-  test-and-build:
-    name: 🧪 Tests & Build
+  build:
+    name: 🏗️ Build & Vérification
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
@@ -27,21 +27,21 @@ jobs:
       - name: 📚 Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🔍 Lint & Check
+      - name: 🔍 TypeScript check
         run: pnpm run check
         continue-on-error: true
 
-      - name: 🏗️ Build
+      - name: 🏗️ Build production
         run: pnpm run build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NODE_ENV: production
+          DATABASE_URL: "mysql://build:build@localhost:3306/build"
 
   deploy:
     name: 🚂 Deploy to Railway
     runs-on: ubuntu-latest
-    needs: test-and-build
-    if: github.ref == "refs/heads/main" || github.ref == "refs/heads/master"
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
@@ -52,5 +52,5 @@ jobs:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
           service: synergie-dour
 
-      - name: ✅ Done
-        run: echo "🚀 Synergie Dour déployé — Js-Innov.IA"
+      - name: ✅ Déploiement terminé
+        run: echo "🚀 Synergie Dour mis à jour — $(date '+%Y-%m-%d %H:%M') — Js-Innov.IA"
