@@ -18,6 +18,7 @@ interface BoardMember {
     | "conseiller-commerce-2"
     | "liaison";
   description?: string;
+  photo?: string;
 }
 
 const board: BoardMember[] = [
@@ -25,6 +26,7 @@ const board: BoardMember[] = [
     name: "Olivier TREVIS",
     role: "Président",
     fonction: "president",
+    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/37a26f57e_oliviertrevis.jpeg",
     description:
       "Représente légalement l'ASBL et préside les assemblées générales et le conseil d'administration.",
   },
@@ -32,12 +34,14 @@ const board: BoardMember[] = [
     name: "Rudy QUERSON",
     role: "Vice-président",
     fonction: "vice-president",
+    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/3d5d3b7c6_WhatsAppImage2026-05-06at171726.jpeg",
     description: "Seconde le président et le supplée en cas d'absence.",
   },
   {
     name: "Daisy AUDIN",
     role: "Secrétaire",
     fonction: "secretaire",
+    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/6799e5dfb_daisye.jpeg",
     description:
       "Assure la rédaction des PV, la tenue des registres et la correspondance officielle.",
   },
@@ -45,6 +49,7 @@ const board: BoardMember[] = [
     name: "Stéphane GIVERT",
     role: "Trésorier",
     fonction: "tresorier",
+    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/17e25f3f5_WhatsAppImage2026-05-06at171556.jpeg",
     description:
       "Gère la comptabilité, prépare le budget annuel et présente les comptes à l'assemblée générale.",
   },
@@ -52,6 +57,7 @@ const board: BoardMember[] = [
     name: "David FERON",
     role: "Conseiller en commerce de proximité",
     fonction: "conseiller-commerce",
+    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/a3cd71880_WhatsAppImage2026-05-06at171544.jpeg",
     description:
       "Apporte son expertise sur les enjeux du commerce local à Dour.",
   },
@@ -59,6 +65,7 @@ const board: BoardMember[] = [
     name: "Alban FRIDENBERGS",
     role: "Conseiller en communication, marketing et management",
     fonction: "conseiller-communication",
+    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/7fed0e888_WhatsAppImage2026-06-01at070112.jpg",
     description:
       "Conseille l'association sur sa stratégie de communication et son développement.",
   },
@@ -66,6 +73,7 @@ const board: BoardMember[] = [
     name: "Michel ARCHETTI",
     role: "2ᵉ conseiller en commerce de proximité",
     fonction: "conseiller-commerce-2",
+    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/4a94569ad_WhatsAppImage2026-05-06at171355.jpeg",
     description:
       "Complète l'expertise commerce de proximité au sein du conseil.",
   },
@@ -73,6 +81,7 @@ const board: BoardMember[] = [
     name: "Bobby Charles VERTENEUIL",
     role: "Chargé de liaison commerçants — association",
     fonction: "liaison",
+    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/abb9e25e5_charles.jpeg",
     description:
       "Point de contact direct entre les commerçants membres et le conseil d'administration.",
   },
@@ -150,12 +159,30 @@ export default function About() {
               return (
                 <Card
                   key={member.name}
-                  className="border-amber-100 hover:shadow-lg transition-shadow bg-white/95"
+                  className="border-amber-100 hover:shadow-lg transition-shadow bg-white/95 overflow-hidden"
                 >
-                  <CardHeader>
+                  {/* Photo du membre */}
+                  <div className="relative h-52 w-full bg-gradient-to-br from-[#001a3d] to-[#003d99] overflow-hidden">
+                    {member.photo ? (
+                      <img
+                        src={member.photo}
+                        alt={member.name}
+                        className="w-full h-full object-cover object-top"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Icon className="w-16 h-16 text-[#D4AF37] opacity-40" />
+                      </div>
+                    )}
+                    {/* Badge rôle */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#001a3d]/90 to-transparent px-4 py-3">
+                      <p className="text-[#D4AF37] text-xs font-semibold uppercase tracking-wider">{member.role}</p>
+                    </div>
+                  </div>
+                  <CardHeader className="pb-2">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#001a3d] flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-5 h-5 text-[#D4AF37]" />
+                      <div className="w-8 h-8 rounded-full bg-[#001a3d] flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-4 h-4 text-[#D4AF37]" />
                       </div>
                       <div>
                         <CardTitle className="text-[#001a3d] text-lg leading-tight">
