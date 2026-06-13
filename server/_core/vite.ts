@@ -13,7 +13,7 @@ const routeMeta: Record<string, { title: string; description: string; image: str
   "/about": {
     title: "Notre équipe — Synergie Dour ASBL",
     description: "Découvrez le conseil d'administration de Synergie Dour : Olivier Trévis (Président), Rudy Querson, Daisy Audin, Stéphane Givert et toute l'équipe engagée pour les commerçants de Dour.",
-    image: `${BASE_URL}/equipe/olivier-trevis.jpg`,
+    image: `${BASE_URL}/equipe/equipe-ca.jpg`,
     url: `${BASE_URL}/about`,
   },
   "/resources": {
@@ -41,7 +41,7 @@ const membersMeta: Record<string, { title: string; description: string; image: s
   "olivier-trevis": {
     title: "Olivier TREVIS — Président de Synergie Dour",
     description: "Olivier Trévis représente légalement l'ASBL Synergie Dour et préside les assemblées générales et le conseil d'administration.",
-    image: `${BASE_URL}/equipe/olivier-trevis.jpg`,
+    image: `${BASE_URL}/equipe/equipe-ca.jpg`,
   },
   "rudy-querson": {
     title: "Rudy QUERSON — Vice-président de Synergie Dour",
