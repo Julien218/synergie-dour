@@ -231,40 +231,69 @@ export default function About() {
           </h2>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-2 text-gray-800">
             <p>
-              <strong className="text-[#001a3d]">Dénomination :</strong> Synergie Dour ASBL
+              <strong className="text-[#001a3d]">Dénomination :</strong> SYNERGIE DOUR ASBL
             </p>
             <p>
-              <strong className="text-[#001a3d]">Forme juridique :</strong> Association
-              sans but lucratif (ASBL)
-            </p>
-            <p>
-              <strong className="text-[#001a3d]">Siège social :</strong>{" "}
-              <span className="text-gray-500 italic">à compléter</span>
+              <strong className="text-[#001a3d]">Forme juridique :</strong> Association sans but lucratif (ASBL)
             </p>
             <p>
               <strong className="text-[#001a3d]">Numéro d'entreprise :</strong>{" "}
-              <span className="text-gray-500 italic">à compléter</span>
+              <a
+                href="https://kbopub.economie.fgov.be/kbopub/toonondernemingps.html?lang=fr&ondernemingsnummer=1036801623"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#003d99] hover:underline font-mono"
+              >
+                BE 1036.801.623
+              </a>
+            </p>
+            <p>
+              <strong className="text-[#001a3d]">Siège social :</strong> Grand'Place 9, 7370 Dour
+            </p>
+            <p>
+              <strong className="text-[#001a3d]">Date de constitution :</strong> 13 avril 2026
+            </p>
+            <p>
+              <strong className="text-[#001a3d]">Statut BCE :</strong>{" "}
+              <span className="inline-flex items-center gap-1 text-green-700 font-medium">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                Actif — situation normale
+              </span>
+            </p>
+            <p>
+              <strong className="text-[#001a3d]">Assemblée générale :</strong> Mai — Clôture comptable 31 décembre
             </p>
             <p>
               <strong className="text-[#001a3d]">Téléphone :</strong>{" "}
-              <a
-                href="tel:0475426942"
-                className="text-[#003d99] hover:underline"
-              >
+              <a href="tel:0475426942" className="text-[#003d99] hover:underline">
                 0475 42 69 42
               </a>
             </p>
             <p>
-              <strong className="text-[#001a3d]">Publication des statuts :</strong>{" "}
-              <span className="text-gray-500 italic">
-                lien Moniteur belge à compléter
-              </span>
+              <strong className="text-[#001a3d]">Publication au Moniteur belge :</strong>{" "}
+              <a
+                href="https://ejustice.just.fgov.be/cgi_tsv/list.pl?language=fr&btw=1036801623&page=1&view_numac=1036801623#SUM"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#003d99] hover:underline"
+              >
+                Rubrique Constitution — 6 mai 2026
+              </a>
+            </p>
+            <p>
+              <strong className="text-[#001a3d]">Statuts notariés :</strong>{" "}
+              <a
+                href="https://statuts.notaire.be/stapor_v1/enterprise/1036801623/statutes"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#003d99] hover:underline"
+              >
+                Consulter les statuts officiels
+              </a>
             </p>
           </div>
           <p className="text-sm text-gray-600 mt-4">
-            En tant qu'ASBL, Synergie Dour est tenue de publier ses statuts et la liste
-            de ses administrateurs au Moniteur belge. Les informations de cette page sont
-            une reprise simplifiée à titre informatif.
+            Données issues de la <strong>Banque-Carrefour des Entreprises (BCE)</strong> — SPF Économie belge. Situation au 12 juin 2026.
           </p>
         </div>
       </section>
