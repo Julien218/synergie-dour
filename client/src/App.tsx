@@ -54,7 +54,7 @@ function Router() {
         )}
       </Route>
       <Route path="/news/:id">
-        {(params) => <NewsDetail />}
+        {() => <NewsDetail />}
       </Route>
       <Route path="/news">
         {() => (
