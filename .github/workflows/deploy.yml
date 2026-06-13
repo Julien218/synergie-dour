@@ -46,11 +46,13 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🚂 Deploy to Railway
-        uses: bervProject/railway-deploy@main
-        with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: synergie-dour
+      - name: 🚂 Install Railway CLI & Deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          export PATH="$HOME/.railway/bin:$PATH"
+          railway up --service synergie-dour --detach
 
       - name: ✅ Déploiement terminé
         run: echo "🚀 Synergie Dour mis à jour — $(date '+%Y-%m-%d %H:%M') — Js-Innov.IA"
