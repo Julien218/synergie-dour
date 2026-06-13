@@ -26,7 +26,7 @@ const board: BoardMember[] = [
     name: "Olivier TREVIS",
     role: "Président",
     fonction: "president",
-    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/37a26f57e_oliviertrevis.jpeg",
+    photo: "https://base44.app/api/apps/6a0208edd1e235b62b4bda38/files/mp/public/6a0208edd1e235b62b4bda38/cc745d4bb_37a26f57e_oliviertrevis.jpeg",
     description:
       "Représente légalement l'ASBL et préside les assemblées générales et le conseil d'administration.",
   },
@@ -34,14 +34,14 @@ const board: BoardMember[] = [
     name: "Rudy QUERSON",
     role: "Vice-président",
     fonction: "vice-president",
-    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/3d5d3b7c6_WhatsAppImage2026-05-06at171726.jpeg",
+    photo: "https://base44.app/api/apps/6a0208edd1e235b62b4bda38/files/mp/public/6a0208edd1e235b62b4bda38/f28ab28dc_3d5d3b7c6_WhatsAppImage2026-05-06at171726.jpeg",
     description: "Seconde le président et le supplée en cas d'absence.",
   },
   {
     name: "Daisy AUDIN",
     role: "Secrétaire",
     fonction: "secretaire",
-    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/6799e5dfb_daisye.jpeg",
+    photo: "https://base44.app/api/apps/6a0208edd1e235b62b4bda38/files/mp/public/6a0208edd1e235b62b4bda38/4157d404e_6799e5dfb_daisye.jpeg",
     description:
       "Assure la rédaction des PV, la tenue des registres et la correspondance officielle.",
   },
@@ -49,7 +49,7 @@ const board: BoardMember[] = [
     name: "Stéphane GIVERT",
     role: "Trésorier",
     fonction: "tresorier",
-    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/17e25f3f5_WhatsAppImage2026-05-06at171556.jpeg",
+    photo: "https://base44.app/api/apps/6a0208edd1e235b62b4bda38/files/mp/public/6a0208edd1e235b62b4bda38/19c962747_17e25f3f5_WhatsAppImage2026-05-06at171556.jpeg",
     description:
       "Gère la comptabilité, prépare le budget annuel et présente les comptes à l'assemblée générale.",
   },
@@ -57,7 +57,7 @@ const board: BoardMember[] = [
     name: "David FERON",
     role: "Conseiller en commerce de proximité",
     fonction: "conseiller-commerce",
-    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/a3cd71880_WhatsAppImage2026-05-06at171544.jpeg",
+    photo: "https://base44.app/api/apps/6a0208edd1e235b62b4bda38/files/mp/public/6a0208edd1e235b62b4bda38/231a106dc_a3cd71880_WhatsAppImage2026-05-06at171544.jpeg",
     description:
       "Apporte son expertise sur les enjeux du commerce local à Dour.",
   },
@@ -65,7 +65,7 @@ const board: BoardMember[] = [
     name: "Alban FRIDENBERGS",
     role: "Conseiller en communication, marketing et management",
     fonction: "conseiller-communication",
-    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/7fed0e888_WhatsAppImage2026-06-01at070112.jpg",
+    photo: "https://base44.app/api/apps/6a0208edd1e235b62b4bda38/files/mp/public/6a0208edd1e235b62b4bda38/a6b33a089_7fed0e888_WhatsAppImage2026-06-01at070112.jpg",
     description:
       "Conseille l'association sur sa stratégie de communication et son développement.",
   },
@@ -73,7 +73,7 @@ const board: BoardMember[] = [
     name: "Michel ARCHETTI",
     role: "2ᵉ conseiller en commerce de proximité",
     fonction: "conseiller-commerce-2",
-    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/4a94569ad_WhatsAppImage2026-05-06at171355.jpeg",
+    photo: "https://base44.app/api/apps/6a0208edd1e235b62b4bda38/files/mp/public/6a0208edd1e235b62b4bda38/4be161475_4a94569ad_WhatsAppImage2026-05-06at171355.jpeg",
     description:
       "Complète l'expertise commerce de proximité au sein du conseil.",
   },
@@ -81,7 +81,7 @@ const board: BoardMember[] = [
     name: "Bobby Charles VERTENEUIL",
     role: "Chargé de liaison commerçants — association",
     fonction: "liaison",
-    photo: "https://media.base44.com/images/public/6a0208edd1e235b62b4bda38/abb9e25e5_charles.jpeg",
+    photo: "https://base44.app/api/apps/6a0208edd1e235b62b4bda38/files/mp/public/6a0208edd1e235b62b4bda38/ca3d4b93c_abb9e25e5_charles.jpeg",
     description:
       "Point de contact direct entre les commerçants membres et le conseil d'administration.",
   },
