@@ -11,6 +11,7 @@ import MembershipSuccess from "@/pages/MembershipSuccess";
 import MembershipCancelled from "@/pages/MembershipCancelled";
 import Dashboard from "@/pages/Dashboard";
 import ManageNews from "@/pages/ManageNews";
+import NewsDetail from "@/pages/NewsDetail";
 import ManageEvents from "@/pages/ManageEvents";
 import ManageMerchants from "@/pages/ManageMerchants";
 import ManageRequests from "@/pages/ManageRequests";
@@ -51,6 +52,9 @@ function Router() {
             <Merchants />
           </PublicLayout>
         )}
+      </Route>
+      <Route path="/news/:id">
+        {(params) => <NewsDetail />}
       </Route>
       <Route path="/news">
         {() => (
