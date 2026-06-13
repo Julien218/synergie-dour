@@ -2,6 +2,6 @@
 buildCommand = "pnpm install --no-frozen-lockfile && pnpm build"
 
 [deploy]
-startCommand = "pnpm start"
+startCommand = "pnpm install --no-frozen-lockfile --prod && node dist/index.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
