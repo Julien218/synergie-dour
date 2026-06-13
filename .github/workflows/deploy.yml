@@ -46,13 +46,16 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🚂 Install Railway CLI & Deploy
+      - name: 🚂 Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          echo "$HOME/.railway/bin" >> $GITHUB_PATH
+
+      - name: 🚀 Deploy via Railway CLI
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          export PATH="$HOME/.railway/bin:$PATH"
-          railway up --service synergie-dour --detach
+          railway up --detach
 
       - name: ✅ Déploiement terminé
         run: echo "🚀 Synergie Dour mis à jour — $(date '+%Y-%m-%d %H:%M') — Js-Innov.IA"
