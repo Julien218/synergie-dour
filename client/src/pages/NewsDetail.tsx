@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useLocation, useParams } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +26,8 @@ function XIcon() {
 
 export default function NewsDetail() {
   const [, setLocation] = useLocation();
-  const params = useParams<{ id: string }>();
-  const articleId = parseInt(params.id || "0", 10);
+  const [, params] = useRoute<{ id: string }>("/news/:id");
+  const articleId = parseInt(params?.id || "0", 10);
   const [copied, setCopied] = useState(false);
 
   const { data: article, isLoading } = trpc.news.getById.useQuery(articleId, {
