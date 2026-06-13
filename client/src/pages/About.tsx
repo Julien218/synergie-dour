@@ -103,27 +103,39 @@ export default function About() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#001a3d] to-[#003d99] text-white py-12 px-4">
-        <div className="container mx-auto max-w-6xl">
-          <Button
-            onClick={() => setLocation("/")}
-            variant="ghost"
-            className="text-white hover:bg-white/10 mb-6"
-          >
-            <ArrowLeft className="mr-2 w-4 h-4" />
-            Retour
-          </Button>
-          <div className="flex items-start gap-4">
-            <Users className="w-10 h-10 text-[#D4AF37] mt-1" />
-            <div>
-              <h1 className="text-4xl font-bold mb-2 text-[#D4AF37]">
-                L'association
-              </h1>
-              <p className="text-[#F0E68C] max-w-2xl">
-                Synergie Dour est une ASBL au service des commerçants et indépendants
-                de la commune de Dour. Découvrez le bureau qui anime l'association.
-              </p>
+      {/* Hero — Photo de groupe officielle */}
+      <div className="relative overflow-hidden">
+        {/* Photo de groupe en fond */}
+        <div className="relative h-[380px] md:h-[480px] w-full">
+          <img
+            src="/equipe/equipe-ca.jpg"
+            alt="Conseil d'administration Synergie Dour"
+            className="w-full h-full object-cover object-top"
+          />
+          {/* Overlay gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#001a3d]/95 via-[#001a3d]/40 to-transparent" />
+          {/* Contenu overlay */}
+          <div className="absolute inset-0 flex flex-col justify-end pb-8 px-4">
+            <div className="container mx-auto max-w-6xl">
+              <Button
+                onClick={() => setLocation("/")}
+                variant="ghost"
+                className="text-white hover:bg-white/10 mb-4 absolute top-4 left-4 md:left-8"
+              >
+                <ArrowLeft className="mr-2 w-4 h-4" />
+                Retour
+              </Button>
+              <div className="flex items-end gap-4">
+                <div>
+                  <h1 className="text-3xl md:text-5xl font-bold text-[#D4AF37] mb-2 drop-shadow-lg">
+                    Notre équipe
+                  </h1>
+                  <p className="text-white/90 text-lg max-w-2xl drop-shadow">
+                    Le conseil d'administration de l'ASBL Synergie Dour —
+                    commerçants et indépendants engagés pour Dour.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
