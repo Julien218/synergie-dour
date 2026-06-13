@@ -373,8 +373,6 @@ export const appRouter = router({
       return { success: true };
     }),
   }),
-});
-
 
   // ── INBOX — compteur messages non lus ──────────────────────────────────
   inbox: router({
@@ -388,5 +386,6 @@ export const appRouter = router({
       return { contacts: c, memberships: m, total: c + m };
     }),
   }),
+});
 
 export type AppRouter = typeof appRouter;
