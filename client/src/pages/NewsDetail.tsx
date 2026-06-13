@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useLocation, useRoute } from "wouter";
+import { useEffect } from "react";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,55 @@ function XIcon() {
   );
 }
 
+// Hook pour mettre à jour les meta OG dynamiquement
+function useOpenGraph(title: string, description: string, imageUrl: string, url: string) {
+  useEffect(() => {
+    const setMeta = (property: string, content: string) => {
+      let el = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute("property", property);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+    const setMetaName = (name: string, content: string) => {
+      let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute("name", name);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+
+    if (title) {
+      document.title = `${title} — Synergie Dour`;
+      setMeta("og:title", `${title} — Synergie Dour`);
+      setMeta("og:description", description);
+      setMeta("og:image", imageUrl);
+      setMeta("og:url", url);
+      setMeta("og:type", "article");
+      setMeta("og:site_name", "Synergie Dour");
+      setMetaName("twitter:title", `${title} — Synergie Dour`);
+      setMetaName("twitter:description", description);
+      setMetaName("twitter:image", imageUrl);
+      setMetaName("twitter:card", "summary_large_image");
+      setMetaName("description", description);
+    }
+
+    return () => {
+      // Restaurer les valeurs par défaut au démontage
+      document.title = "Synergie Dour — Commerçants & Indépendants Réunis";
+      setMeta("og:title", "Synergie Dour — Commerçants & Indépendants Réunis");
+      setMeta("og:description", "L'ASBL qui centralise l'info utile pour les indépendants de Dour.");
+      setMeta("og:image", "https://www.synergiedour.be/logo-transparent.png");
+      setMeta("og:url", "https://www.synergiedour.be/");
+      setMeta("og:type", "website");
+    };
+  }, [title, description, imageUrl, url]);
+}
+
 export default function NewsDetail() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute<{ id: string }>("/news/:id");
@@ -39,6 +89,14 @@ export default function NewsDetail() {
   const pageUrl = typeof window !== "undefined" ? window.location.href : `https://www.synergiedour.be/news/${articleId}`;
   const pageTitle = article?.title || "Actualité Synergie Dour";
   const pageExcerpt = article?.excerpt || "Découvrez les dernières actualités de Synergie Dour, l'association des commerçants et indépendants de Dour.";
+
+  // Image OG : utiliser l'image de l'article si disponible, sinon logo transparent Synergie
+  const ogImage = article?.image && article.image.trim() !== ""
+    ? article.image
+    : "https://www.synergiedour.be/og-synergie.png";
+
+  // Injecter les meta OG dynamiquement
+  useOpenGraph(pageTitle, pageExcerpt, ogImage, pageUrl);
 
   const shareLinks = [
     {
@@ -226,60 +284,43 @@ export default function NewsDetail() {
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold transition-all"
                 >
                   {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Lien copié !" : "Copier le lien"}
+                  {copied ? "Copié !" : "Copier le lien"}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-6 space-y-6">
-              {/* Autres articles */}
-              {related.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-[#001a3d] uppercase tracking-wider mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                    Autres actualités
-                  </h3>
-                  <div className="space-y-3">
-                    {related.map((item: any) => (
-                      <div
-                        key={item.id}
-                        onClick={() => setLocation(`/news/${item.id}`)}
-                        className="cursor-pointer group bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-[#003d99]/30 transition-all"
-                      >
-                        <p className="text-sm font-semibold text-[#001a3d] group-hover:text-[#003d99] line-clamp-2 mb-1">
-                          {item.title}
+          {/* Sidebar articles liés */}
+          {related.length > 0 && (
+            <div className="lg:col-span-1">
+              <h2 className="text-base font-bold text-[#001a3d] mb-4 uppercase tracking-wide" style={{ fontFamily: "Montserrat, sans-serif" }}>
+                Autres actualités
+              </h2>
+              <div className="space-y-4">
+                {related.map((n: any) => (
+                  <button
+                    key={n.id}
+                    onClick={() => setLocation(`/news/${n.id}`)}
+                    className="w-full text-left group"
+                  >
+                    <div className="rounded-xl overflow-hidden border border-gray-100 hover:border-[#003d99]/30 transition-all hover:shadow-md bg-white p-4">
+                      {n.image && (
+                        <img src={n.image} alt={n.title} className="w-full h-28 object-cover rounded-lg mb-3" />
+                      )}
+                      <p className="text-sm font-semibold text-[#001a3d] group-hover:text-[#003d99] transition-colors leading-snug">
+                        {n.title}
+                      </p>
+                      {n.publishedAt && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {new Date(n.publishedAt).toLocaleDateString("fr-BE", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
-                        {item.publishedAt && (
-                          <p className="text-xs text-gray-400">
-                            {new Date(item.publishedAt).toLocaleDateString("fr-BE", {
-                              day: "2-digit", month: "short", year: "numeric", timeZone: "Europe/Brussels",
-                            })}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* CTA Adhésion */}
-              <div className="bg-gradient-to-br from-[#001a3d] to-[#003d99] rounded-xl p-5 text-white text-center">
-                <p className="font-bold text-sm mb-1" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                  Rejoindre Synergie Dour
-                </p>
-                <p className="text-blue-200 text-xs mb-4">50 €/an — Adhésion 2026</p>
-                <Button
-                  size="sm"
-                  className="bg-[#D4AF37] hover:bg-[#b8972e] text-[#001a3d] font-bold w-full"
-                  onClick={() => setLocation("/membership")}
-                >
-                  Devenir membre
-                </Button>
+                      )}
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </PublicLayout>
