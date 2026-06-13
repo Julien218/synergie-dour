@@ -20,7 +20,6 @@ function formatDate(d: string | Date) {
     hour: "2-digit",
     minute: "2-digit",
   });
-});
 }
 
 function StatusBadge({ status }: { status: string }) {
