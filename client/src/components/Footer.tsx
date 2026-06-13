@@ -101,7 +101,7 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2 text-blue-100">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-[#D4AF37]" />
-                <span>Dour, Belgique</span>
+                <span>Grand'Place 9, 7370 Dour</span>
               </li>
               <li className="flex items-start gap-2 text-blue-100">
                 <Mail className="w-4 h-4 mt-0.5 flex-shrink-0 text-[#D4AF37]" />
@@ -127,7 +127,7 @@ export function Footer() {
         {/* Crédits */}
         <div className="mt-8 pt-6 border-t border-blue-800/50 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-blue-200">
-            © {new Date().getFullYear()} Synergie Dour ASBL — Tous droits réservés
+            © {new Date().getFullYear()} Synergie Dour ASBL — BE 1036.801.623 — Tous droits réservés
           </p>
           <p className="text-xs text-blue-200 flex items-center gap-2">
             <span>Plateforme conçue par</span>
