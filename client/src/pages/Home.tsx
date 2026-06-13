@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { RESOURCES } from "@/data/resources";
 import { LocalFlottant } from "@/components/LocalFlottant";
+import { LiveFeedCarousel } from "@/components/LiveFeedCarousel";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
@@ -155,6 +156,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Live Feed Carousel — Actualités + Locaux + Ressources */}
+      <LiveFeedCarousel />
 
       {/* Featured Resources — le cœur de la proposition de valeur */}
       <section className="py-16 px-4 bg-gradient-to-b from-white/95 to-gray-50/95">
