@@ -51,14 +51,27 @@ jobs:
         shell: bash
         run: bash <(curl -fsSL https://railway.app/install.sh)
 
-      - name: 🚀 Deploy via Railway CLI
+      - name: 🔍 Détection du service Railway
+        shell: bash
+        id: detect
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          export PATH="$HOME/.railway/bin:$PATH"
+          echo "=== Services disponibles ==="
+          railway service list 2>/dev/null || railway status 2>/dev/null || echo "status ok"
+
+      - name: 🚀 Deploy — synergie-dour
         shell: bash
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           export PATH="$HOME/.railway/bin:$PATH"
-          railway status || true
-          railway up --detach
+          railway up --service synergie-dour --detach || \
+          railway up --service web --detach || \
+          railway up --service app --detach || \
+          railway up --service server --detach || \
+          (echo "❌ Service non trouvé — voir logs" && exit 1)
 
       - name: ✅ Déploiement lancé
         run: echo "🚀 Deploy déclenché à $(date '+%Y-%m-%d %H:%M') UTC — Js-Innov.IA"
