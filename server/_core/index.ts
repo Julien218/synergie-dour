@@ -12,7 +12,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -127,6 +127,9 @@ async function startServer() {
 
   // OAuth callback - Doit être AVANT le service statique
   registerOAuthRoutes(app);
+
+  // OG Image generation endpoints
+  registerOgImageRoutes(app);
 
   // tRPC API
   app.use(
