@@ -116,3 +116,5 @@ Développé avec ❤️ par **Js-Innov.IA** pour l'association **Synergie Dour**
 🚀 **Js-Innov.IA** — Intelligence artificielle amplifiée par l'humain.
 
 </div>
+
+<!-- deploy: 2026-06-18 16:14 OG dynamique sharp -->
