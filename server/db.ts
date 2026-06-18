@@ -18,6 +18,7 @@ import {
   InsertGallery,
   localRequests,
   InsertLocalRequest,
+  resources,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -340,4 +341,24 @@ export async function updateLocalRequest(id: number, data: Partial<InsertLocalRe
   const db = await getDb();
   if (!db) throw new Error('Database not available');
   await db.update(localRequests).set(data).where(eq(localRequests.id, id));
+}
+
+export async function getResourceBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(resources).where(eq(resources.slug, slug)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getResourceById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(resources).where(eq(resources.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getPublishedResources() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(resources).where(eq(resources.status, "published" as any));
 }
