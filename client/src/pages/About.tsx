@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Award, Briefcase, Megaphone, Store, Link2, Mail } from "lucide-react";
+import { ArrowLeft, Users, Award, Briefcase, Megaphone, Store, Link2, Mail, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface BoardMember {
@@ -11,11 +11,9 @@ interface BoardMember {
   fonction:
     | "president"
     | "vice-president"
-    | "secretaire"
-    | "tresorier"
-    | "conseiller-commerce"
+    | "administratrice"
+    | "administrateur"
     | "conseiller-communication"
-    | "conseiller-commerce-2"
     | "liaison";
   description?: string;
   photo?: string;
@@ -32,69 +30,59 @@ const board: BoardMember[] = [
   },
   {
     name: "Rudy QUERSON",
-    role: "Vice-président",
+    role: "Vice-Président",
     fonction: "vice-president",
     photo: "/equipe/rudy-querson.jpg",
     description: "Seconde le président et le supplée en cas d'absence.",
   },
   {
     name: "Daisy AUDIN",
-    role: "Secrétaire",
-    fonction: "secretaire",
+    role: "Administratrice",
+    fonction: "administratrice",
     photo: "/equipe/daisy-audin.jpg",
     description:
-      "Assure la rédaction des PV, la tenue des registres et la correspondance officielle.",
+      "Membre active du conseil d'administration de l'ASBL Synergie Dour.",
   },
   {
     name: "Stéphane GIVERT",
-    role: "Trésorier",
-    fonction: "tresorier",
+    role: "Administrateur",
+    fonction: "administrateur",
     photo: "/equipe/stephane-givert.jpg",
     description:
-      "Gère la comptabilité, prépare le budget annuel et présente les comptes à l'assemblée générale.",
-  },
-  {
-    name: "David FERON",
-    role: "Conseiller en commerce de proximité",
-    fonction: "conseiller-commerce",
-    photo: "/equipe/david-feron.jpg",
-    description:
-      "Apporte son expertise sur les enjeux du commerce local à Dour.",
+      "Membre actif du conseil d'administration de l'ASBL Synergie Dour.",
   },
   {
     name: "Alban FRIDENBERGS",
-    role: "Conseiller en communication, marketing et management",
+    role: "Administrateur",
     fonction: "conseiller-communication",
     photo: "/equipe/alban-fridenbergs.jpg",
     description:
-      "Conseille l'association sur sa stratégie de communication et son développement.",
+      "Membre actif du conseil d'administration de l'ASBL Synergie Dour.",
   },
   {
     name: "Michel ARCHETTI",
-    role: "2ᵉ conseiller en commerce de proximité",
-    fonction: "conseiller-commerce-2",
+    role: "Administrateur",
+    fonction: "administrateur",
     photo: "/equipe/michel-archetti.jpg",
     description:
-      "Complète l'expertise commerce de proximité au sein du conseil.",
+      "Membre actif du conseil d'administration de l'ASBL Synergie Dour.",
   },
   {
     name: "Bobby Charles VERTENEUIL",
-    role: "Chargé de liaison commerçants — association",
+    role: "Administrateur",
     fonction: "liaison",
     photo: "/equipe/bobby-verteneuil.jpg",
     description:
-      "Point de contact direct entre les commerçants membres et le conseil d'administration.",
+      "Membre actif du conseil d'administration de l'ASBL Synergie Dour.",
   },
 ];
 
 const iconMap: Record<BoardMember["fonction"], LucideIcon> = {
   president: Award,
   "vice-president": Award,
-  secretaire: Briefcase,
-  tresorier: Briefcase,
-  "conseiller-commerce": Store,
+  administratrice: ShieldCheck,
+  administrateur: ShieldCheck,
   "conseiller-communication": Megaphone,
-  "conseiller-commerce-2": Store,
   liaison: Link2,
 };
 
@@ -165,7 +153,7 @@ export default function About() {
           <p className="text-gray-700 mb-8">
             Conseil d'administration de l'ASBL Synergie Dour.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {board.map((member) => {
               const Icon = iconMap[member.fonction];
               return (
