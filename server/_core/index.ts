@@ -13,6 +13,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
+import { socialRouter } from "../social";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -170,7 +171,8 @@ async function startServer() {
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    app.use("/api/social", socialRouter);
+  serveStatic(app);
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
