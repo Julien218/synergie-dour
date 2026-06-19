@@ -32,6 +32,8 @@ import {
   ClipboardList,
   Image,
   Building2
+  Users,
+  Share2,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
