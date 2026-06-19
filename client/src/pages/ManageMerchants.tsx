@@ -7,9 +7,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useState } from "react";
-import { Plus, Edit, Trash2, ArrowLeft, Check, X } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, Check, X, ExternalLink, MapPin } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+
+const emptyForm = () => ({
+  businessName: "",
+  businessCategory: "",
+  description: "",
+  address: "",
+  phone: "",
+  email: "",
+  website: "",
+  googleBusinessUrl: "",
+  status: "approved" as "pending" | "approved" | "rejected",
+});
 
 export default function ManageMerchants() {
   const { user } = useAuth();
@@ -18,15 +30,20 @@ export default function ManageMerchants() {
   const { data: categories = [] } = trpc.categories.list.useQuery();
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    businessName: "",
-    businessCategory: "",
-    description: "",
-    address: "",
-    phone: "",
-    email: "",
-    website: "",
-    status: "pending" as "pending" | "approved" | "rejected",
+  const [formData, setFormData] = useState(emptyForm());
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+
+  const createMutation = trpc.merchants.create.useMutation({
+    onSuccess: () => {
+      toast.success("Commerçant ajouté avec succès");
+      refetch();
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast.error(`Erreur: ${error.message}`);
+    },
   });
 
   const updateMutation = trpc.merchants.update.useMutation({
@@ -35,32 +52,23 @@ export default function ManageMerchants() {
       refetch();
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Erreur: ${error.message}`);
     },
   });
 
   const deleteMutation = trpc.merchants.delete.useMutation({
     onSuccess: () => {
-      toast.success("Commerçant supprimé avec succès");
+      toast.success("Commerçant supprimé");
       refetch();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Erreur: ${error.message}`);
     },
   });
 
   const resetForm = () => {
-    setFormData({
-      businessName: "",
-      businessCategory: "",
-      description: "",
-      address: "",
-      phone: "",
-      email: "",
-      website: "",
-      status: "pending",
-    });
+    setFormData(emptyForm());
     setIsCreating(false);
     setEditingId(null);
   };
@@ -69,19 +77,23 @@ export default function ManageMerchants() {
     e.preventDefault();
     if (editingId) {
       updateMutation.mutate({ id: editingId, ...formData });
+    } else {
+      // Création : userId = 0 (commerce ajouté manuellement par admin)
+      createMutation.mutate({ ...formData, userId: 0 } as any);
     }
   };
 
   const handleEdit = (merchant: any) => {
     setFormData({
-      businessName: merchant.businessName,
-      businessCategory: merchant.businessCategory,
+      businessName: merchant.businessName || "",
+      businessCategory: merchant.businessCategory || "",
       description: merchant.description || "",
-      address: merchant.address,
+      address: merchant.address || "",
       phone: merchant.phone || "",
       email: merchant.email || "",
       website: merchant.website || "",
-      status: merchant.status,
+      googleBusinessUrl: merchant.googleBusinessUrl || "",
+      status: merchant.status || "approved",
     });
     setEditingId(merchant.id);
     setIsCreating(true);
@@ -92,18 +104,18 @@ export default function ManageMerchants() {
   };
 
   const handleReject = (id: number) => {
-    if (confirm("Êtes-vous sûr de vouloir rejeter ce commerçant ?")) {
+    if (confirm("Rejeter ce commerçant ?")) {
       updateMutation.mutate({ id, status: "rejected" });
     }
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce commerçant ?")) {
+    if (confirm("Supprimer définitivement ce commerçant ?")) {
       deleteMutation.mutate(id);
     }
   };
 
-  if (user?.role !== "admin") {
+  if (!isAdmin) {
     return (
       <DashboardLayout>
         <div className="text-center py-12">
@@ -113,140 +125,212 @@ export default function ManageMerchants() {
     );
   }
 
-  const pendingMerchants = merchantsList.filter(m => m.status === "pending");
-  const approvedMerchants = merchantsList.filter(m => m.status === "approved");
-  const rejectedMerchants = merchantsList.filter(m => m.status === "rejected");
+  const filtered = merchantsList.filter((m: any) =>
+    !searchQuery ||
+    m.businessName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    m.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    m.businessCategory?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const pendingMerchants  = filtered.filter((m: any) => m.status === "pending");
+  const approvedMerchants = filtered.filter((m: any) => m.status === "approved");
+  const rejectedMerchants = filtered.filter((m: any) => m.status === "rejected");
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" onClick={() => setLocation("/dashboard")}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Retour
             </Button>
-            <h1 className="text-3xl font-bold text-blue-900">Gestion des Commerçants</h1>
+            <h1 className="text-2xl font-bold text-[#001a3d]">Gestion des Commerçants</h1>
           </div>
+          {!isCreating && (
+            <Button
+              onClick={() => { resetForm(); setIsCreating(true); }}
+              className="bg-[#001a3d] hover:bg-[#002966] text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Ajouter un commerce
+            </Button>
+          )}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-amber-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">En attente</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-amber-600">{pendingMerchants.length}</div>
+        {/* Statistiques */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="border-amber-200 text-center">
+            <CardContent className="pt-4 pb-3">
+              <div className="text-2xl font-bold text-amber-600">{merchantsList.filter((m: any) => m.status === "pending").length}</div>
+              <p className="text-xs text-gray-500 mt-1">En attente</p>
             </CardContent>
           </Card>
-          <Card className="border-amber-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Approuvés</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">{approvedMerchants.length}</div>
+          <Card className="border-green-200 text-center">
+            <CardContent className="pt-4 pb-3">
+              <div className="text-2xl font-bold text-green-600">{merchantsList.filter((m: any) => m.status === "approved").length}</div>
+              <p className="text-xs text-gray-500 mt-1">Approuvés</p>
             </CardContent>
           </Card>
-          <Card className="border-amber-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Rejetés</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600">{rejectedMerchants.length}</div>
+          <Card className="border-red-200 text-center">
+            <CardContent className="pt-4 pb-3">
+              <div className="text-2xl font-bold text-red-600">{merchantsList.filter((m: any) => m.status === "rejected").length}</div>
+              <p className="text-xs text-gray-500 mt-1">Rejetés</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Edit Form */}
+        {/* Recherche */}
+        <div>
+          <Input
+            placeholder="Rechercher un commerce, une adresse, une catégorie..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-md"
+          />
+        </div>
+
+        {/* Formulaire création / édition */}
         {isCreating && (
-          <Card className="border-amber-200">
-            <CardHeader>
-              <CardTitle>Modifier le Commerçant</CardTitle>
-              <CardDescription>Modifiez les informations ci-dessous</CardDescription>
+          <Card className="border-[#001a3d]/20 shadow-md">
+            <CardHeader className="bg-[#001a3d] text-white rounded-t-lg">
+              <CardTitle className="text-lg">
+                {editingId ? "✏️ Modifier le commerçant" : "➕ Ajouter un commerce"}
+              </CardTitle>
+              <CardDescription className="text-white/70">
+                {editingId
+                  ? "Modifiez les informations ci-dessous"
+                  : "Remplissez les informations du nouveau commerce"}
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                {/* Nom + Catégorie */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium">Nom du commerce *</label>
+                    <label className="text-sm font-semibold text-[#001a3d]">Nom du commerce *</label>
                     <Input
                       value={formData.businessName}
                       onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                      placeholder="Ex : Boulangerie Dupont"
                       required
+                      className="mt-1"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Catégorie *</label>
+                    <label className="text-sm font-semibold text-[#001a3d]">Catégorie *</label>
                     <select
                       value={formData.businessCategory}
                       onChange={(e) => setFormData({ ...formData, businessCategory: e.target.value })}
-                      className="w-full border rounded-md p-2"
+                      className="w-full border border-input rounded-md p-2 mt-1 text-sm"
                       required
                     >
-                      <option value="">Sélectionnez une catégorie</option>
-                      {categories.map((cat) => (
+                      <option value="">— Sélectionnez —</option>
+                      {categories.map((cat: any) => (
                         <option key={cat.id} value={cat.name}>{cat.name}</option>
                       ))}
                     </select>
                   </div>
                 </div>
+
+                {/* Adresse */}
                 <div>
-                  <label className="text-sm font-medium">Adresse *</label>
+                  <label className="text-sm font-semibold text-[#001a3d]">Adresse *</label>
                   <Input
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Ex : Grand'Place 5, 7370 Dour"
                     required
+                    className="mt-1"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+
+                {/* Téléphone + Email */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium">Téléphone</label>
+                    <label className="text-sm font-semibold text-[#001a3d]">Téléphone</label>
                     <Input
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="0475 xx xx xx"
+                      className="mt-1"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Email</label>
+                    <label className="text-sm font-semibold text-[#001a3d]">Email</label>
                     <Input
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="commerce@example.be"
+                      className="mt-1"
                     />
                   </div>
                 </div>
+
+                {/* Site web */}
                 <div>
-                  <label className="text-sm font-medium">Site web</label>
+                  <label className="text-sm font-semibold text-[#001a3d]">Site web</label>
                   <Input
                     value={formData.website}
                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    placeholder="https://www.moncommerce.be"
+                    className="mt-1"
                   />
                 </div>
+
+                {/* Google Business URL */}
                 <div>
-                  <label className="text-sm font-medium">Description</label>
+                  <label className="text-sm font-semibold text-[#001a3d] flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-red-500" />
+                    Fiche Google Business
+                  </label>
+                  <Input
+                    value={formData.googleBusinessUrl}
+                    onChange={(e) => setFormData({ ...formData, googleBusinessUrl: e.target.value })}
+                    placeholder="https://maps.google.com/?cid=... ou https://g.page/..."
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Copiez l'URL depuis Google Maps → Partager → Lien
+                  </p>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="text-sm font-semibold text-[#001a3d]">Description</label>
                   <Textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={4}
+                    placeholder="Décrivez le commerce en quelques lignes..."
+                    rows={3}
+                    className="mt-1"
                   />
                 </div>
+
+                {/* Statut */}
                 <div>
-                  <label className="text-sm font-medium">Statut</label>
+                  <label className="text-sm font-semibold text-[#001a3d]">Statut</label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full border rounded-md p-2"
+                    className="w-full border border-input rounded-md p-2 mt-1 text-sm"
                   >
-                    <option value="pending">En attente</option>
-                    <option value="approved">Approuvé</option>
-                    <option value="rejected">Rejeté</option>
+                    <option value="approved">✅ Approuvé</option>
+                    <option value="pending">⏳ En attente</option>
+                    <option value="rejected">❌ Rejeté</option>
                   </select>
                 </div>
-                <div className="flex gap-2">
-                  <Button type="submit" className="bg-amber-500 hover:bg-amber-600 text-blue-900">
-                    Mettre à jour
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    type="submit"
+                    className="bg-[#D4AF37] hover:bg-[#c49c2a] text-[#001a3d] font-semibold"
+                    disabled={createMutation.isPending || updateMutation.isPending}
+                  >
+                    {editingId ? "Mettre à jour" : "Ajouter le commerce"}
                   </Button>
                   <Button type="button" variant="outline" onClick={resetForm}>
                     Annuler
@@ -257,103 +341,158 @@ export default function ManageMerchants() {
           </Card>
         )}
 
-        {/* Pending Merchants */}
+        {/* Demandes en attente */}
         {pendingMerchants.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-blue-900">Demandes en attente</h2>
-            {pendingMerchants.map((merchant) => (
-              <Card key={merchant.id} className="border-amber-200">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle>{merchant.businessName}</CardTitle>
-                      <CardDescription>
-                        {merchant.businessCategory} • {merchant.address}
-                      </CardDescription>
-                    </div>
-                    <Badge variant="secondary">En attente</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 mb-4">
-                    {merchant.phone && <p className="text-sm">📞 {merchant.phone}</p>}
-                    {merchant.email && <p className="text-sm">📧 {merchant.email}</p>}
-                    {merchant.description && <p className="text-sm text-gray-600">{merchant.description}</p>}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApprove(merchant.id)}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Check className="w-4 h-4 mr-2" />
-                      Approuver
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleReject(merchant.id)}
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      Rejeter
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(merchant)}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Modifier
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-amber-700 flex items-center gap-2">
+              ⏳ Demandes en attente ({pendingMerchants.length})
+            </h2>
+            {pendingMerchants.map((merchant: any) => (
+              <MerchantCard
+                key={merchant.id}
+                merchant={merchant}
+                onEdit={handleEdit}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onDelete={handleDelete}
+                showApproveReject
+              />
             ))}
           </div>
         )}
 
-        {/* Approved Merchants */}
-        {approvedMerchants.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-blue-900">Commerçants approuvés</h2>
-            {approvedMerchants.map((merchant) => (
-              <Card key={merchant.id} className="border-green-200">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle>{merchant.businessName}</CardTitle>
-                      <CardDescription>
-                        {merchant.businessCategory} • {merchant.address}
-                      </CardDescription>
-                    </div>
-                    <Badge className="bg-green-600">Approuvé</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(merchant)}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Modifier
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(merchant.id)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Supprimer
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Commerçants approuvés */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-bold text-[#001a3d] flex items-center gap-2">
+            ✅ Commerçants approuvés ({approvedMerchants.length})
+          </h2>
+          {approvedMerchants.length === 0 ? (
+            <p className="text-gray-500 text-sm italic">Aucun commerçant approuvé{searchQuery ? " pour cette recherche" : ""}.</p>
+          ) : (
+            approvedMerchants.map((merchant: any) => (
+              <MerchantCard
+                key={merchant.id}
+                merchant={merchant}
+                onEdit={handleEdit}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onDelete={handleDelete}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Rejetés */}
+        {rejectedMerchants.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-red-700 flex items-center gap-2">
+              ❌ Rejetés ({rejectedMerchants.length})
+            </h2>
+            {rejectedMerchants.map((merchant: any) => (
+              <MerchantCard
+                key={merchant.id}
+                merchant={merchant}
+                onEdit={handleEdit}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+// ─── Composant carte commerçant ───────────────────────────────────────────────
+function MerchantCard({
+  merchant,
+  onEdit,
+  onApprove,
+  onReject,
+  onDelete,
+  showApproveReject = false,
+}: {
+  merchant: any;
+  onEdit: (m: any) => void;
+  onApprove: (id: number) => void;
+  onReject: (id: number) => void;
+  onDelete: (id: number) => void;
+  showApproveReject?: boolean;
+}) {
+  const statusColor: Record<string, string> = {
+    approved: "bg-green-600",
+    pending: "bg-amber-500",
+    rejected: "bg-red-600",
+  };
+  const statusLabel: Record<string, string> = {
+    approved: "Approuvé",
+    pending: "En attente",
+    rejected: "Rejeté",
+  };
+
+  return (
+    <Card className="border-gray-200 hover:shadow-md transition-shadow">
+      <CardContent className="pt-4 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          {/* Infos */}
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="font-bold text-[#001a3d] text-base">{merchant.businessName}</span>
+              <Badge className={`${statusColor[merchant.status]} text-white text-xs`}>
+                {statusLabel[merchant.status]}
+              </Badge>
+            </div>
+            <p className="text-sm text-gray-600">{merchant.businessCategory} • {merchant.address}</p>
+            {merchant.phone && <p className="text-sm text-gray-500">📞 {merchant.phone}</p>}
+            {merchant.email && <p className="text-sm text-gray-500">✉️ {merchant.email}</p>}
+            {merchant.website && (
+              <a
+                href={merchant.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+              >
+                <ExternalLink className="w-3 h-3" /> Site web
+              </a>
+            )}
+            {merchant.googleBusinessUrl && (
+              <a
+                href={merchant.googleBusinessUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-red-600 hover:underline flex items-center gap-1"
+              >
+                <MapPin className="w-3 h-3" /> Fiche Google Business
+              </a>
+            )}
+            {merchant.description && (
+              <p className="text-sm text-gray-500 line-clamp-2 mt-1">{merchant.description}</p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
+            {showApproveReject && (
+              <>
+                <Button size="sm" onClick={() => onApprove(merchant.id)} className="bg-green-600 hover:bg-green-700 text-white">
+                  <Check className="w-3 h-3 mr-1" /> Approuver
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => onReject(merchant.id)}>
+                  <X className="w-3 h-3 mr-1" /> Rejeter
+                </Button>
+              </>
+            )}
+            <Button size="sm" variant="outline" onClick={() => onEdit(merchant)}>
+              <Edit className="w-3 h-3 mr-1" /> Modifier
+            </Button>
+            <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => onDelete(merchant.id)}>
+              <Trash2 className="w-3 h-3 mr-1" /> Supprimer
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
