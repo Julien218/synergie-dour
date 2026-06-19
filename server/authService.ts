@@ -79,8 +79,18 @@ export async function loginWithPassword(input: { email: string; password: string
   const row = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0] as any;
   if (!row?.passwordHash) throw new Error("Invalid credentials");
   if (!verifyPassword(input.password, row.passwordHash)) throw new Error("Invalid credentials");
-  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, row.id));
-  return row as User;
+
+  // Mise à jour automatique du rôle super_admin si email correspond
+  const isSuperAdmin = ENV.superAdminEmail && ENV.superAdminEmail.toLowerCase() === email;
+  const updates: any = { lastSignedIn: new Date() };
+  if (isSuperAdmin && row.role !== "super_admin") {
+    updates.role = "super_admin";
+  }
+  await db.update(users).set(updates).where(eq(users.id, row.id));
+
+  // Retourner l'utilisateur avec le bon rôle
+  const updated = (await db.select().from(users).where(eq(users.id, row.id)).limit(1))[0];
+  return (updated ?? row) as User;
 }
 
 export { SESSION_COOKIE, SESSION_DURATION_MS };
