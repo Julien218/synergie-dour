@@ -117,4 +117,4 @@ Développé avec ❤️ par **Js-Innov.IA** pour l'association **Synergie Dour**
 
 </div>
 
-<!-- deploy: 2026-06-18 16:14 OG dynamique sharp -->
+<!-- deploy: 2026-06-19 10:25 — photos Michel Archetti + Alban Fridenbergs -->
