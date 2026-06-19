@@ -420,6 +420,22 @@ export function serveStatic(app: Express) {
   if (!fs.existsSync(distPath)) {
     console.error(`[serveStatic] Build not found: ${distPath}`);
   }
+
+  // Route dédiée pour les photos de l'équipe — cherche dans src puis dist
+  app.get("/equipe/:filename", (req, res) => {
+    const filename = req.params.filename;
+    // Priorité : fichier source (client/public/equipe/) si Railway garde les sources
+    const srcPath  = path.resolve(process.cwd(), "client", "public", "equipe", filename);
+    const distFile = path.resolve(distPath, "equipe", filename);
+    const target = fs.existsSync(srcPath) ? srcPath : distFile;
+    if (fs.existsSync(target)) {
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.sendFile(target);
+    } else {
+      res.status(404).send("Not found");
+    }
+  });
+
   app.use(express.static(distPath));
   app.use("*", async (req, res) => {
     const htmlPath  = path.resolve(distPath, "index.html");
