@@ -41,6 +41,7 @@ export const merchants = mysqlTable("merchants", {
   email: varchar("email", { length: 320 }),
   website: varchar("website", { length: 255 }),
   logo: varchar("logo", { length: 255 }),
+  googleBusinessUrl: varchar("googleBusinessUrl", { length: 500 }),
   isVerified: int("isVerified").default(0).notNull(),
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
