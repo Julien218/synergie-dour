@@ -31,6 +31,7 @@ import SoumettreLocal from "@/pages/SoumettreLocal";
 import ManageLocaux from "@/pages/ManageLocaux";
 import LocauxCommerciaux from "@/pages/LocauxCommerciaux";
 import ManagePosts from "@/pages/ManagePosts";
+import SocialMediaPage from "@/pages/SocialMediaPage";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -133,6 +134,7 @@ function Router() {
       </Route>
       <Route path="/dashboard/posts">
         {() => <ManagePosts />}
+          <Route path="/dashboard/social">{() => <SocialMediaPage />}</Route>
       </Route>
       <Route path="/dashboard/members">
         {() => <MemberDashboard />}
