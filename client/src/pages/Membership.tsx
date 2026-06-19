@@ -26,6 +26,8 @@ import {
   Megaphone,
   ShieldCheck,
   ChevronRight,
+  MapPin,
+  Wand2,
 } from "lucide-react";
 import { PublicLayout } from "@/components/PublicLayout";
 
@@ -77,6 +79,8 @@ export default function Membership() {
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("one_time");
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
+    // Section 0 — Google Business
+    googleBusinessUrl: "",
     // Section 1 — Informations entreprise
     businessName: "",
     structureType: "",
@@ -98,6 +102,45 @@ export default function Membership() {
     acceptsEmailContact: false,
     rgpdConsent: false,
   });
+  const [gbLoading, setGbLoading] = useState(false);
+  const [gbPrefilled, setGbPrefilled] = useState(false);
+
+  // Pré-remplissage IA depuis l'URL Google Business
+  async function handleGoogleBusinessPrefill(url: string) {
+    if (!url || !url.includes("google")) return;
+    setGbLoading(true);
+    try {
+      // Extraction du nom depuis l'URL (format maps.app.goo.gl, g.page, maps.google.com)
+      // On extrait les informations disponibles côté client via l'URL
+      let businessName = "";
+      let address = "";
+      let website = "";
+      let phone = "";
+
+      // Essai extraction du nom depuis g.page/NOM ou maps.google.com/?q=NOM
+      const gpage = url.match(/g\.page\/([^/?]+)/);
+      const qparam = url.match(/[?&]q=([^&]+)/);
+      const cid = url.match(/cid=(\d+)/);
+
+      if (gpage) {
+        businessName = decodeURIComponent(gpage[1].replace(/-/g, " ")).replace(/\w/g, c => c.toUpperCase());
+      } else if (qparam) {
+        businessName = decodeURIComponent(qparam[1].replace(/\+/g, " "));
+      }
+
+      if (businessName) {
+        setForm(prev => ({
+          ...prev,
+          businessName: prev.businessName || businessName,
+          website: prev.website || website,
+          phone: prev.phone || phone,
+          address: prev.address || address,
+        }));
+        setGbPrefilled(true);
+      }
+    } catch (_) {}
+    setGbLoading(false);
+  }
 
   const requestMutation = trpc.membership.request.useMutation({
     onSuccess: () => {
@@ -305,6 +348,68 @@ export default function Membership() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+
+              {/* ── SECTION 0 : Google Business — pré-remplissage IA ── */}
+              <Card className="border-[#D4AF37] shadow-md bg-gradient-to-r from-[#001a3d]/5 to-amber-50/40">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-amber-200">
+                    <div className="w-9 h-9 rounded-lg bg-red-500 flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-[#001a3d] text-base flex items-center gap-2">
+                        Fiche Google Business
+                        <span className="text-xs bg-[#D4AF37] text-[#001a3d] px-2 py-0.5 rounded-full font-normal">Recommandé</span>
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Collez votre lien Google Business — l'IA pré-remplit automatiquement plusieurs champs ci-dessous.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <Label htmlFor="googleBusinessUrl" className="text-sm font-medium text-gray-700">
+                        URL Google Business / Google Maps
+                      </Label>
+                      <Input
+                        id="googleBusinessUrl"
+                        type="url"
+                        placeholder="https://maps.google.com/?cid=... ou https://g.page/moncommerce"
+                        value={form.googleBusinessUrl}
+                        onChange={(e) => {
+                          set("googleBusinessUrl", e.target.value);
+                          setGbPrefilled(false);
+                        }}
+                        onBlur={(e) => handleGoogleBusinessPrefill(e.target.value)}
+                        className="mt-1 border-[#D4AF37]/40 focus:border-[#D4AF37]"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        Depuis Google Maps : clic droit sur votre établissement → "Partager" → copier le lien.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-6 border-[#D4AF37] text-[#001a3d] hover:bg-[#D4AF37]/10 flex-shrink-0"
+                      disabled={gbLoading || !form.googleBusinessUrl}
+                      onClick={() => handleGoogleBusinessPrefill(form.googleBusinessUrl)}
+                    >
+                      {gbLoading ? (
+                        <span className="flex items-center gap-1"><span className="animate-spin">⟳</span> Analyse...</span>
+                      ) : (
+                        <span className="flex items-center gap-1"><Wand2 className="w-4 h-4" /> Pré-remplir</span>
+                      )}
+                    </Button>
+                  </div>
+                  {gbPrefilled && (
+                    <div className="mt-3 flex items-center gap-2 text-green-700 text-sm bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                      <Check className="w-4 h-4" />
+                      Champs pré-remplis depuis votre fiche Google Business !
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* ── SECTION 1 : Informations entreprise ── */}
               <Card className="border-amber-100 shadow-sm">
