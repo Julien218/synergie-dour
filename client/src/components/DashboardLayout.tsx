@@ -114,6 +114,8 @@ function DashboardLayoutContent({
     { icon: FileText, label: "Actualités", path: "/dashboard/news" },
     { icon: Calendar, label: "Événements", path: "/dashboard/events" },
     { icon: Building2, label: "Locaux à Louer", path: "/dashboard/locaux" },
+    { icon: Share2, label: "Réseaux Sociaux", path: "/dashboard/social" },
+    { icon: Users, label: "Membres CA", path: "/dashboard/members" },
   ];
 
   const merchantMenuItems = [
