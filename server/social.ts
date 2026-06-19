@@ -1,9 +1,9 @@
 import express from "express";
-import { generateImage } from "../_core/imageGeneration";
+import { generateImage } from "./_core/imageGeneration";
 import { ENV } from "../_core/env";
 import { verifySessionToken } from "../authService";
 import { getDb } from "../db";
-import { users } from "../../drizzle/schema";
+import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const socialRouter = express.Router();
