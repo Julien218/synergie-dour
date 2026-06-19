@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Footer } from "@/components/Footer";
 import { CookieBanner } from "@/components/CookieBanner";
+import { ResourcesScrollFeed } from "@/components/ResourcesScrollFeed";
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -29,6 +30,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <>
+    <ResourcesScrollFeed />
     <div className="min-h-screen flex flex-col">
       {/* Navigation */}
       <nav className="bg-white border-b border-amber-200 sticky top-0 z-50">
