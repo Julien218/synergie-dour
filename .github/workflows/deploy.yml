@@ -1,77 +1,20 @@
-name: 🚀 CI/CD — Synergie Dour
+name: Deploy to Railway
 
 on:
   push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
-  workflow_dispatch:
+    branches: [ main ]
 
 jobs:
-  build:
-    name: 🏗️ Build & Vérification
-    runs-on: ubuntu-latest
-    steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: 📦 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: 🔧 Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10.4.1
-
-      - name: 📚 Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: 🔍 TypeScript check
-        run: pnpm run check
-        continue-on-error: true
-
-      - name: 🏗️ Build production
-        run: pnpm run build
-        env:
-          NODE_ENV: production
-          DATABASE_URL: "mysql://build:build@localhost:3306/build"
-
   deploy:
-    name: 🚂 Deploy to Railway
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
     steps:
-      - name: 📥 Checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 🚂 Install Railway CLI
-        shell: bash
-        run: bash <(curl -fsSL https://railway.app/install.sh)
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
 
-      - name: 🔍 Détection du service Railway
-        shell: bash
-        id: detect
+      - name: Deploy to Railway
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          export PATH="$HOME/.railway/bin:$PATH"
-          echo "=== Services disponibles ==="
-          railway service list 2>/dev/null || railway status 2>/dev/null || echo "status ok"
-
-      - name: 🚀 Deploy — synergie-dour
-        shell: bash
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          export PATH="$HOME/.railway/bin:$PATH"
-          railway up --service synergie-dour --detach || \
-          railway up --service web --detach || \
-          railway up --service app --detach || \
-          railway up --service server --detach || \
-          (echo "❌ Service non trouvé — voir logs" && exit 1)
-
-      - name: ✅ Déploiement lancé
-        run: echo "🚀 Deploy déclenché à $(date '+%Y-%m-%d %H:%M') UTC — Js-Innov.IA"
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_SERVICE_TOKEN }}
+        run: railway up --detach
