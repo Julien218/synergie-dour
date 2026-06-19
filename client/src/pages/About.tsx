@@ -11,8 +11,9 @@ interface BoardMember {
   fonction:
     | "president"
     | "vice-president"
-    | "administratrice"
-    | "administrateur"
+    | "secretaire"
+    | "tresorier"
+    | "conseiller-commerce"
     | "conseiller-communication"
     | "liaison";
   description?: string;
@@ -37,51 +38,60 @@ const board: BoardMember[] = [
   },
   {
     name: "Daisy AUDIN",
-    role: "Administratrice",
-    fonction: "administratrice",
+    role: "Secrétaire",
+    fonction: "secretaire",
     photo: "/equipe/daisy-audin.jpg",
     description:
-      "Membre active du conseil d'administration de l'ASBL Synergie Dour.",
+      "Secrétaire du conseil d'administration — gestion administrative et suivi des procès-verbaux.",
   },
   {
     name: "Stéphane GIVERT",
-    role: "Administrateur",
-    fonction: "administrateur",
+    role: "Trésorier",
+    fonction: "tresorier",
     photo: "/equipe/stephane-givert.jpg",
     description:
-      "Membre actif du conseil d'administration de l'ASBL Synergie Dour.",
+      "Trésorier de l'ASBL — gestion financière, comptabilité et suivi du budget.",
+  },
+  {
+    name: "David FERON",
+    role: "Conseiller en commerce de proximité",
+    fonction: "conseiller-commerce",
+    photo: "/equipe/david-feron.jpg",
+    description:
+      "Conseiller en commerce de proximité — accompagnement et développement des commerçants locaux.",
   },
   {
     name: "Alban FRIDENBERGS",
-    role: "Administrateur",
+    role: "Conseiller en communication, marketing et management",
     fonction: "conseiller-communication",
     photo: "/equipe/alban-fridenbergs.jpg",
     description:
-      "Membre actif du conseil d'administration de l'ASBL Synergie Dour.",
+      "Conseiller en communication, marketing et management — stratégie de visibilité et développement de l'ASBL.",
   },
   {
     name: "Michel ARCHETTI",
-    role: "Administrateur",
-    fonction: "administrateur",
+    role: "2ème Conseiller en commerce de proximité",
+    fonction: "conseiller-commerce",
     photo: "/equipe/michel-archetti.jpg",
     description:
-      "Membre actif du conseil d'administration de l'ASBL Synergie Dour.",
+      "2ème conseiller en commerce de proximité — soutien aux commerçants et développement du tissu local.",
   },
   {
     name: "Bobby Charles VERTENEUIL",
-    role: "Administrateur",
+    role: "Chargé de liaison commerçants – association",
     fonction: "liaison",
     photo: "/equipe/bobby-verteneuil.jpg",
     description:
-      "Membre actif du conseil d'administration de l'ASBL Synergie Dour.",
+      "Chargé de liaison entre les commerçants et l'association — interlocuteur privilégié et coordinateur terrain.",
   },
 ];
 
 const iconMap: Record<BoardMember["fonction"], LucideIcon> = {
   president: Award,
   "vice-president": Award,
-  administratrice: ShieldCheck,
-  administrateur: ShieldCheck,
+  secretaire: Briefcase,
+  tresorier: Briefcase,
+  "conseiller-commerce": Store,
   "conseiller-communication": Megaphone,
   liaison: Link2,
 };
