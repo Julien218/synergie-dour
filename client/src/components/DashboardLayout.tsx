@@ -31,8 +31,7 @@ import {
   Calendar, 
   ClipboardList,
   Image,
-  Building2
-  Users,
+  Building2,
   Share2,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
