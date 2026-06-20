@@ -110,6 +110,33 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // ... (Le reste du fichier reste inchangé pour les autres fonctions)
+// ─── Helper Base44 Entity API ───────────────────────────────────────────────
+async function fetchBase44Entity(entityName: string): Promise<any[]> {
+  const appId  = process.env.VITE_APP_ID ?? "";
+  const apiKey = process.env.BUILT_IN_FORGE_API_KEY ?? "";
+  const apiUrl = process.env.BUILT_IN_FORGE_API_URL ?? "";
+  if (!appId || !apiKey || !apiUrl) return [];
+  try {
+    const base = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
+    const resp = await fetch(`${base}webdevtoken.v1.WebDevService/EntityList`, {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "connect-protocol-version": "1",
+        "authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ appId, entityName, serviceRole: true }),
+    });
+    if (!resp.ok) return [];
+    const payload = await resp.json().catch(() => ({}));
+    if (payload?.jsonData) { try { return JSON.parse(payload.jsonData); } catch { return []; } }
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.records)) return payload.records;
+    return [];
+  } catch { return []; }
+}
+
 export async function getMerchants(filter?: { category?: string; search?: string }) {
   // Lire depuis l'API Base44 (entité Commercant)
   try {
@@ -203,9 +230,16 @@ export async function updateMerchant(id: number, data: Partial<InsertMerchant>) 
 }
 
 export async function getCategories() {
-  const db = await getDb();
-  if (!db) return [];
-  return await db.select().from(categories);
+  // Extraire les catégories depuis l'entité Commercant Base44
+  try {
+    const commercants = await fetchBase44Entity("Commercant");
+    const cats = new Set<string>();
+    for (const c of commercants) {
+      if (c.categorie) cats.add(c.categorie);
+      if (Array.isArray(c.categories)) c.categories.forEach((cat: string) => cats.add(cat));
+    }
+    return [...cats].filter(Boolean).sort().map((name, id) => ({ id, name }));
+  } catch { return []; }
 }
 
 export async function getPublishedNews(limit = 10) {
@@ -319,9 +353,23 @@ export async function deleteEvent(id: number) {
 }
 
 export async function getAllMerchants() {
-  const db = await getDb();
-  if (!db) return [];
-  return await db.select().from(merchants);
+  try {
+    const raw = await fetchBase44Entity("Commercant");
+    return raw.map((c: any) => ({
+      id: c.id,
+      businessName: c.nom,
+      businessCategory: c.categorie || (Array.isArray(c.categories) ? c.categories[0] : ""),
+      description: c.notes || "",
+      address: c.adresse || "",
+      phone: c.telephone || "",
+      email: c.email || "",
+      website: c.site_web || "",
+      logo: null,
+      isVerified: true,
+      status: c.statut || "Actif",
+      createdAt: c.created_date,
+    }));
+  } catch { return []; }
 }
 
 export async function deleteMerchant(id: number) {
