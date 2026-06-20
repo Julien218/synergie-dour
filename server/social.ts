@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 export const socialRouter = express.Router();
 
 // ─── Middleware auth admin ────────────────────────────────────────────────────
-async async function requireAdmin(
+async function requireAdmin(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
@@ -473,7 +473,7 @@ socialRouter.post("/google-scrape", requireAdmin, async (req, res) => {
 // SUPER ADMIN — Brand Settings & Image Generation Control
 // ─────────────────────────────────────────────────────────────────────────────
 
-async async function requireSuperAdmin(
+async function requireSuperAdmin(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
