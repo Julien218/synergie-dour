@@ -300,59 +300,25 @@ export const appRouter = router({
     listPublished: publicProcedure.query(async () => {
       const results: any[] = [];
 
-      // 1. Lire les BienCommercial via l'API Base44 REST
+      // 1. Lire les BienCommercial via la fonction Base44 déployée
       try {
-        const appId  = process.env.VITE_APP_ID ?? "6a0208edd1e235b62b4bda38";
-        const apiKey = process.env.BUILT_IN_FORGE_API_KEY ?? "";
-        const apiUrl = process.env.BUILT_IN_FORGE_API_URL ?? "https://api.base44.com";
-
-        const base = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
-        const entityUrl = `${base}webdevtoken.v1.WebDevService/EntityList`;
-
-        const resp = await fetch(entityUrl, {
-          method: "POST",
-          headers: {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "connect-protocol-version": "1",
-            "authorization": `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({ appId, entityName: "BienCommercial", serviceRole: true }),
+        const BASE44_FN_URL = "https://synergie-dour-assistant-2b4bda38.base44.app/functions/getBiensCommerciaux";
+        const resp = await fetch(BASE44_FN_URL, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
         });
-
         if (resp.ok) {
-          const payload = await resp.json().catch(() => ({}));
-          let raw: any[] = [];
-          if (payload?.jsonData) {
-            try { raw = JSON.parse(payload.jsonData); } catch { raw = []; }
-          } else if (Array.isArray(payload)) {
-            raw = payload;
-          } else if (Array.isArray(payload?.records)) {
-            raw = payload.records;
-          }
+          const payload = await resp.json().catch(() => ({ data: [] }));
+          const raw: any[] = payload.data ?? [];
           for (const b of raw) {
-            results.push({
-              id: b.id,
-              titre: b.titre,
-              adresse: b.adresse,
-              village: b.village,
-              surface: b.surface,
-              loyer: b.loyer,
-              type_bien: b.type_bien || "Commerce",
-              description: b.description,
-              source: b.source || "Immoweb",
-              url_source: b.url_source,
-              agence: b.agence,
-              statut: b.statut,
-              createdAt: b.created_date,
-            });
+            results.push(b);
           }
+          console.log(`[locaux] ${raw.length} biens chargés depuis Base44`);
         } else {
-          const errText = await resp.text().catch(() => "");
-          console.error("BienCommercial API non-OK:", resp.status, errText.slice(0, 200));
+          console.error("[locaux] getBiensCommerciaux HTTP", resp.status);
         }
       } catch (e) {
-        console.error("BienCommercial API error:", e);
+        console.error("[locaux] getBiensCommerciaux fetch error:", e);
       }
 
       // 2. Lire les annonces soumises via formulaire (table local_requests publiées)
