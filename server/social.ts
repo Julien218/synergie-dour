@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 export const socialRouter = express.Router();
 
 // ─── Middleware auth admin ────────────────────────────────────────────────────
-async function requireAdmin(
+async async function requireAdmin(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
