@@ -1,3 +1,4 @@
+import React from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,10 @@ export default function ManageMerchants() {
   const [formData, setFormData] = useState(emptyForm());
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [googleUrl, setGoogleUrl]   = React.useState("");
+  const [isScraping, setIsScraping] = React.useState(false);
+  const [scrapeMsg, setScrapeMsg]   = React.useState<{ type: "ok" | "err"; text: string } | null>(null);
+
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
 
   const createMutation = trpc.merchants.create.useMutation({
@@ -67,10 +72,52 @@ export default function ManageMerchants() {
     },
   });
 
+  const handleGoogleScrape = async () => {
+    if (!googleUrl.trim()) {
+      setScrapeMsg({ type: "err", text: "Collez d\'abord l\'URL Google Business" });
+      return;
+    }
+    setIsScraping(true);
+    setScrapeMsg(null);
+    try {
+      const resp = await fetch("/api/social/google-scrape", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: googleUrl.trim() }),
+      });
+      const result = await resp.json() as any;
+      if (!resp.ok) {
+        setScrapeMsg({ type: "err", text: result.message || "Extraction impossible" });
+        return;
+      }
+      const d = result.data || {};
+      setFormData((prev: any) => ({
+        ...prev,
+        businessName:     d.businessName    || prev.businessName,
+        address:          d.address         || prev.address,
+        phone:            d.phone           || prev.phone,
+        email:            d.email           || prev.email,
+        website:          d.website         || prev.website,
+        businessCategory: d.category        || prev.businessCategory,
+        description:      d.description     || prev.description,
+        googleBusinessUrl: googleUrl.trim(),
+      }));
+      const filled = Object.values(d).filter(Boolean).length;
+      setScrapeMsg({ type: "ok", text: `${filled} champ(s) rempli(s) automatiquement` });
+    } catch (err: any) {
+      setScrapeMsg({ type: "err", text: err.message || "Erreur r\u00e9seau" });
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData(emptyForm());
     setIsCreating(false);
     setEditingId(null);
+    setGoogleUrl("");
+    setScrapeMsg(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
