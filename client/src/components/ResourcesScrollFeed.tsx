@@ -1,92 +1,109 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { RESOURCES } from "@/data/resources";
-import { BookOpen, ArrowRight } from "lucide-react";
 
-const CARD_HEIGHT = 110; // px par carte
-const GAP = 12;
-const SPEED = 0.5; // px/frame
-const VISIBLE_CARDS = 5;
-
-const CATEGORY_COLORS: Record<string, string> = {
-  starter:       "bg-blue-50 border-blue-200 text-blue-800",
-  gestion:       "bg-amber-50 border-amber-200 text-amber-800",
-  developpement: "bg-green-50 border-green-200 text-green-800",
-  difficulte:    "bg-red-50 border-red-200 text-red-800",
+// Couleurs de fond par catégorie — style carte flottante
+const CARD_BG: Record<string, string> = {
+  starter:       "from-[#001a3d] to-[#003d99]",
+  gestion:       "from-[#7a3f00] to-[#D4AF37]",
+  developpement: "from-[#014421] to-[#1a7a3f]",
+  difficulte:    "from-[#6b0000] to-[#c0392b]",
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
+const CARD_BADGE: Record<string, string> = {
+  starter:       "bg-blue-400/20 text-blue-200 border-blue-400/30",
+  gestion:       "bg-amber-400/20 text-amber-100 border-amber-400/30",
+  developpement: "bg-green-400/20 text-green-100 border-green-400/30",
+  difficulte:    "bg-red-400/20 text-red-100 border-red-400/30",
+};
+
+const CAT_LABEL: Record<string, string> = {
   starter:       "Je me lance",
   gestion:       "Je gère",
   developpement: "Je développe",
   difficulte:    "Difficulté",
 };
 
+const CARD_H   = 140;  // hauteur de chaque carte (px)
+const CARD_GAP = 14;   // espace entre cartes (px)
+const SPEED    = 0.55; // vitesse défilement px/frame
+const CARDS_VISIBLE = 5;
+
 export function ResourcesScrollFeed() {
   const [, setLocation] = useLocation();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const offsetRef    = useRef(0);
-  const rafRef       = useRef<number>(0);
-  const [paused, setPaused] = useState(false);
+  const wrapRef  = useRef<HTMLDivElement>(null);
+  const offsetRef = useRef(0);
+  const rafRef   = useRef<number>(0);
+  const [hovered, setHovered] = useState(false);
 
-  // Tripler les ressources pour un défilement infini fluide
+  // On triple pour le défilement infini
   const items = [...RESOURCES, ...RESOURCES, ...RESOURCES];
-  const totalH = RESOURCES.length * (CARD_HEIGHT + GAP);
+  const loopH = RESOURCES.length * (CARD_H + CARD_GAP);
 
   useEffect(() => {
-    const el = containerRef.current;
+    const el = wrapRef.current;
     if (!el) return;
-
     function tick() {
-      if (!paused) {
+      if (!hovered) {
         offsetRef.current += SPEED;
-        if (offsetRef.current >= totalH) offsetRef.current -= totalH;
+        if (offsetRef.current >= loopH) offsetRef.current -= loopH;
         if (el) el.style.transform = `translateY(-${offsetRef.current}px)`;
       }
       rafRef.current = requestAnimationFrame(tick);
     }
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [paused, totalH]);
+  }, [hovered, loopH]);
+
+  const windowH = CARDS_VISIBLE * (CARD_H + CARD_GAP) - CARD_GAP;
 
   return (
     <div
-      className="fixed left-0 top-1/2 -translate-y-1/2 z-30 w-[210px] hidden xl:flex flex-col"
-      style={{ pointerEvents: "auto" }}
+      className="fixed left-3 top-1/2 -translate-y-1/2 z-30 hidden xl:block"
+      style={{ width: 200 }}
     >
-      {/* Header */}
-      <div className="bg-[#001a3d] text-white px-3 py-2 rounded-tr-xl flex items-center gap-2 shadow-lg">
-        <BookOpen className="w-4 h-4 text-[#D4AF37] flex-shrink-0" />
-        <span className="text-xs font-semibold tracking-wide uppercase">Ressources</span>
-      </div>
-
-      {/* Fenêtre de défilement */}
+      {/* Fenêtre de défilement — masque le débordement */}
       <div
-        className="overflow-hidden shadow-xl rounded-br-xl border-r border-b border-[#001a3d]/10"
-        style={{ height: VISIBLE_CARDS * (CARD_HEIGHT + GAP) - GAP, background: "rgba(255,255,255,0.97)" }}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
+        style={{ height: windowH, overflow: "hidden" }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        <div ref={containerRef} style={{ willChange: "transform" }}>
+        <div ref={wrapRef} style={{ willChange: "transform" }}>
           {items.map((res, i) => {
-            const colorClass = CATEGORY_COLORS[res.category] || "bg-gray-50 border-gray-200 text-gray-700";
-            const catLabel   = CATEGORY_LABELS[res.category] || res.category;
+            const bg    = CARD_BG[res.category]   || "from-[#001a3d] to-[#002966]";
+            const badge = CARD_BADGE[res.category] || "bg-white/10 text-white/80 border-white/20";
+            const cat   = CAT_LABEL[res.category]  || res.category;
+
             return (
               <div
                 key={`${res.slug}-${i}`}
                 onClick={() => setLocation(`/resources/${res.slug}`)}
-                className={`cursor-pointer mx-2 mt-0 mb-0 border rounded-lg px-3 py-2.5 hover:shadow-md transition-shadow group ${colorClass}`}
-                style={{ height: CARD_HEIGHT, marginBottom: GAP, display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+                className={`cursor-pointer rounded-2xl bg-gradient-to-br ${bg} shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 overflow-hidden border border-white/10`}
+                style={{
+                  height: CARD_H,
+                  marginBottom: CARD_GAP,
+                  padding: "12px 14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
               >
-                <div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider opacity-70">{catLabel}</span>
-                  <p className="text-xs font-bold text-[#001a3d] leading-tight mt-0.5 line-clamp-2 group-hover:text-[#003d99]">
-                    {res.title}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-[10px] text-gray-500 line-clamp-1">{res.summary?.slice(0, 55)}…</p>
-                  <ArrowRight className="w-3 h-3 text-[#D4AF37] flex-shrink-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                {/* Badge catégorie */}
+                <span
+                  className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border w-fit ${badge}`}
+                >
+                  {cat}
+                </span>
+
+                {/* Titre */}
+                <p className="text-white font-bold text-[11px] leading-tight line-clamp-3 mt-1">
+                  {res.title}
+                </p>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between mt-auto">
+                  <span className="text-white/50 text-[9px]">Synergie Dour</span>
+                  <span className="text-[#D4AF37] text-[11px] font-bold">→</span>
                 </div>
               </div>
             );
@@ -94,12 +111,12 @@ export function ResourcesScrollFeed() {
         </div>
       </div>
 
-      {/* Footer lien */}
+      {/* Lien tout voir */}
       <button
         onClick={() => setLocation("/resources")}
-        className="bg-[#D4AF37] text-[#001a3d] text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-br-xl hover:bg-[#c49c2a] transition-colors text-left"
+        className="mt-2 w-full text-center text-[10px] font-bold uppercase tracking-widest text-[#D4AF37] bg-[#001a3d] hover:bg-[#002966] transition-colors rounded-xl py-2 shadow-md border border-[#D4AF37]/20"
       >
-        Toutes les fiches →
+        Toutes les fiches ›
       </button>
     </div>
   );
