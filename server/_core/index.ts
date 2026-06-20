@@ -179,6 +179,27 @@ async function startServer() {
     await setupVite(app, server);
   } else {
     app.use("/api/social", socialRouter);
+
+  // ─── Backup automatique quotidien à 2h00 ─────────────────────────────────
+  (async () => {
+    const { runDatabaseBackup } = await import("../cron/backup");
+    function scheduleDaily(hour: number, minute: number, fn: () => Promise<any>) {
+      function msUntilNext(h: number, m: number): number {
+        const now = new Date();
+        const next = new Date();
+        next.setHours(h, m, 0, 0);
+        if (next <= now) next.setDate(next.getDate() + 1);
+        return next.getTime() - now.getTime();
+      }
+      function tick() {
+        fn().catch(e => console.error("[BACKUP CRON]", e));
+        setTimeout(tick, 24 * 60 * 60 * 1000);
+      }
+      setTimeout(tick, msUntilNext(hour, minute));
+      console.log(`[BACKUP CRON] Planifié chaque jour à ${hour}h${String(minute).padStart(2,"0")}`);
+    }
+    scheduleDaily(2, 0, runDatabaseBackup);
+  })();
   serveStatic(app);
   }
 
