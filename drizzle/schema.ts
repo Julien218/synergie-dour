@@ -304,3 +304,26 @@ export const localRequests = mysqlTable("local_requests", {
 
 export type LocalRequest = typeof localRequests.$inferSelect;
 export type InsertLocalRequest = typeof localRequests.$inferInsert;
+
+// =============================================================================
+//  SOCIAL POSTS (planification réseaux sociaux)
+// =============================================================================
+
+export const socialPosts = mysqlTable("social_posts", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  image_url: text("image_url"),
+  platforms: varchar("platforms", { length: 255 }).notNull().default("facebook"),
+  scheduled_at: varchar("scheduled_at", { length: 50 }),
+  status: mysqlEnum("status", ["draft", "scheduled", "published", "error"]).notNull().default("draft"),
+  post_type: varchar("post_type", { length: 100 }).notNull().default("actualite"),
+  created_by: varchar("created_by", { length: 100 }),
+  published_at: timestamp("published_at"),
+  error_message: text("error_message"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SocialPost = typeof socialPosts.$inferSelect;
+export type InsertSocialPost = typeof socialPosts.$inferInsert;
