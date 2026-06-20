@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { RESOURCES } from "@/data/resources";
 import {
   Rocket, Building2, Calculator, FileText, Megaphone,
-  TrendingUp, ShieldAlert, BookOpen, Banknote, Briefcase
+  TrendingUp, ShieldAlert, BookOpen, Landmark, Briefcase
 } from "lucide-react";
 
 // Icône par slug ou catégorie
@@ -14,27 +14,34 @@ const ICON_MAP: Record<string, React.ElementType> = {
   "tva-independant":               FileText,
   "marketing-local":               Megaphone,
   "reforme-fiscale":               TrendingUp,
-  "difficulte":                    ShieldAlert,
   starter:                         Rocket,
   gestion:                         Calculator,
   developpement:                   Megaphone,
+  difficulte:                      ShieldAlert,
 };
 
 function getIcon(res: { slug: string; category: string }): React.ElementType {
-  if (ICON_MAP[res.slug]) return ICON_MAP[res.slug];
-  return ICON_MAP[res.category] || BookOpen;
+  return ICON_MAP[res.slug] || ICON_MAP[res.category] || BookOpen;
 }
 
-// Badge catégorie
+// Badges — couleurs site officiel Navy/Steel, accent or discret
 const BADGE: Record<string, { label: string; bg: string; text: string }> = {
-  starter:       { label: "JE ME LANCE",   bg: "#7c4a00", text: "#f5c842" },
-  gestion:       { label: "JE GÈRE",       bg: "#1a3a7c", text: "#a8c4ff" },
-  developpement: { label: "JE DÉVELOPPE",  bg: "#3a1a7c", text: "#c8a4ff" },
-  difficulte:    { label: "DIFFICULTÉ",    bg: "#7c1a1a", text: "#ffaaaa" },
+  starter:       { label: "JE ME LANCE",  bg: "rgba(0,61,153,0.6)",  text: "#a8c4ff" },
+  gestion:       { label: "JE GÈRE",      bg: "rgba(0,26,61,0.8)",   text: "#8ab4e8" },
+  developpement: { label: "JE DÉVELOPPE", bg: "rgba(0,40,100,0.7)",  text: "#b0ccf5" },
+  difficulte:    { label: "DIFFICULTÉ",   bg: "rgba(80,0,0,0.6)",    text: "#ffaaaa" },
 };
 
-const CARD_H   = 158;
-const CARD_GAP = 16;
+// Couleur icône cercle par catégorie — navy/steel principalement, or en accent discret
+const ICON_RING: Record<string, { bg: string; shadow: string; color: string }> = {
+  starter:       { bg: "linear-gradient(135deg, #003d99 0%, #001a3d 100%)", shadow: "0 0 10px rgba(0,61,153,0.7)", color: "#D4AF37" },
+  gestion:       { bg: "linear-gradient(135deg, #001a3d 0%, #003060 100%)", shadow: "0 0 10px rgba(0,26,61,0.8)",  color: "#8ab4e8" },
+  developpement: { bg: "linear-gradient(135deg, #002266 0%, #003d99 100%)", shadow: "0 0 10px rgba(0,34,102,0.7)", color: "#D4AF37" },
+  difficulte:    { bg: "linear-gradient(135deg, #5a0000 0%, #990000 100%)", shadow: "0 0 10px rgba(153,0,0,0.5)",  color: "#ffaaaa" },
+};
+
+const CARD_H   = 155;
+const CARD_GAP = 14;
 const SPEED    = 0.45;
 const N_CARDS  = 5;
 
@@ -67,9 +74,8 @@ export function ResourcesScrollFeed() {
   return (
     <div
       className="fixed left-3 top-1/2 -translate-y-1/2 z-30 hidden xl:block"
-      style={{ width: 230 }}
+      style={{ width: 228 }}
     >
-      {/* Fenêtre de défilement */}
       <div
         style={{ height: windowH, overflow: "hidden" }}
         onMouseEnter={() => setPaused(true)}
@@ -77,7 +83,8 @@ export function ResourcesScrollFeed() {
       >
         <div ref={wrapRef} style={{ willChange: "transform" }}>
           {items.map((res, i) => {
-            const badge = BADGE[res.category] || { label: res.category.toUpperCase(), bg: "#001a3d", text: "#D4AF37" };
+            const badge = BADGE[res.category] || { label: res.category.toUpperCase(), bg: "rgba(0,26,61,0.8)", text: "#8ab4e8" };
+            const ring  = ICON_RING[res.category] || ICON_RING.gestion;
             const Icon  = getIcon(res);
 
             return (
@@ -88,53 +95,56 @@ export function ResourcesScrollFeed() {
                 style={{
                   height: CARD_H,
                   marginBottom: CARD_GAP,
-                  borderRadius: 16,
-                  background: "linear-gradient(135deg, #001533 0%, #002266 60%, #001a3d 100%)",
-                  border: "1.5px solid rgba(212,175,55,0.35)",
-                  boxShadow: "0 4px 24px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(212,175,55,0.15), inset 0 1px 0 rgba(212,175,55,0.1)",
-                  padding: "14px 14px 12px 14px",
+                  borderRadius: 14,
+                  // Fond principal : dégradé navy officiel
+                  background: "linear-gradient(145deg, #001533 0%, #002060 55%, #001a3d 100%)",
+                  border: "1px solid rgba(168,196,255,0.2)",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(168,196,255,0.08)",
+                  padding: "13px 13px 11px 13px",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
-                  transition: "box-shadow 0.2s, transform 0.2s",
+                  transition: "box-shadow 0.2s, transform 0.15s",
                 }}
                 onMouseEnter={e => {
                   (e.currentTarget as HTMLElement).style.boxShadow =
-                    "0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(212,175,55,0.25), inset 0 1px 0 rgba(212,175,55,0.2)";
+                    "0 8px 28px rgba(0,0,0,0.65), 0 0 16px rgba(0,61,153,0.3), inset 0 1px 0 rgba(168,196,255,0.15)";
                   (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
                 }}
                 onMouseLeave={e => {
                   (e.currentTarget as HTMLElement).style.boxShadow =
-                    "0 4px 24px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(212,175,55,0.15), inset 0 1px 0 rgba(212,175,55,0.1)";
+                    "0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(168,196,255,0.08)";
                   (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
                 }}
               >
-                {/* Lueur décorative bleue en fond */}
+                {/* Lueur bleue décorative background */}
                 <div style={{
-                  position: "absolute", right: -20, top: -20,
-                  width: 80, height: 80, borderRadius: "50%",
-                  background: "radial-gradient(circle, rgba(30,80,200,0.3) 0%, transparent 70%)",
+                  position: "absolute", right: -15, top: -15,
+                  width: 70, height: 70, borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(0,61,153,0.25) 0%, transparent 70%)",
                   pointerEvents: "none",
                 }} />
 
                 {/* Header : icône + badge */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  {/* Cercle icône doré lumineux */}
+                <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                  {/* Cercle icône — navy/steel, couleur du site */}
                   <div style={{
-                    width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                    background: "radial-gradient(circle at 40% 35%, #f5c842 0%, #D4AF37 40%, #a07800 100%)",
-                    boxShadow: "0 0 12px rgba(212,175,55,0.6), 0 0 4px rgba(212,175,55,0.4)",
+                    width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                    background: ring.bg,
+                    boxShadow: ring.shadow,
                     display: "flex", alignItems: "center", justifyContent: "center",
+                    border: "1px solid rgba(168,196,255,0.25)",
                   }}>
-                    <Icon size={18} color="#001a3d" strokeWidth={2.2} />
+                    <Icon size={17} color={ring.color} strokeWidth={2} />
                   </div>
 
                   {/* Badge catégorie */}
                   <span style={{
-                    fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
+                    fontSize: 8.5, fontWeight: 700, letterSpacing: "0.07em",
                     padding: "3px 8px", borderRadius: 20,
                     background: badge.bg, color: badge.text,
-                    whiteSpace: "nowrap", flexShrink: 0,
+                    border: "1px solid rgba(168,196,255,0.15)",
+                    whiteSpace: "nowrap",
                   }}>
                     {badge.label}
                   </span>
@@ -142,22 +152,25 @@ export function ResourcesScrollFeed() {
 
                 {/* Titre */}
                 <p style={{
-                  color: "#ffffff", fontWeight: 700, fontSize: 13,
-                  lineHeight: 1.35, marginTop: 8,
-                  display: "-webkit-box", WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical", overflow: "hidden",
+                  color: "#f0f4ff",
+                  fontWeight: 700,
+                  fontSize: 12.5,
+                  lineHeight: 1.35,
+                  marginTop: 8,
+                  display: "-webkit-box",
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
                 }}>
                   {res.title}
                 </p>
 
-                {/* Footer */}
+                {/* Footer — "Synergie Dour" steel blue + flèche accent or */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
-                  <span style={{ color: "#D4AF37", fontSize: 10, fontWeight: 500 }}>
+                  <span style={{ color: "#8ab4e8", fontSize: 9.5, fontWeight: 500, letterSpacing: "0.02em" }}>
                     Synergie Dour
                   </span>
-                  <span style={{
-                    color: "#D4AF37", fontSize: 16, fontWeight: 700, lineHeight: 1,
-                  }}>
+                  <span style={{ color: "#D4AF37", fontSize: 14, fontWeight: 700, lineHeight: 1 }}>
                     →
                   </span>
                 </div>
@@ -167,17 +180,17 @@ export function ResourcesScrollFeed() {
         </div>
       </div>
 
-      {/* Bouton tout voir */}
+      {/* Bouton tout voir — couleurs officielles */}
       <button
         onClick={() => setLocation("/resources")}
         style={{
           marginTop: 10, width: "100%",
-          background: "linear-gradient(135deg, #001a3d 0%, #002266 100%)",
-          border: "1px solid rgba(212,175,55,0.4)",
-          borderRadius: 12, padding: "8px 0",
-          color: "#D4AF37", fontSize: 10, fontWeight: 700,
-          letterSpacing: "0.1em", textTransform: "uppercase",
-          cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          background: "linear-gradient(135deg, #001a3d 0%, #003d99 100%)",
+          border: "1px solid rgba(168,196,255,0.25)",
+          borderRadius: 10, padding: "7px 0",
+          color: "#a8c4ff", fontSize: 9.5, fontWeight: 700,
+          letterSpacing: "0.08em", textTransform: "uppercase",
+          cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
         }}
       >
         Toutes les fiches ›
