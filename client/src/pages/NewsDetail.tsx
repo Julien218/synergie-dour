@@ -251,12 +251,17 @@ export default function NewsDetail() {
 
             {article.content && (
               <div
-                className="prose prose-lg max-w-none text-gray-700 leading-relaxed
-                  prose-headings:text-[#001a3d] prose-headings:font-bold
-                  prose-a:text-[#003d99] prose-a:no-underline hover:prose-a:underline
-                  prose-strong:text-[#001a3d]
+                className="prose prose-lg max-w-none leading-relaxed
+                  prose-headings:font-bold
                   prose-ul:list-disc prose-ul:pl-6
                   prose-li:mb-1"
+                style={{
+                  color: "#e8edf5",
+                  "--tw-prose-headings": "#ffffff",
+                  "--tw-prose-bold": "#ffffff",
+                  "--tw-prose-links": "#E8C547",
+                  "--tw-prose-bullets": "#E8C547",
+                } as React.CSSProperties}
                 dangerouslySetInnerHTML={{ __html: article.content }}
               />
             )}
