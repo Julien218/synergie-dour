@@ -259,23 +259,23 @@ socialRouter.post("/schedule", requireAdmin, async (req, res) => {
     const user = (req as any).user;
 
     // Créer la table si elle n'existe pas encore (auto-migration)
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS social_posts (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        title VARCHAR(255) NOT NULL DEFAULT '',
-        content TEXT NOT NULL,
-        image_url TEXT,
-        platforms VARCHAR(255) NOT NULL DEFAULT 'facebook',
-        scheduled_at VARCHAR(50),
-        status ENUM('draft','scheduled','published','error') NOT NULL DEFAULT 'draft',
-        post_type VARCHAR(100) NOT NULL DEFAULT 'actualite',
-        created_by VARCHAR(100),
-        published_at TIMESTAMP NULL,
-        error_message TEXT,
-        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    `);
+    await db.execute(
+      "CREATE TABLE IF NOT EXISTS social_posts (" +
+      "id INT AUTO_INCREMENT PRIMARY KEY," +
+      "title VARCHAR(255) NOT NULL DEFAULT ''," +
+      "content TEXT NOT NULL," +
+      "image_url TEXT," +
+      "platforms VARCHAR(255) NOT NULL DEFAULT 'facebook'," +
+      "scheduled_at VARCHAR(50)," +
+      "status ENUM('draft','scheduled','published','error') NOT NULL DEFAULT 'draft'," +
+      "post_type VARCHAR(100) NOT NULL DEFAULT 'actualite'," +
+      "created_by VARCHAR(100)," +
+      "published_at TIMESTAMP NULL," +
+      "error_message TEXT," +
+      "createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+      "updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+      ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
 
     await db.execute(
       \`INSERT INTO social_posts (title, content, image_url, platforms, scheduled_at, status, post_type, created_by)
