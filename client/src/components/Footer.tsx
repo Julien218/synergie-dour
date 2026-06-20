@@ -61,7 +61,7 @@ export function Footer() {
                 </button>
               </li>
               <li>
-                <button onClick={() => setLocation("/knowledge")} className="text-blue-100 hover:text-[#D4AF37] transition-colors">
+                <button onClick={() => setLocation("/resources")} className="text-blue-100 hover:text-[#D4AF37] transition-colors">
                   Base de connaissances
                 </button>
               </li>
