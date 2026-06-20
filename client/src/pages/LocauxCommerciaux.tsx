@@ -1,15 +1,158 @@
 import { trpc } from "@/lib/trpc";
 import { PublicLayout } from "@/components/PublicLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Maximize2, Euro, Phone, Mail, ArrowRight, Building2, Plus } from "lucide-react";
+import { MapPin, Maximize2, ExternalLink, Building2, Plus, Mail } from "lucide-react";
 import { Link } from "wouter";
+import { useState } from "react";
+
+// Génère l'URL de preview via microlink.io (gratuit, sans clé API)
+function getPreviewUrl(sourceUrl: string | null | undefined): string | null {
+  if (!sourceUrl || sourceUrl.includes("immoweb.be/a/fr-BE/123")) return null;
+  try {
+    const encoded = encodeURIComponent(sourceUrl);
+    return `https://api.microlink.io/screenshot?url=${encoded}&embed=screenshot.url&type=png&viewport.width=800&viewport.height=500`;
+  } catch {
+    return null;
+  }
+}
+
+// Thumbnail fallback par type de source
+function SourceBadge({ source, url }: { source?: string; url?: string }) {
+  const isImmoweb = source?.toLowerCase().includes("immoweb") || url?.includes("immoweb");
+  const isLogissim = source?.toLowerCase().includes("logissim") || url?.includes("logissim");
+  if (isImmoweb) return (
+    <span className="text-[10px] font-bold uppercase tracking-wide bg-[#FF6B35]/15 text-[#FF6B35] border border-[#FF6B35]/30 px-2 py-0.5 rounded-full">
+      Immoweb
+    </span>
+  );
+  if (isLogissim) return (
+    <span className="text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded-full">
+      Logissim
+    </span>
+  );
+  return (
+    <span className="text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full">
+      {source || "Annonce"}
+    </span>
+  );
+}
+
+function LocalCard({ local }: { local: any }) {
+  const [imgError, setImgError] = useState(false);
+  const previewUrl = getPreviewUrl(local.url_source);
+  const hasValidUrl = local.url_source && !local.url_source.includes("immoweb.be/a/fr-BE/123");
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-md hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden flex flex-col">
+
+      {/* Zone image / aperçu du lien */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#001a3d] to-[#003d99]" style={{ height: 160 }}>
+        {previewUrl && !imgError ? (
+          <img
+            src={previewUrl}
+            alt={local.titre}
+            className="w-full h-full object-cover object-top"
+            onError={() => setImgError(true)}
+            loading="lazy"
+          />
+        ) : (
+          /* Fallback visuel élégant aux couleurs du site */
+          <div className="w-full h-full flex flex-col items-center justify-center relative">
+            <Building2 className="w-12 h-12 text-white/20 mb-2" />
+            <span className="text-white/40 text-xs text-center px-4">{local.adresse || local.village || "Local commercial"}</span>
+            {/* Lueur décorative */}
+            <div style={{
+              position: "absolute", right: -20, bottom: -20,
+              width: 100, height: 100, borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(232,197,71,0.15) 0%, transparent 70%)",
+            }} />
+          </div>
+        )}
+
+        {/* Overlay loyer en haut à droite */}
+        {local.loyer && (
+          <div className="absolute top-3 right-3 bg-[#001a3d]/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg shadow-lg">
+            <span className="font-bold text-sm">{local.loyer}</span>
+          </div>
+        )}
+
+        {/* Badge type bien en bas à gauche */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-2">
+          <span className="bg-white/15 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-md border border-white/20">
+            {local.type_bien || "Commerce"}
+          </span>
+        </div>
+      </div>
+
+      {/* Contenu */}
+      <div className="p-4 flex flex-col flex-1 gap-3">
+
+        {/* Source + surface */}
+        <div className="flex items-center justify-between">
+          <SourceBadge source={local.source} url={local.url_source} />
+          {local.surface && (
+            <span className="text-xs text-gray-500 flex items-center gap-1">
+              <Maximize2 className="w-3 h-3" />
+              {local.surface} m²
+            </span>
+          )}
+        </div>
+
+        {/* Titre */}
+        <h3 className="font-bold text-[#001a3d] text-sm leading-tight line-clamp-2" style={{ fontFamily: "Montserrat, sans-serif" }}>
+          {local.titre}
+        </h3>
+
+        {/* Adresse */}
+        {(local.adresse || local.village) && (
+          <div className="flex items-start gap-1.5 text-xs text-gray-500">
+            <MapPin className="w-3.5 h-3.5 text-[#003d99] flex-shrink-0 mt-0.5" />
+            <span className="line-clamp-1">{local.adresse || local.village}</span>
+          </div>
+        )}
+
+        {/* Description */}
+        {local.description && !local.description.startsWith("Source:") && (
+          <p className="text-xs text-gray-400 line-clamp-2">{local.description}</p>
+        )}
+
+        {/* Agence */}
+        {local.agence && (
+          <p className="text-[10px] text-gray-400 italic">Via {local.agence}</p>
+        )}
+
+        {/* Boutons — en bas */}
+        <div className="mt-auto pt-2 border-t border-gray-50 flex gap-2">
+          {hasValidUrl ? (
+            <a
+              href={local.url_source}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1"
+            >
+              <Button size="sm" className="w-full bg-[#001a3d] hover:bg-[#003d99] text-white text-xs font-semibold transition-colors">
+                <ExternalLink className="w-3 h-3 mr-1.5" />
+                Voir l'annonce
+              </Button>
+            </a>
+          ) : (
+            <Link href="/contact" className="flex-1">
+              <Button size="sm" variant="outline" className="w-full border-[#003d99] text-[#003d99] hover:bg-[#003d99] hover:text-white text-xs transition-colors">
+                <Mail className="w-3 h-3 mr-1.5" />
+                Demander infos
+              </Button>
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function LocauxCommerciaux() {
   const { data: locaux = [], isLoading } = trpc.locaux.listPublished.useQuery();
 
-  // Filtrer les doublons par titre+loyer
   const seen = new Set<string>();
   const locauxUniques = locaux.filter((l: any) => {
     const key = `${l.titre}-${l.loyer}-${l.surface}`;
@@ -24,7 +167,7 @@ export default function LocauxCommerciaux() {
       <div className="bg-gradient-to-br from-[#001a3d] to-[#003d99] text-white py-16 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-2 text-sm font-medium mb-6">
-            <Building2 className="w-4 h-4 text-[#D4AF37]" />
+            <Building2 className="w-4 h-4 text-[#E8C547]" />
             <span>Locaux commerciaux à louer</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>
@@ -34,7 +177,7 @@ export default function LocauxCommerciaux() {
             Découvrez les espaces disponibles sur l'entité de Dour — commerces, surfaces professionnelles et espaces polyvalents.
           </p>
           <Link href="/louer-mon-local">
-            <Button className="bg-[#D4AF37] hover:bg-[#b8972e] text-[#001a3d] font-bold px-6 py-3 rounded-lg">
+            <Button className="bg-[#E8C547] hover:bg-[#d4af37] text-[#001a3d] font-bold px-6 py-3 rounded-lg">
               <Plus className="w-4 h-4 mr-2" />
               Déposer une annonce
             </Button>
@@ -42,14 +185,12 @@ export default function LocauxCommerciaux() {
         </div>
       </div>
 
-      {/* Contenu */}
       <div className="max-w-6xl mx-auto px-4 py-12">
-
-        {/* Statistiques */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {[
             { label: "Annonces actives", value: locauxUniques.length },
-            { label: "Communes", value: [...new Set(locauxUniques.map((l: any) => l.village))].length },
+            { label: "Communes", value: [...new Set(locauxUniques.map((l: any) => l.village))].filter(Boolean).length },
             { label: "Dour centre", value: locauxUniques.filter((l: any) => l.village?.toLowerCase().includes("dour")).length },
             { label: "Gratuit", value: "Dépôt" },
           ].map((s, i) => (
@@ -60,11 +201,11 @@ export default function LocauxCommerciaux() {
           ))}
         </div>
 
-        {/* Grille annonces */}
+        {/* Grille */}
         {isLoading ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-gray-100 rounded-xl h-64 animate-pulse" />
+              <div key={i} className="bg-gray-100 rounded-2xl h-72 animate-pulse" />
             ))}
           </div>
         ) : locauxUniques.length === 0 ? (
@@ -76,78 +217,14 @@ export default function LocauxCommerciaux() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {locauxUniques.map((local: any) => (
-              <Card key={local.id} className="border border-gray-100 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 rounded-xl overflow-hidden">
-                {/* Header coloré */}
-                <div className="bg-gradient-to-r from-[#001a3d] to-[#003d99] p-4">
-                  <div className="flex justify-between items-start gap-2">
-                    <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/30 text-xs font-medium">
-                      {local.type_bien || "Commerce"}
-                    </Badge>
-                    {local.loyer && (
-                      <span className="text-[#D4AF37] font-bold text-lg" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                        {Number(local.loyer).toLocaleString("fr-BE")} €<span className="text-xs font-normal text-blue-200">/mois</span>
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="text-white font-semibold mt-3 text-base leading-tight" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                    {local.titre}
-                  </h3>
-                </div>
-
-                <CardContent className="p-4 space-y-3">
-                  {/* Adresse */}
-                  <div className="flex items-start gap-2 text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 text-[#003d99] flex-shrink-0 mt-0.5" />
-                    <span>{local.adresse || local.village}</span>
-                  </div>
-
-                  {/* Surface */}
-                  {local.surface && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Maximize2 className="w-4 h-4 text-[#003d99]" />
-                      <span>{local.surface} m²</span>
-                    </div>
-                  )}
-
-                  {/* Description courte */}
-                  {local.description && !local.description.startsWith("Source:") && (
-                    <p className="text-sm text-gray-500 line-clamp-2">{local.description}</p>
-                  )}
-
-                  {/* Source Immoweb */}
-                  {local.description && local.description.includes("immoweb.be") && (
-                    <div className="pt-1">
-                      <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full">Via Immoweb</span>
-                    </div>
-                  )}
-
-                  {/* Date */}
-                  <p className="text-xs text-gray-400">
-                    Ajouté le {new Date(local.createdAt).toLocaleString("fr-BE", {
-                      timeZone: "Europe/Brussels",
-                      day: "2-digit", month: "short", year: "numeric"
-                    })}
-                  </p>
-
-                  {/* CTA */}
-                  <div className="pt-2 border-t border-gray-100">
-                    <Link href="/contact">
-                      <Button variant="outline" size="sm" className="w-full border-[#003d99] text-[#003d99] hover:bg-[#003d99] hover:text-white transition-colors">
-                        <Mail className="w-3 h-3 mr-2" />
-                        Demander infos
-                        <ArrowRight className="w-3 h-3 ml-2" />
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+              <LocalCard key={local.id} local={local} />
             ))}
           </div>
         )}
 
-        {/* CTA bas de page */}
+        {/* CTA bas */}
         <div className="mt-16 bg-gradient-to-br from-[#001a3d] to-[#003d99] rounded-2xl p-8 text-center text-white">
-          <Building2 className="w-10 h-10 text-[#D4AF37] mx-auto mb-4" />
+          <Building2 className="w-10 h-10 text-[#E8C547] mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-3" style={{ fontFamily: "Montserrat, sans-serif" }}>
             Vous avez un local à louer ?
           </h2>
@@ -155,7 +232,7 @@ export default function LocauxCommerciaux() {
             Déposez votre annonce gratuitement sur la plateforme Synergie Dour et touchez directement les commerçants et indépendants de l'entité.
           </p>
           <Link href="/louer-mon-local">
-            <Button className="bg-[#D4AF37] hover:bg-[#b8972e] text-[#001a3d] font-bold px-8 py-3 rounded-lg">
+            <Button className="bg-[#E8C547] hover:bg-[#d4af37] text-[#001a3d] font-bold px-8 py-3 rounded-lg">
               Déposer mon annonce
             </Button>
           </Link>
