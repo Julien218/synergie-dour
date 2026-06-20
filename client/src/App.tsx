@@ -32,6 +32,7 @@ import ManageLocaux from "@/pages/ManageLocaux";
 import LocauxCommerciaux from "@/pages/LocauxCommerciaux";
 import ManagePosts from "@/pages/ManagePosts";
 import SocialMediaPage from "@/pages/SocialMediaPage";
+import SuperAdminBrand from "@/pages/SuperAdminBrand";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -136,7 +137,8 @@ function Router() {
         {() => <ManagePosts />}
       </Route>
       <Route path="/dashboard/social">
-        {() => <SocialMediaPage />}
+        {() => <SocialMediaPage />
+          <Route path="/dashboard/super-admin" component={SuperAdminBrand} />}
       </Route>
       <Route path="/dashboard/members">
         {() => <MemberDashboard />}
