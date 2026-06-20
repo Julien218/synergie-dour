@@ -134,7 +134,9 @@ function Router() {
       </Route>
       <Route path="/dashboard/posts">
         {() => <ManagePosts />}
-          <Route path="/dashboard/social">{() => <SocialMediaPage />}</Route>
+      </Route>
+      <Route path="/dashboard/social">
+        {() => <SocialMediaPage />}
       </Route>
       <Route path="/dashboard/members">
         {() => <MemberDashboard />}
