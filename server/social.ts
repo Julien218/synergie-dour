@@ -235,6 +235,210 @@ socialRouter.post("/publish", requireAdmin, async (req, res) => {
   }
 });
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPER ADMIN — Brand Settings & Image Generation Control
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function requireSuperAdmin(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  function parseCookie(header?: string): Record<string, string> {
+    if (!header) return {};
+    return Object.fromEntries(
+      header.split(";").map(s => {
+        const [k, ...v] = s.trim().split("=");
+        return [k.trim(), decodeURIComponent(v.join("="))];
+      })
+    );
+  }
+  const cookies = parseCookie(req.headers.cookie);
+  const token =
+    cookies["synergie_session"] ||
+    cookies["app_session_id"] ||
+    req.headers.authorization?.replace("Bearer ", "");
+
+  if (!token) return res.status(401).json({ message: "Non authentifié" });
+
+  const dbConn = await getDb();
+  if (!dbConn) return res.status(500).json({ message: "DB indisponible" });
+
+  let user: any = null;
+  const uid = await verifySessionToken(token);
+  if (uid) {
+    const rows = await dbConn.select().from(users).where(eq(users.id, uid)).limit(1);
+    user = rows[0] ?? null;
+  }
+  if (!user) {
+    try {
+      const { jwtVerify } = await import("jose");
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET ?? "");
+      const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+      const openId = payload.openId as string | undefined;
+      if (openId) {
+        const rows = await dbConn.select().from(users).where(eq(users.openId, openId)).limit(1);
+        user = rows[0] ?? null;
+      }
+    } catch { /* invalid */ }
+  }
+
+  if (!user) return res.status(401).json({ message: "Non authentifié" });
+  if (user.role !== "super_admin") {
+    return res.status(403).json({ message: "Réservé au Super Admin" });
+  }
+  (req as any).user = user;
+  next();
+}
+
+// ── Assurer la table brand_settings ──────────────────────────────────────────
+async function ensureBrandTable() {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(`CREATE TABLE IF NOT EXISTS brand_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    key_name VARCHAR(100) NOT NULL UNIQUE,
+    value TEXT,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+
+// ── Assurer la table image_generations ───────────────────────────────────────
+async function ensureGenerationsTable() {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(`CREATE TABLE IF NOT EXISTS image_generations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    user_name VARCHAR(255),
+    user_email VARCHAR(320),
+    template VARCHAR(100),
+    title VARCHAR(255),
+    content TEXT,
+    prompt TEXT,
+    image_url TEXT,
+    format VARCHAR(50) DEFAULT '1080x1080',
+    quality VARCHAR(20) DEFAULT 'high',
+    status ENUM('pending_validation','approved','rejected','archived') NOT NULL DEFAULT 'pending_validation',
+    validation_note TEXT,
+    validated_by VARCHAR(255),
+    logo_present TINYINT(1) DEFAULT 0,
+    signature_present TINYINT(1) DEFAULT 0,
+    brand_compliant TINYINT(1) DEFAULT 0,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+
+// ── GET brand settings ────────────────────────────────────────────────────────
+socialRouter.get("/brand-settings", requireAdmin, async (req, res) => {
+  try {
+    await ensureBrandTable();
+    const db = await getDb();
+    if (!db) return res.status(500).json({ message: "DB indisponible" });
+    const [rows] = await db.execute("SELECT key_name, value FROM brand_settings") as any;
+    const settings: Record<string, string> = {};
+    for (const row of (rows as any[])) {
+      settings[row.key_name] = row.value;
+    }
+    // Valeurs par défaut
+    const defaults: Record<string, string> = {
+      signature: "By JS-Innov.IA",
+      site_url: "www.synergiedour.be",
+      resources_url: "www.synergiedour.be/resources",
+      hashtags: "#SynergieDour #JsInnovIA #CommerceLocal #Dour",
+      color_primary: "#001533",
+      color_secondary: "#1a3ba0",
+      color_accent: "#00aaff",
+      color_premium: "#E8C547",
+      color_text: "#ffffff",
+      default_format: "1080x1080",
+      default_quality: "high",
+      lock_logo: "true",
+      lock_signature: "true",
+      lock_jsi_logo: "true",
+      test_mode: "false",
+      require_validation: "true",
+      logo_url: "",
+      jsi_logo_url: "",
+      system_prompt: "Chaque visuel doit respecter strictement l\'ADN Synergie Dour : fond bleu nuit profond (#001533), dégradés bleu royal (#1a3ba0) et bleu électrique (#00aaff), touches d\'or métallique (#E8C547), texte blanc premium, style professionnel, local, institutionnel, moderne et haut de gamme. Le logo officiel Synergie Dour doit toujours être présent, lisible et non déformé. La signature \'By JS-Innov.IA\' est obligatoire sur chaque visuel. Format : 1080x1080. Qualité : high.",
+    };
+    res.json({ ...defaults, ...settings });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── PUT brand settings (super_admin only) ─────────────────────────────────────
+socialRouter.put("/brand-settings", requireSuperAdmin, async (req, res) => {
+  try {
+    await ensureBrandTable();
+    const db = await getDb();
+    if (!db) return res.status(500).json({ message: "DB indisponible" });
+    const settings = req.body as Record<string, string>;
+    for (const [key, value] of Object.entries(settings)) {
+      await db.execute(
+        "INSERT INTO brand_settings (key_name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?, updated_at = NOW()",
+        [key, value, value]
+      );
+    }
+    res.json({ message: "Paramètres sauvegardés" });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── GET historique générations ────────────────────────────────────────────────
+socialRouter.get("/generations", requireAdmin, async (req, res) => {
+  try {
+    await ensureGenerationsTable();
+    const db = await getDb();
+    if (!db) return res.status(500).json({ message: "DB indisponible" });
+    const user = (req as any).user;
+    let query = "SELECT * FROM image_generations ORDER BY createdAt DESC LIMIT 100";
+    // Admin voit tout, user voit seulement les siens
+    if (user.role === "user") {
+      query = `SELECT * FROM image_generations WHERE user_id = ${user.id} ORDER BY createdAt DESC LIMIT 50`;
+    }
+    const [rows] = await db.execute(query) as any;
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── PATCH validation génération (super_admin) ─────────────────────────────────
+socialRouter.patch("/generations/:id/validate", requireSuperAdmin, async (req, res) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ message: "DB indisponible" });
+    const { id } = req.params;
+    const { status, note } = req.body as { status: string; note?: string };
+    const user = (req as any).user;
+    await db.execute(
+      "UPDATE image_generations SET status = ?, validation_note = ?, validated_by = ?, updatedAt = NOW() WHERE id = ?",
+      [status, note ?? null, user.name ?? user.email, id]
+    );
+    res.json({ message: "Statut mis à jour" });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── DELETE génération (super_admin) ───────────────────────────────────────────
+socialRouter.delete("/generations/:id", requireSuperAdmin, async (req, res) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ message: "DB indisponible" });
+    const { id } = req.params;
+    await db.execute("UPDATE image_generations SET status = 'archived' WHERE id = ?", [id]);
+    res.json({ message: "Génération archivée" });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ─── POST /api/social/schedule ────────────────────────────────────────────────
 // Programme un post (stocké en DB, publié par un cron)
 socialRouter.post("/schedule", requireAdmin, async (req, res) => {
