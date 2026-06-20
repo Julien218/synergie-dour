@@ -581,7 +581,7 @@ ${cleanText}\`
 // SUPER ADMIN — Brand Settings & Image Generation Control
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function requireSuperAdmin(
+async async function requireSuperAdmin(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
@@ -675,7 +675,7 @@ socialRouter.get("/brand-settings", requireAdmin, async (req, res) => {
 });
 
 // ── PUT brand settings (super_admin only) ─────────────────────────────────────
-socialRouter.put("/brand-settings", requireSuperAdmin, async (req, res) => {
+socialRouter.put("/brand-settings", requireAdmin, async (req, res) => {
   try {
     await ensureBrandTable();
     const db = await getDb();
