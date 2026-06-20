@@ -10,11 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import {
-import { SynergieChatbot } from "@/components/SynergieChatbot";
   ImageIcon, Share2, Calendar as CalendarIcon, Facebook,
   Instagram, Linkedin, Clock, Send, Sparkles,
   Eye, Edit3, CheckCircle2, AlertCircle, RefreshCw, Wand2, Download, Shield
 } from "lucide-react";
+import { SynergieChatbot } from "@/components/SynergieChatbot";
 
 // ─── Types ───────────────────────────────────────────────────
 type Platform = "facebook" | "instagram" | "linkedin";
