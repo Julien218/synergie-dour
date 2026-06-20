@@ -137,8 +137,10 @@ function Router() {
         {() => <ManagePosts />}
       </Route>
       <Route path="/dashboard/social">
-        {() => <SocialMediaPage />
-          <Route path="/dashboard/super-admin" component={SuperAdminBrand} />}
+        {() => <SocialMediaPage />}
+      </Route>
+      <Route path="/dashboard/super-admin">
+        {() => <SuperAdminBrand />}
       </Route>
       <Route path="/dashboard/members">
         {() => <MemberDashboard />}
