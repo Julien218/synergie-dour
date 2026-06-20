@@ -5,7 +5,9 @@ export const ENV = {
   superAdminEmail: process.env.SUPER_ADMIN_EMAIL ?? "",
   adminInvites: process.env.ADMIN_INVITES === "true",
   isProduction: process.env.NODE_ENV === "production",
-  // Génération d'image (Base44 Forge)
+  // OpenAI DALL-E 3 — génération d'images
+  openAiKey: process.env.CLE_API_OPENAI ?? "",
+  // Base44 Forge (legacy — non utilisé sur Railway)
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   // Stockage
