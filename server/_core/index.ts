@@ -118,6 +118,13 @@ async function initDatabase() {
 
 async function startServer() {
   await initDatabase();
+  // Seed initial des biens commerciaux (migration Base44 → MySQL, idempotent)
+  try {
+    const { seedBiensCommerciaux } = await import("../seeder/biensCommerciaux");
+    await seedBiensCommerciaux();
+  } catch (e: any) {
+    console.warn("[Seed] seedBiensCommerciaux non disponible:", e.message);
+  }
   const app = express();
   const server = createServer(app);
   
