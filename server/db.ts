@@ -111,13 +111,69 @@ export async function getUserByOpenId(openId: string) {
 
 // ... (Le reste du fichier reste inchangé pour les autres fonctions)
 export async function getMerchants(filter?: { category?: string; search?: string }) {
-  const db = await getDb();
-  if (!db) return [];
-  let query = db.select().from(merchants).where(eq(merchants.status, 'approved'));
-  if (filter?.category) {
-    query = db.select().from(merchants).where(eq(merchants.businessCategory, filter.category));
+  // Lire depuis l'API Base44 (entité Commercant)
+  try {
+    const appId  = process.env.VITE_APP_ID ?? "";
+    const apiKey = process.env.BUILT_IN_FORGE_API_KEY ?? "";
+    const apiUrl = process.env.BUILT_IN_FORGE_API_URL ?? "";
+
+    if (appId && apiKey && apiUrl) {
+      const base = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
+      const entityUrl = `${base}webdevtoken.v1.WebDevService/EntityList`;
+      const resp = await fetch(entityUrl, {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "content-type": "application/json",
+          "connect-protocol-version": "1",
+          "authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ appId, entityName: "Commercant", serviceRole: true }),
+      });
+      if (resp.ok) {
+        const payload = await resp.json().catch(() => ({}));
+        let raw: any[] = [];
+        if (payload?.jsonData) {
+          try { raw = JSON.parse(payload.jsonData); } catch { raw = []; }
+        } else if (Array.isArray(payload)) {
+          raw = payload;
+        } else if (Array.isArray(payload?.records)) {
+          raw = payload.records;
+        }
+        // Mapper vers le format attendu par le frontend
+        let result = raw.map((c: any) => ({
+          id: c.id,
+          businessName: c.nom,
+          businessCategory: c.categorie || (Array.isArray(c.categories) ? c.categories[0] : ""),
+          description: c.notes || "",
+          address: c.adresse || "",
+          phone: c.telephone || "",
+          email: c.email || "",
+          website: c.site_web || "",
+          logo: null,
+          isVerified: true,
+          status: c.statut || "Actif",
+          createdAt: c.created_date,
+        }));
+        if (filter?.category) {
+          result = result.filter((m: any) =>
+            m.businessCategory?.toLowerCase() === filter.category?.toLowerCase()
+          );
+        }
+        if (filter?.search) {
+          const s = filter.search.toLowerCase();
+          result = result.filter((m: any) =>
+            m.businessName?.toLowerCase().includes(s) ||
+            m.description?.toLowerCase().includes(s)
+          );
+        }
+        return result;
+      }
+    }
+  } catch (e) {
+    console.error("getMerchants API error:", e);
   }
-  return await query;
+  return [];
 }
 
 export async function getMerchantById(id: number) {
