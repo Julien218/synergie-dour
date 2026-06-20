@@ -103,7 +103,7 @@ function PostPreview({ template, data, generatedImage }: {
 
 // ─── Page principale ─────────────────────────────────────────
 export default function SocialMediaPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [, navigate] = useLocation();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState("create");
@@ -122,7 +122,21 @@ export default function SocialMediaPage() {
     post_type: "nouveau_membre",
   });
 
-  if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
+// Guard — attendre la fin du chargement
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#001a3d]">
+        <div className="text-white text-sm animate-pulse">Chargement...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    navigate("/login");
+    return null;
+  }
+
+  if (user.role !== "admin" && user.role !== "super_admin") {
     navigate("/dashboard");
     return null;
   }
