@@ -286,6 +286,87 @@ socialRouter.post("/publish", requireAdmin, async (req, res) => {
 });
 
 
+
+// ─── POST /api/social/chat ────────────────────────────────────────────────────
+// Assistant IA Synergie Dour — chat contextuel
+socialRouter.post("/chat", requireAdmin, async (req, res) => {
+  try {
+    const { messages, context } = req.body as {
+      messages: { role: "user" | "assistant"; content: string }[];
+      context?: string;
+    };
+
+    const apiKey = process.env.CLE_API_OPENAI || process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: "Clé OpenAI non configurée" });
+    }
+
+    const systemPrompt = `Tu es l'assistant officiel de SYNERGIE DOUR, une ASBL belge de commerce local basée à Dour (7370), développée par Js-Innov.IA.
+
+TON RÔLE :
+Tu aides les administrateurs à gérer le site web synergiedour.be et toutes les communications de l'association. Tu es expert en :
+- Rédaction d'emails professionnels et de newsletters
+- Création de posts et visuels pour Facebook, Instagram, LinkedIn
+- Rédaction de textes pour le site web (pages, fiches ressources, annonces)
+- Gestion des commerçants membres et du CRM
+- Communication institutionnelle de l'ASBL
+- Marketing local et promotion du commerce de proximité
+- Stratégie de contenu pour une association belge
+
+IDENTITÉ SYNERGIE DOUR :
+- Association de commerçants et citoyens de Dour et environs (Elouges, Wihéries, Douvrain...)
+- Mission : dynamiser le commerce local, soutenir les indépendants, créer du lien entre commerçants et citoyens
+- Ton : professionnel, chaleureux, local, inclusif — jamais formel ou froid
+- Charte graphique : bleu nuit #001533, bleu royal #1a3ba0, or #E8C547
+- Slogan : "Ensemble, faisons rayonner le commerce local"
+- Site : www.synergiedour.be
+- Développé par Js-Innov.IA (www.jsinnovia.com)
+
+RÈGLES :
+- Toujours proposer du contenu prêt à l'emploi (texte complet, pas de conseils vagues)
+- Adapter le ton selon le support (email formel, post Facebook engageant, SMS direct)
+- Pour les emails, inclure une introduction, le corps et une signature professionnelle
+- Pour les posts réseaux sociaux, inclure les hashtags appropriés
+- Répondre en français, style professionnel et direct
+- Si on te demande un visuel, décris le prompt à utiliser pour la génération
+${context ? `
+CONTEXTE ACTUEL : ${context}` : ""}`;
+
+    const payload = {
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages.slice(-20), // max 20 messages d'historique
+      ],
+      max_tokens: 1500,
+      temperature: 0.7,
+    };
+
+    const openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!openaiResp.ok) {
+      const errData = await openaiResp.json() as any;
+      console.error("[social/chat] OpenAI error:", errData);
+      return res.status(500).json({ message: errData?.error?.message || "Erreur OpenAI" });
+    }
+
+    const data = await openaiResp.json() as any;
+    const reply = data.choices?.[0]?.message?.content || "";
+
+    res.json({ reply, tokens: data.usage?.total_tokens });
+  } catch (err: any) {
+    console.error("[social/chat]", err);
+    res.status(500).json({ message: err.message || "Erreur serveur" });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SUPER ADMIN — Brand Settings & Image Generation Control
 // ─────────────────────────────────────────────────────────────────────────────
