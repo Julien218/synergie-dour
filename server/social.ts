@@ -14,10 +14,20 @@ async function requireAdmin(
   res: express.Response,
   next: express.NextFunction
 ) {
-  // Lire les deux cookies : synergie_session (login classique) ET app_session_id (sdk/trpc)
+  // Parser les cookies manuellement (sans dépendre de cookie-parser)
+  function parseCookie(header?: string): Record<string, string> {
+    if (!header) return {};
+    return Object.fromEntries(
+      header.split(";").map(s => {
+        const [k, ...v] = s.trim().split("=");
+        return [k.trim(), decodeURIComponent(v.join("="))];
+      })
+    );
+  }
+  const cookies = parseCookie(req.headers.cookie);
   const token =
-    req.cookies?.["synergie_session"] ||
-    req.cookies?.["app_session_id"] ||
+    cookies["synergie_session"] ||
+    cookies["app_session_id"] ||
     req.headers.authorization?.replace("Bearer ", "");
 
   if (!token) return res.status(401).json({ message: "Non authentifié" });
