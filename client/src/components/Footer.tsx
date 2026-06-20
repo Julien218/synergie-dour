@@ -132,7 +132,7 @@ export function Footer() {
           <p className="text-xs text-blue-200 flex items-center gap-2">
             <span>Plateforme conçue par</span>
             <a
-              href="https://www.jsinnovia.com"
+              href="https://jsinnovia.com/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[#D4AF37] hover:text-[#F0E68C] font-medium inline-flex items-center gap-1 transition-colors"
