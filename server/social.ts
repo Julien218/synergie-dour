@@ -14,8 +14,10 @@ async function requireAdmin(
   res: express.Response,
   next: express.NextFunction
 ) {
+  // Lire les deux cookies possibles : synergie_session (login classique) ET app_session_id (trpc/sdk)
   const token =
     req.cookies?.["synergie_session"] ||
+    req.cookies?.["app_session_id"] ||
     req.headers.authorization?.replace("Bearer ", "");
   const uid = await verifySessionToken(token);
   if (!uid) return res.status(401).json({ message: "Non authentifié" });
