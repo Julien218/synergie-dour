@@ -318,7 +318,7 @@ export default function SuperAdminBrand() {
             style={{ ...inputStyle, minHeight: 200, resize: "vertical", lineHeight: 1.6 }}
             value={settings.system_prompt}
             onChange={e => set("system_prompt")(e.target.value)}
-            placeholder="Chaque visuel doit respecter strictement l'ADN Synergie Dour : fond bleu nuit profond (#001533)..."
+            placeholder="Chaque visuel doit respecter strictement l&apos;ADN Synergie Dour : fond bleu nuit profond (#001533)..."
           />
           <button onClick={() => set("system_prompt")("")}
             style={{ marginTop: 10, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
@@ -465,7 +465,7 @@ export default function SuperAdminBrand() {
 
     users: (
       <div>
-        <h3 style={{ color: "#E8C547", fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Niveaux d'accès</h3>
+        <h3 style={{ color: "#E8C547", fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Niveaux d&apos;accès</h3>
         {[
           { role: "super_admin", color: "#E8C547", label: "Super Admin",
             rights: ["Accès complet à tout", "Modifier logos et charte graphique", "Gérer le prompt système", "Voir et valider toutes les générations", "Supprimer/archiver des visuels", "Exporter PNG/JPG/ZIP", "Gérer les droits utilisateurs"] },
