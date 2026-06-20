@@ -300,25 +300,20 @@ export const appRouter = router({
     listPublished: publicProcedure.query(async () => {
       const results: any[] = [];
 
-      // 1. Lire les BienCommercial via la fonction Base44 déployée
+      // 1. Lire les biens_commerciaux depuis MySQL Railway (source unique)
       try {
-        const BASE44_FN_URL = "https://synergie-dour-assistant-2b4bda38.base44.app/functions/getBiensCommerciaux";
-        const resp = await fetch(BASE44_FN_URL, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (resp.ok) {
-          const payload = await resp.json().catch(() => ({ data: [] }));
-          const raw: any[] = payload.data ?? [];
-          for (const b of raw) {
-            results.push(b);
+        const db = await getDb();
+        if (db) {
+          const [rows] = await db.execute(
+            "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, source, url_source, agence, statut, createdAt FROM biens_commerciaux ORDER BY createdAt DESC"
+          ) as any;
+          for (const b of (rows as any[])) {
+            results.push({ ...b, source: b.source || "Immoweb" });
           }
-          console.log(`[locaux] ${raw.length} biens chargés depuis Base44`);
-        } else {
-          console.error("[locaux] getBiensCommerciaux HTTP", resp.status);
+          console.log(`[locaux] ${(rows as any[]).length} biens chargés depuis MySQL`);
         }
       } catch (e) {
-        console.error("[locaux] getBiensCommerciaux fetch error:", e);
+        console.error("[locaux] biens_commerciaux MySQL error:", e);
       }
 
       // 2. Lire les annonces soumises via formulaire (table local_requests publiées)
