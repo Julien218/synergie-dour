@@ -1,5 +1,5 @@
 /**
- * Image generation — OpenAI DALL-E 3
+ * Image generation — OpenAI gpt-image-1
  * Clé configurée dans Railway sous : CLE_API_OPENAI
  */
 import { storagePut } from "../storage";
@@ -25,7 +25,8 @@ export async function generateImage(
     throw new Error("CLE_API_OPENAI non configurée dans les variables d'environnement Railway");
   }
 
-  // DALL-E 3 — retourne une URL directe (response_format supprimé car non supporté)
+  // gpt-image-1 — nouveau modèle OpenAI (remplace dall-e-3)
+  // Retourne b64_json par défaut
   const response = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: {
@@ -33,7 +34,7 @@ export async function generateImage(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "dall-e-3",
+      model: "gpt-image-1",
       prompt: options.prompt,
       n: 1,
       size: "1024x1024",
@@ -44,7 +45,7 @@ export async function generateImage(
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     throw new Error(
-      `DALL-E 3 erreur (${response.status} ${response.statusText})${detail ? ": " + detail : ""}`
+      `Génération image erreur (${response.status} ${response.statusText})${detail ? ": " + detail : ""}`
     );
   }
 
@@ -52,26 +53,33 @@ export async function generateImage(
     data: Array<{ url?: string; b64_json?: string; revised_prompt?: string }>;
   };
 
-  // DALL-E 3 sans response_format retourne une URL temporaire
-  const imageUrl = result.data?.[0]?.url;
-  if (!imageUrl) {
-    throw new Error("DALL-E 3 : aucune image retournée");
+  // gpt-image-1 retourne b64_json
+  const b64 = result.data?.[0]?.b64_json;
+  const directUrl = result.data?.[0]?.url;
+
+  if (b64) {
+    const buffer = Buffer.from(b64, "base64");
+    try {
+      const { url } = await storagePut(
+        `generated/${Date.now()}.png`,
+        buffer,
+        "image/png"
+      );
+      return { url };
+    } catch {
+      return { url: `data:image/png;base64,${b64}` };
+    }
+  } else if (directUrl) {
+    // Télécharger et stocker
+    try {
+      const imgResponse = await fetch(directUrl);
+      const buffer = Buffer.from(await imgResponse.arrayBuffer());
+      const { url } = await storagePut(`generated/${Date.now()}.png`, buffer, "image/png");
+      return { url };
+    } catch {
+      return { url: directUrl };
+    }
   }
 
-  // Télécharger l'image depuis l'URL temporaire et la stocker
-  try {
-    const imgResponse = await fetch(imageUrl);
-    if (!imgResponse.ok) throw new Error("Impossible de télécharger l'image générée");
-    const buffer = Buffer.from(await imgResponse.arrayBuffer());
-
-    const { url } = await storagePut(
-      `generated/${Date.now()}.png`,
-      buffer,
-      "image/png"
-    );
-    return { url };
-  } catch {
-    // Fallback : retourner l'URL OpenAI directement (expire dans ~1h)
-    return { url: imageUrl };
-  }
+  throw new Error("Aucune image retournée par l'API");
 }
