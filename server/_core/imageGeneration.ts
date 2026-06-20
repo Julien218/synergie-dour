@@ -38,7 +38,7 @@ export async function generateImage(
       prompt: options.prompt,
       n: 1,
       size: "1024x1024",
-      quality: "standard",
+      quality: "high",
     }),
   });
 
