@@ -206,6 +206,83 @@ export default function ManageMerchants() {
             </CardHeader>
             <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="space-y-4">
+
+                {/* ─── BLOC GOOGLE BUSINESS (EN HAUT) ─── */}
+                <div style={{
+                  background: "linear-gradient(135deg, #001533 0%, #0d2260 100%)",
+                  border: "2px solid rgba(232,197,71,0.40)",
+                  borderRadius: 14, padding: "18px 20px", marginBottom: 4,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: "50%",
+                      background: "rgba(232,197,71,0.15)",
+                      border: "1.5px solid rgba(232,197,71,0.50)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <Wand2 size={18} color="#E8C547" />
+                    </div>
+                    <div>
+                      <p style={{ color: "#E8C547", fontWeight: 700, fontSize: 14, margin: 0 }}>
+                        Remplissage automatique via Google Business
+                      </p>
+                      <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 11.5, margin: 0 }}>
+                        Collez l&apos;URL Google Maps/Business pour remplir les champs automatiquement
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <input
+                      type="url"
+                      value={googleUrl}
+                      onChange={e => { setGoogleUrl(e.target.value); setScrapeMsg(null); }}
+                      placeholder="https://maps.google.com/... ou https://g.page/..."
+                      style={{
+                        flex: 1, background: "rgba(255,255,255,0.10)",
+                        border: "1.5px solid rgba(255,255,255,0.20)", borderRadius: 10,
+                        color: "#fff", fontSize: 13, padding: "10px 14px", outline: "none",
+                      }}
+                      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleGoogleScrape(); } }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGoogleScrape}
+                      disabled={isScraping || !googleUrl.trim()}
+                      style={{
+                        padding: "10px 20px", borderRadius: 10,
+                        background: isScraping || !googleUrl.trim() ? "rgba(232,197,71,0.25)" : "#E8C547",
+                        border: "none", cursor: isScraping || !googleUrl.trim() ? "not-allowed" : "pointer",
+                        color: "#001533", fontWeight: 700, fontSize: 13,
+                        display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+                      }}
+                    >
+                      {isScraping
+                        ? <><Loader2 size={15} className="animate-spin" /> Extraction...</>
+                        : <><Wand2 size={15} /> Remplir les champs</>
+                      }
+                    </button>
+                  </div>
+
+                  {scrapeMsg && (
+                    <div style={{
+                      marginTop: 10, padding: "9px 14px", borderRadius: 8, fontSize: 12.5,
+                      background: scrapeMsg.type === "ok"
+                        ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
+                      border: scrapeMsg.type === "ok"
+                        ? "1px solid rgba(34,197,94,0.40)" : "1px solid rgba(239,68,68,0.40)",
+                      color: scrapeMsg.type === "ok" ? "#22c55e" : "#ef4444",
+                      display: "flex", alignItems: "center", gap: 8,
+                    }}>
+                      {scrapeMsg.type === "ok" ? "✓" : "✗"} {scrapeMsg.text}
+                    </div>
+                  )}
+
+                  <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 10.5, marginTop: 10, margin: "10px 0 0" }}>
+                    Comment trouver l&apos;URL : Google Maps → Rechercher le commerce → Partager → Copier le lien
+                  </p>
+                </div>
+
                 {/* Nom + Catégorie */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
