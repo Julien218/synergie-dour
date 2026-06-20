@@ -296,14 +296,50 @@ export const appRouter = router({
     }).mutation(async ({ input }) => {
       return createLocalRequest(input as any);
     }),
-    // Query publique — annonces publiées uniquement
+    // Query publique — annonces publiées (BienCommercial entity + local_requests publiées)
     listPublished: publicProcedure.query(async () => {
-      const db = await getDb();
-      if (!db) return [];
-      const [rows] = await db.execute(
-        "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, createdAt FROM local_requests WHERE status = 'published' ORDER BY createdAt DESC"
-      );
-      return rows as any[];
+      const results: any[] = [];
+
+      // 1. Lire les BienCommercial depuis base44 (veille immobilière)
+      try {
+        const { base44 } = await import("./_core/base44client");
+        const biensRaw = await base44.asServiceRole.entities.BienCommercial.list();
+        const biens = Array.isArray(biensRaw) ? biensRaw : (biensRaw as any)?.records ?? [];
+        for (const b of biens) {
+          results.push({
+            id: b.id,
+            titre: b.titre,
+            adresse: b.adresse,
+            village: b.village,
+            surface: b.surface,
+            loyer: b.loyer,
+            type_bien: b.type_bien || "Commerce",
+            description: b.description,
+            source: b.source,
+            url_source: b.url_source,
+            agence: b.agence,
+            statut: b.statut,
+            createdAt: b.created_date,
+          });
+        }
+      } catch (e) {
+        console.error("BienCommercial fetch error:", e);
+      }
+
+      // 2. Lire les annonces soumises via formulaire (table local_requests publiées)
+      try {
+        const db = await getDb();
+        if (db) {
+          const [rows] = await db.execute(
+            "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, url_source, createdAt FROM local_requests WHERE status = 'published' ORDER BY createdAt DESC"
+          ) as any;
+          for (const r of rows as any[]) {
+            results.push({ ...r, source: "Annonce" });
+          }
+        }
+      } catch (_) {}
+
+      return results;
     }),
     listAll: adminProcedure.query(async () => {
       return getLocalRequests();
