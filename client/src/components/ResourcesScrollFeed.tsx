@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { RESOURCES } from "@/data/resources";
 import {
   Rocket, Building2, Calculator, FileText, Megaphone,
-  TrendingUp, ShieldAlert, BookOpen, Landmark, Briefcase
+  TrendingUp, ShieldAlert, BookOpen
 } from "lucide-react";
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -23,16 +23,16 @@ function getIcon(res: { slug: string; category: string }): React.ElementType {
   return ICON_MAP[res.slug] || ICON_MAP[res.category] || BookOpen;
 }
 
-// Badges pills — style identique à "Gratuit" / "Publication rapide" de la carte référence
-const BADGE: Record<string, { label: string; bg: string }> = {
-  starter:       { label: "Je me lance",   bg: "rgba(255,255,255,0.18)" },
-  gestion:       { label: "Je gère",       bg: "rgba(255,255,255,0.18)" },
-  developpement: { label: "Je développe",  bg: "rgba(255,255,255,0.18)" },
-  difficulte:    { label: "Difficulté",    bg: "rgba(220,30,30,0.35)"   },
+// Label badge par catégorie
+const CAT_LABEL: Record<string, string> = {
+  starter:       "Je me lance",
+  gestion:       "Je gère",
+  developpement: "Je développe",
+  difficulte:    "Difficulté",
 };
 
-const CARD_H   = 190;
-const CARD_GAP = 14;
+const CARD_H   = 200;
+const CARD_GAP = 12;
 const SPEED    = 0.45;
 const N_CARDS  = 4;
 
@@ -44,7 +44,7 @@ export function ResourcesScrollFeed() {
   const [paused, setPaused] = useState(false);
 
   const items = [...RESOURCES, ...RESOURCES, ...RESOURCES];
-  const loopH  = RESOURCES.length * (CARD_H + CARD_GAP);
+  const loopH   = RESOURCES.length * (CARD_H + CARD_GAP);
   const windowH = N_CARDS * (CARD_H + CARD_GAP) - CARD_GAP;
 
   useEffect(() => {
@@ -65,17 +65,17 @@ export function ResourcesScrollFeed() {
   return (
     <div
       className="fixed left-3 top-1/2 -translate-y-1/2 z-30 hidden xl:block"
-      style={{ width: 240 }}
+      style={{ width: 245 }}
     >
       <div
-        style={{ height: windowH, overflow: "hidden", borderRadius: 4 }}
+        style={{ height: windowH, overflow: "hidden" }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
         <div ref={wrapRef} style={{ willChange: "transform" }}>
           {items.map((res, i) => {
-            const badge = BADGE[res.category] || { label: res.category, bg: "rgba(255,255,255,0.18)" };
             const Icon  = getIcon(res);
+            const label = CAT_LABEL[res.category] || res.category;
 
             return (
               <div
@@ -85,115 +85,120 @@ export function ResourcesScrollFeed() {
                 style={{
                   height: CARD_H,
                   marginBottom: CARD_GAP,
-                  borderRadius: 18,
-                  // Fond bleu royal uni — identique à la carte référence
-                  background: "#1a3ba0",
-                  border: "1.5px solid rgba(255,255,255,0.12)",
-                  boxShadow: "0 6px 24px rgba(0,0,0,0.45)",
-                  padding: "16px 15px 14px 15px",
+                  borderRadius: 16,
+                  /* ── Fond bleu royal identique à la carte référence ── */
+                  background: "linear-gradient(160deg, #1e4bb8 0%, #1a3ba0 60%, #152f85 100%)",
+                  border: "1.5px solid rgba(255,255,255,0.13)",
+                  boxShadow: "0 6px 22px rgba(0,0,0,0.45)",
+                  padding: "14px 14px 12px 14px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 8,
-                  transition: "transform 0.15s, box-shadow 0.2s",
+                  justifyContent: "space-between",
+                  transition: "transform 0.15s, box-shadow 0.18s",
                 }}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLElement;
                   el.style.transform = "translateY(-3px)";
-                  el.style.boxShadow = "0 10px 32px rgba(0,0,0,0.55)";
+                  el.style.boxShadow = "0 12px 32px rgba(0,0,0,0.55)";
                 }}
                 onMouseLeave={e => {
                   const el = e.currentTarget as HTMLElement;
                   el.style.transform = "translateY(0)";
-                  el.style.boxShadow = "0 6px 24px rgba(0,0,0,0.45)";
+                  el.style.boxShadow = "0 6px 22px rgba(0,0,0,0.45)";
                 }}
               >
-                {/* Header : icône + titre ambre */}
+                {/* ── HEADER : icône ronde + titre ambre ── */}
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                  {/* Cercle icône — fond sombre avec icône ambre */}
+                  {/* Cercle icône sombre avec icône ambre — même style que carte référence */}
                   <div style={{
-                    width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-                    background: "rgba(0,20,60,0.55)",
-                    border: "1.5px solid rgba(232,197,71,0.35)",
+                    width: 42, height: 42, borderRadius: "50%", flexShrink: 0,
+                    background: "rgba(0, 20, 70, 0.55)",
+                    border: "1.5px solid rgba(232,197,71,0.4)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    <Icon size={18} color="#E8C547" strokeWidth={2} />
+                    <Icon size={19} color="#E8C547" strokeWidth={2.2} />
                   </div>
 
-                  {/* Titre — ambre gras, comme "Local commercial à louer ?" */}
-                  <p style={{
-                    color: "#E8C547",
-                    fontWeight: 700,
-                    fontSize: 13.5,
-                    lineHeight: 1.3,
-                    margin: 0,
-                    flex: 1,
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }}>
-                    {res.title}
-                  </p>
+                  <div style={{ flex: 1 }}>
+                    {/* Titre ambre gras — "Local commercial à louer ?" */}
+                    <p style={{
+                      color: "#E8C547",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      lineHeight: 1.3,
+                      margin: 0,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}>
+                      {res.title}
+                    </p>
+                    {/* Sous-titre blanc — "Publiez gratuitement sur Synergie Dour" */}
+                    <p style={{
+                      color: "rgba(255,255,255,0.75)",
+                      fontSize: 10.5,
+                      margin: "2px 0 0",
+                      lineHeight: 1.3,
+                    }}>
+                      Fiche pratique — Synergie Dour
+                    </p>
+                  </div>
                 </div>
 
-                {/* Sous-titre / description — blanc */}
+                {/* ── DESCRIPTION — texte blanc corps ── */}
                 <p style={{
                   color: "rgba(255,255,255,0.88)",
-                  fontSize: 11,
-                  lineHeight: 1.45,
+                  fontSize: 10.5,
+                  lineHeight: 1.5,
                   margin: 0,
                   display: "-webkit-box",
-                  WebkitLineClamp: 2,
+                  WebkitLineClamp: 3,
                   WebkitBoxOrient: "vertical",
                   overflow: "hidden",
                 }}>
-                  {res.description || "Fiche pratique pour les indépendants de Dour."}
+                  {res.summary}
                 </p>
 
-                {/* Badges pills — style "Gratuit" / "Publication rapide" */}
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {/* ── BADGES PILLS — style "Gratuit" / "Publication rapide" ── */}
+                <div style={{ display: "flex", gap: 6 }}>
                   <span style={{
-                    background: badge.bg,
+                    background: "rgba(255,255,255,0.15)",
                     color: "#ffffff",
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: 600,
-                    padding: "3px 10px",
-                    borderRadius: 20,
-                    border: "1px solid rgba(255,255,255,0.25)",
+                    padding: "3px 11px",
+                    borderRadius: 50,
+                    border: "1px solid rgba(255,255,255,0.28)",
                   }}>
-                    {badge.label}
+                    {label}
                   </span>
                   <span style={{
-                    background: "rgba(255,255,255,0.18)",
+                    background: "rgba(255,255,255,0.15)",
                     color: "#ffffff",
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: 600,
-                    padding: "3px 10px",
-                    borderRadius: 20,
-                    border: "1px solid rgba(255,255,255,0.25)",
+                    padding: "3px 11px",
+                    borderRadius: 50,
+                    border: "1px solid rgba(255,255,255,0.28)",
                   }}>
                     Gratuit
                   </span>
                 </div>
 
-                {/* Bouton jaune arrondi — style "Déposer mon annonce →" */}
+                {/* ── BOUTON JAUNE arrondi — "Déposer mon annonce →" ── */}
                 <div style={{
                   background: "#E8C547",
                   borderRadius: 50,
-                  padding: "7px 14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  marginTop: "auto",
+                  padding: "7px 0",
+                  textAlign: "center",
                 }}>
                   <span style={{
                     color: "#001a3d",
                     fontWeight: 700,
                     fontSize: 11,
-                    whiteSpace: "nowrap",
                   }}>
-                    Lire la fiche →
+                    Lire la fiche &nbsp;→
                   </span>
                 </div>
               </div>
@@ -202,7 +207,7 @@ export function ResourcesScrollFeed() {
         </div>
       </div>
 
-      {/* Bouton "Toutes les fiches" */}
+      {/* Bouton bas — même style jaune arrondi */}
       <button
         onClick={() => setLocation("/resources")}
         style={{
@@ -214,9 +219,9 @@ export function ResourcesScrollFeed() {
           color: "#001a3d",
           fontSize: 10.5,
           fontWeight: 700,
-          letterSpacing: "0.05em",
+          letterSpacing: "0.04em",
           cursor: "pointer",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
+          boxShadow: "0 3px 12px rgba(0,0,0,0.3)",
         }}
       >
         Toutes les fiches ›
