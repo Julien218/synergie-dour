@@ -278,8 +278,7 @@ socialRouter.post("/schedule", requireAdmin, async (req, res) => {
     );
 
     await db.execute(
-      \`INSERT INTO social_posts (title, content, image_url, platforms, scheduled_at, status, post_type, created_by)
-       VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?)\`,
+      "INSERT INTO social_posts (title, content, image_url, platforms, scheduled_at, status, post_type, created_by) VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?)",
       [
         title || "",
         content,
