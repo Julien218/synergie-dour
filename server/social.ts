@@ -367,6 +367,216 @@ CONTEXTE ACTUEL : ${context}` : ""}`;
   }
 });
 
+
+// ─── POST /api/merchants/google-scrape ───────────────────────────────────────
+// Extrait les données d'une fiche Google Business via son URL
+socialRouter.post("/google-scrape", requireAdmin, async (req, res) => {
+  try {
+    const { url } = req.body as { url: string };
+    if (!url || !url.includes("google")) {
+      return res.status(400).json({ message: "URL Google invalide" });
+    }
+
+    // Normaliser l'URL — convertir les URLs courtes maps.app.goo.gl en URL complète
+    let targetUrl = url.trim();
+    
+    // Headers simulant un navigateur pour éviter le blocage
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language": "fr-BE,fr;q=0.9,en-US;q=0.8",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
+    };
+
+    // Résoudre les redirections (goo.gl, maps.app.goo.gl, g.page)
+    let finalUrl = targetUrl;
+    if (targetUrl.includes("goo.gl") || targetUrl.includes("g.page") || targetUrl.includes("maps.app")) {
+      try {
+        const headResp = await fetch(targetUrl, { method: "GET", headers, redirect: "follow" });
+        finalUrl = headResp.url;
+      } catch { finalUrl = targetUrl; }
+    }
+
+    // Fetch de la page Google Maps
+    let html = "";
+    try {
+      const resp = await fetch(finalUrl, { headers });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      html = await resp.text();
+    } catch (fetchErr: any) {
+      return res.status(502).json({ message: `Impossible d'accéder à Google Maps: ${fetchErr.message}` });
+    }
+
+    // Extraction via patterns dans le HTML/JSON de Google Maps
+    const extracted: Record<string, string> = {};
+
+    // === NOM DU COMMERCE ===
+    // Google Maps inclut le nom dans plusieurs endroits
+    const namePatterns = [
+      /<meta property="og:title" content="([^"]+)"/,
+      /<title>([^-<]+)/,
+      /"name":"([^"]{2,80})"/,
+      /aria-label="([^"]{2,60})" role="main"/,
+    ];
+    for (const pat of namePatterns) {
+      const m = html.match(pat);
+      if (m && m[1] && !m[1].includes("Google Maps") && !m[1].includes("Maps") && m[1].length > 1) {
+        extracted.businessName = m[1].trim().replace(/\\n/g, "").replace(/&amp;/g, "&");
+        break;
+      }
+    }
+
+    // === ADRESSE ===
+    const addrPatterns = [
+      /"formatted_address":"([^"]+)"/,
+      /"vicinity":"([^"]+)"/,
+      /,"([^"]*Rue[^"]*|[^"]*Avenue[^"]*|[^"]*Chaussée[^"]*|[^"]*Place[^"]*|[^"]*Grand[^"]*|[^"]*Chemin[^"]*)[^"]*",/i,
+      /\[null,"([^"]*\d+[^"]*7370[^"]*)"/,
+      /address-lines[^>]*>([^<]+)</i,
+    ];
+    for (const pat of addrPatterns) {
+      const m = html.match(pat);
+      if (m && m[1] && m[1].length > 5) {
+        extracted.address = m[1].trim().replace(/\\n/g, ", ").replace(/&amp;/g, "&");
+        break;
+      }
+    }
+    // Si pas d'adresse, chercher pattern 7370 (code postal Dour)
+    if (!extracted.address) {
+      const postalMatch = html.match(/([A-Za-zÀ-ÿ\s]+\s+\d+[^"]{0,30}7[23][0-9]{2}[^"]{0,30})/);
+      if (postalMatch) extracted.address = postalMatch[1].trim().substring(0, 80);
+    }
+
+    // === TÉLÉPHONE ===
+    const phonePatterns = [
+      /"tel:([^"]+)"/,
+      /href="tel:([^"]+)"/,
+      /"([0-9+\s]{9,15})"/,
+      /\+32[\s\-]?[0-9\s\-]{8,12}/,
+      /0[1-9][0-9]{1,2}[\s\.\-]?[0-9]{2}[\s\.\-]?[0-9]{2}[\s\.\-]?[0-9]{2}/,
+    ];
+    for (const pat of phonePatterns) {
+      const m = html.match(pat);
+      if (m && m[1] && m[1].replace(/[^0-9]/g, "").length >= 9) {
+        extracted.phone = m[1].trim();
+        break;
+      }
+    }
+
+    // === SITE WEB ===
+    const sitePatterns = [
+      /href="(https?:\/\/(?!maps\.google|google\.com|goo\.gl)[^"]+)" [^>]*aria-label="[Ss]ite/,
+      /"website":"(https?:\/\/[^"]+)"/,
+      /"url":"(https?:\/\/(?!maps|google)[^"]+)"/,
+    ];
+    for (const pat of sitePatterns) {
+      const m = html.match(pat);
+      if (m && m[1]) {
+        extracted.website = m[1].trim();
+        break;
+      }
+    }
+
+    // === CATÉGORIE ===
+    const catPatterns = [
+      /"category":"([^"]+)"/,
+      /"types":\["([^"]+)"/,
+      /button[^>]*>([A-Za-zÀ-ÿ\s]+)<\/button>[^<]*<[^>]+class="[^"]*category/,
+    ];
+    for (const pat of catPatterns) {
+      const m = html.match(pat);
+      if (m && m[1] && m[1].length < 50) {
+        extracted.category = m[1].trim();
+        break;
+      }
+    }
+
+    // === EMAIL (rare sur Google Maps mais parfois présent) ===
+    const emailMatch = html.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
+    if (emailMatch && emailMatch[1] && !emailMatch[1].includes("google") && !emailMatch[1].includes("gstatic")) {
+      extracted.email = emailMatch[1];
+    }
+
+    // === DESCRIPTION via OpenAI si clé disponible ===
+    const apiKey = process.env.CLE_API_OPENAI || process.env.OPENAI_API_KEY;
+    if (apiKey && extracted.businessName) {
+      try {
+        // Extraire un extrait propre du HTML pour l'IA
+        const cleanText = html
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .substring(0, 3000);
+
+        const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": \`Bearer \${apiKey}\` },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [{
+              role: "user",
+              content: \`Tu es un extracteur de données de fiches Google Business.
+Extrait du texte suivant les informations du commerce. Réponds UNIQUEMENT en JSON avec ces clés exactes (valeur null si absent) :
+{
+  "businessName": "Nom exact du commerce",
+  "address": "Adresse complète",
+  "phone": "Numéro de téléphone",
+  "website": "URL du site web",
+  "email": "Email si présent",
+  "category": "Catégorie du commerce (ex: Boulangerie, Restaurant, Coiffeur...)",
+  "description": "Description courte du commerce en 1-2 phrases"
+}
+
+Données connues à valider/compléter: ${JSON.stringify(extracted)}
+
+Texte extrait de la page Google Maps:
+${cleanText}\`
+            }],
+            max_tokens: 400,
+            temperature: 0.1,
+          })
+        });
+
+        if (aiResp.ok) {
+          const aiData = await aiResp.json() as any;
+          const aiText = aiData.choices?.[0]?.message?.content || "";
+          const jsonMatch = aiText.match(/\{[\s\S]+\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            // Fusionner — l'IA comble les champs vides
+            for (const [k, v] of Object.entries(parsed)) {
+              if (v && typeof v === "string" && v !== "null" && !extracted[k]) {
+                extracted[k] = v as string;
+              } else if (v && typeof v === "string" && v !== "null" && k === "description") {
+                extracted.description = v; // Toujours prendre la description de l'IA
+              }
+            }
+          }
+        }
+      } catch (aiErr: any) {
+        console.warn("[google-scrape] AI enrichment failed:", aiErr.message);
+      }
+    }
+
+    // Résultat
+    const hasData = Object.values(extracted).some(v => v && v.length > 0);
+    if (!hasData) {
+      return res.status(422).json({
+        message: "Impossible d'extraire les données. Essayez avec l'URL Google Maps directe (pas le lien court).",
+        tip: "Allez sur maps.google.com, cherchez le commerce, cliquez 'Partager' puis copiez le lien."
+      });
+    }
+
+    res.json({ data: extracted, url: finalUrl });
+  } catch (err: any) {
+    console.error("[merchants/google-scrape]", err);
+    res.status(500).json({ message: err.message || "Erreur serveur" });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SUPER ADMIN — Brand Settings & Image Generation Control
 // ─────────────────────────────────────────────────────────────────────────────
