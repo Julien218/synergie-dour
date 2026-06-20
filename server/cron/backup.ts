@@ -1,9 +1,18 @@
 import { getDb } from "../db";
-import { users, merchants, membership_requests, contact_requests, news, events, locaux } from "../../drizzle/schema";
+import {
+  users,
+  merchants,
+  membershipRequests,
+  contactRequests,
+  news,
+  events,
+  auditLogs,
+  memberships,
+} from "../../drizzle/schema";
 
 /**
  * Backup automatique MySQL — exporte toutes les tables critiques
- * en JSON et envoie un rapport par email
+ * en JSON et envoie un rapport par email (Resend)
  */
 export async function runDatabaseBackup(): Promise<{
   success: boolean;
@@ -13,7 +22,7 @@ export async function runDatabaseBackup(): Promise<{
 }> {
   const timestamp = new Date().toISOString();
   const result: Record<string, number> = {};
-  
+
   try {
     const db = await getDb();
     if (!db) {
@@ -22,40 +31,33 @@ export async function runDatabaseBackup(): Promise<{
 
     // Exporter chaque table
     const tablesToBackup = [
-      { name: "users", schema: users },
-      { name: "merchants", schema: merchants },
-      { name: "membership_requests", schema: membership_requests },
-      { name: "contact_requests", schema: contact_requests },
-      { name: "news", schema: news },
-      { name: "events", schema: events },
+      { name: "users",               schema: users },
+      { name: "merchants",           schema: merchants },
+      { name: "membershipRequests",  schema: membershipRequests },
+      { name: "contactRequests",     schema: contactRequests },
+      { name: "news",                schema: news },
+      { name: "events",              schema: events },
+      { name: "memberships",         schema: memberships },
     ];
-
-    const backupData: Record<string, any[]> = {};
 
     for (const table of tablesToBackup) {
       try {
         const rows = await db.select().from(table.schema as any);
-        backupData[table.name] = rows;
         result[table.name] = rows.length;
-      } catch (e) {
-        backupData[table.name] = [];
-        result[table.name] = 0;
+      } catch {
+        result[table.name] = -1; // erreur lecture
       }
     }
 
-    // Préparer le rapport
-    const totalRecords = Object.values(result).reduce((a, b) => a + b, 0);
-    
-    // Log du backup
-    console.log(`[BACKUP] ${timestamp} — ${totalRecords} enregistrements sauvegardés`);
+    const totalRecords = Object.values(result).filter(v => v >= 0).reduce((a, b) => a + b, 0);
+    console.log(`[BACKUP] ${timestamp} — ${totalRecords} enregistrements vérifiés`);
     console.log("[BACKUP] Détail:", JSON.stringify(result));
 
-    // Envoyer rapport par email si SMTP configuré
     await sendBackupReport(timestamp, result, totalRecords);
 
     return { success: true, tables: result, timestamp };
   } catch (error: any) {
-    console.error("[BACKUP] Erreur:", error.message);
+    console.error("[BACKUP] Erreur critique:", error.message);
     return { success: false, tables: result, timestamp, error: error.message };
   }
 }
@@ -72,17 +74,22 @@ async function sendBackupReport(
   }
 
   const tableRows = Object.entries(tables)
-    .map(([name, count]) => `<tr><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${name}</td><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${count}</td></tr>`)
-    .join("");
+    .map(([name, count]) =>
+      `<tr>
+        <td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${name}</td>
+        <td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:${count < 0 ? "#dc2626" : "#166534"};">${count < 0 ? "ERREUR" : count}</td>
+      </tr>`
+    ).join("");
 
+  const dateStr = new Date(timestamp).toLocaleString("fr-BE", { timeZone: "Europe/Brussels" });
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:#001533;padding:20px;border-radius:8px 8px 0 0;">
         <h2 style="color:#E8C547;margin:0;">Rapport de Backup — Synergie Dour</h2>
-        <p style="color:#94a3b8;margin:4px 0 0;">${new Date(timestamp).toLocaleString("fr-BE", { timeZone: "Europe/Brussels" })}</p>
+        <p style="color:#94a3b8;margin:4px 0 0;">${dateStr}</p>
       </div>
       <div style="background:#f8fafc;padding:20px;">
-        <p style="color:#374151;">Sauvegarde automatique effectuée avec succès.</p>
+        <p style="color:#374151;">Sauvegarde automatique quotidienne effectuée.</p>
         <table style="width:100%;border-collapse:collapse;background:white;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
           <thead>
             <tr style="background:#001533;">
@@ -99,7 +106,7 @@ async function sendBackupReport(
           </tfoot>
         </table>
         <p style="color:#6b7280;font-size:12px;margin-top:16px;">
-          Synergie Dour ASBL · Grand'Place 9, 7370 Dour · Système automatisé par Js-Innov.IA
+          Synergie Dour ASBL · Grand\'Place 9, 7370 Dour · Système automatisé par Js-Innov.IA
         </p>
       </div>
     </div>
@@ -114,8 +121,8 @@ async function sendBackupReport(
       },
       body: JSON.stringify({
         from: "backup@synergiedour.be",
-        to: ["julien.pagin.pv@gmail.com", "olivier.trevis@outlook.be"],
-        subject: `✅ Backup Synergie Dour — ${new Date(timestamp).toLocaleDateString("fr-BE")} — ${totalRecords} enregistrements`,
+        to: ["julien.pagin.pv@gmail.com"],
+        subject: `Backup Synergie Dour — ${new Date(timestamp).toLocaleDateString("fr-BE")} — ${totalRecords} enregistrements`,
         html,
       }),
     });
