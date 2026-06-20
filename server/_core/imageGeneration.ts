@@ -25,7 +25,7 @@ export async function generateImage(
     throw new Error("CLE_API_OPENAI non configurée dans les variables d'environnement Railway");
   }
 
-  // DALL-E 3 — génération standard 1024x1024
+  // DALL-E 3 — retourne une URL directe (response_format supprimé car non supporté)
   const response = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: {
@@ -37,7 +37,6 @@ export async function generateImage(
       prompt: options.prompt,
       n: 1,
       size: "1024x1024",
-      response_format: "b64_json",
       quality: "standard",
     }),
   });
@@ -50,16 +49,21 @@ export async function generateImage(
   }
 
   const result = await response.json() as {
-    data: Array<{ b64_json: string; revised_prompt?: string }>;
+    data: Array<{ url?: string; b64_json?: string; revised_prompt?: string }>;
   };
 
-  const b64 = result.data?.[0]?.b64_json;
-  if (!b64) throw new Error("DALL-E 3 : aucune image retournée");
+  // DALL-E 3 sans response_format retourne une URL temporaire
+  const imageUrl = result.data?.[0]?.url;
+  if (!imageUrl) {
+    throw new Error("DALL-E 3 : aucune image retournée");
+  }
 
-  const buffer = Buffer.from(b64, "base64");
-
-  // Sauvegarder en stockage Railway/S3
+  // Télécharger l'image depuis l'URL temporaire et la stocker
   try {
+    const imgResponse = await fetch(imageUrl);
+    if (!imgResponse.ok) throw new Error("Impossible de télécharger l'image générée");
+    const buffer = Buffer.from(await imgResponse.arrayBuffer());
+
     const { url } = await storagePut(
       `generated/${Date.now()}.png`,
       buffer,
@@ -67,8 +71,7 @@ export async function generateImage(
     );
     return { url };
   } catch {
-    // Si storage non configuré, retourner le base64 directement
-    const dataUrl = `data:image/png;base64,${b64}`;
-    return { url: dataUrl };
+    // Fallback : retourner l'URL OpenAI directement (expire dans ~1h)
+    return { url: imageUrl };
   }
 }
