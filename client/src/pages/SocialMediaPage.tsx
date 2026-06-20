@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import {
   ImageIcon, Share2, Calendar as CalendarIcon, Facebook,
   Instagram, Linkedin, Clock, Send, Sparkles,
-  Eye, Edit3, CheckCircle2, AlertCircle, RefreshCw, Wand2, Download
+  Eye, Edit3, CheckCircle2, AlertCircle, RefreshCw, Wand2, Download, Shield
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -251,6 +251,22 @@ export default function SocialMediaPage() {
               Réseaux Sociaux
             </h1>
             <p className="text-gray-500 text-sm">Générez et publiez vos posts directement depuis le dashboard</p>
+            {user?.role === "super_admin" && (
+              <button
+                onClick={() => navigate("/dashboard/super-admin")}
+                style={{
+                  marginTop: 8,
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  padding: "8px 18px", borderRadius: 50,
+                  background: "linear-gradient(135deg, #001533, #1a3ba0)",
+                  border: "1.5px solid rgba(232,197,71,0.5)",
+                  color: "#E8C547", fontSize: 13, fontWeight: 700,
+                  cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
+                }}>
+                <Shield size={15} />
+                Paramètres Super Admin
+              </button>
+            )}
           </div>
         </div>
 
