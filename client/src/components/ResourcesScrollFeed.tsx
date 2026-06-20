@@ -34,9 +34,9 @@ const BADGE: Record<string, { label: string; bg: string; text: string }> = {
 
 // Couleur icône cercle par catégorie — navy/steel principalement, or en accent discret
 const ICON_RING: Record<string, { bg: string; shadow: string; color: string }> = {
-  starter:       { bg: "linear-gradient(135deg, #003d99 0%, #001a3d 100%)", shadow: "0 0 10px rgba(0,61,153,0.7)", color: "#D4AF37" },
+  starter:       { bg: "linear-gradient(135deg, #003d99 0%, #001a3d 100%)", shadow: "0 0 10px rgba(0,61,153,0.7)", color: "#E8C547" },
   gestion:       { bg: "linear-gradient(135deg, #001a3d 0%, #003060 100%)", shadow: "0 0 10px rgba(0,26,61,0.8)",  color: "#8ab4e8" },
-  developpement: { bg: "linear-gradient(135deg, #002266 0%, #003d99 100%)", shadow: "0 0 10px rgba(0,34,102,0.7)", color: "#D4AF37" },
+  developpement: { bg: "linear-gradient(135deg, #002266 0%, #003d99 100%)", shadow: "0 0 10px rgba(0,34,102,0.7)", color: "#E8C547" },
   difficulte:    { bg: "linear-gradient(135deg, #5a0000 0%, #990000 100%)", shadow: "0 0 10px rgba(153,0,0,0.5)",  color: "#ffaaaa" },
 };
 
@@ -170,7 +170,7 @@ export function ResourcesScrollFeed() {
                   <span style={{ color: "#8ab4e8", fontSize: 9.5, fontWeight: 500, letterSpacing: "0.02em" }}>
                     Synergie Dour
                   </span>
-                  <span style={{ color: "#D4AF37", fontSize: 14, fontWeight: 700, lineHeight: 1 }}>
+                  <span style={{ color: "#E8C547", fontSize: 14, fontWeight: 700, lineHeight: 1 }}>
                     →
                   </span>
                 </div>
@@ -188,7 +188,7 @@ export function ResourcesScrollFeed() {
           background: "linear-gradient(135deg, #001a3d 0%, #003d99 100%)",
           border: "1px solid rgba(168,196,255,0.25)",
           borderRadius: 10, padding: "7px 0",
-          color: "#a8c4ff", fontSize: 9.5, fontWeight: 700,
+          color: "#E8C547", fontSize: 9.5, fontWeight: 700,
           letterSpacing: "0.08em", textTransform: "uppercase",
           cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
         }}
