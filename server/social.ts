@@ -67,6 +67,45 @@ async function requireAdmin(
   next();
 }
 
+// ── Assurer la table brand_settings ──────────────────────────────────────────
+async function ensureBrandTable() {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(`CREATE TABLE IF NOT EXISTS brand_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    key_name VARCHAR(100) NOT NULL UNIQUE,
+    value TEXT,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+
+// ── Assurer la table image_generations ───────────────────────────────────────
+async function ensureGenerationsTable() {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(`CREATE TABLE IF NOT EXISTS image_generations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    user_name VARCHAR(255),
+    user_email VARCHAR(320),
+    template VARCHAR(100),
+    title VARCHAR(255),
+    content TEXT,
+    prompt TEXT,
+    image_url TEXT,
+    format VARCHAR(50) DEFAULT '1080x1080',
+    quality VARCHAR(20) DEFAULT 'high',
+    status ENUM('pending_validation','approved','rejected','archived') NOT NULL DEFAULT 'pending_validation',
+    validation_note TEXT,
+    validated_by VARCHAR(255),
+    logo_present TINYINT(1) DEFAULT 0,
+    signature_present TINYINT(1) DEFAULT 0,
+    brand_compliant TINYINT(1) DEFAULT 0,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+
 // ─── POST /api/social/generate-image ─────────────────────────────────────────
 // Génère un visuel IA pour un post réseau social
 socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
@@ -303,44 +342,7 @@ async function requireSuperAdmin(
   next();
 }
 
-// ── Assurer la table brand_settings ──────────────────────────────────────────
-async function ensureBrandTable() {
-  const db = await getDb();
-  if (!db) return;
-  await db.execute(`CREATE TABLE IF NOT EXISTS brand_settings (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    key_name VARCHAR(100) NOT NULL UNIQUE,
-    value TEXT,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-}
 
-// ── Assurer la table image_generations ───────────────────────────────────────
-async function ensureGenerationsTable() {
-  const db = await getDb();
-  if (!db) return;
-  await db.execute(`CREATE TABLE IF NOT EXISTS image_generations (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    user_name VARCHAR(255),
-    user_email VARCHAR(320),
-    template VARCHAR(100),
-    title VARCHAR(255),
-    content TEXT,
-    prompt TEXT,
-    image_url TEXT,
-    format VARCHAR(50) DEFAULT '1080x1080',
-    quality VARCHAR(20) DEFAULT 'high',
-    status ENUM('pending_validation','approved','rejected','archived') NOT NULL DEFAULT 'pending_validation',
-    validation_note TEXT,
-    validated_by VARCHAR(255),
-    logo_present TINYINT(1) DEFAULT 0,
-    signature_present TINYINT(1) DEFAULT 0,
-    brand_compliant TINYINT(1) DEFAULT 0,
-    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-}
 
 // ── GET brand settings ────────────────────────────────────────────────────────
 socialRouter.get("/brand-settings", requireAdmin, async (req, res) => {
