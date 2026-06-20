@@ -185,6 +185,24 @@ export function ResourcesScrollFeed() {
                     background: "radial-gradient(circle, rgba(100,160,255,0.08) 0%, transparent 70%)",
                   }} />
 
+                  {/* Logo Synergie Dour — coin supérieur droit, semi-transparent */}
+                  <img
+                    src="/logo-sd-transparent.png"
+                    alt="Synergie Dour"
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      right: 8,
+                      width: 36,
+                      height: 36,
+                      objectFit: "contain",
+                      opacity: 0.55,
+                      pointerEvents: "none",
+                      zIndex: 2,
+                      filter: "drop-shadow(0 0 4px rgba(232,197,71,0.4))",
+                    }}
+                  />
+
                   {/* HEADER */}
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10, position: "relative", zIndex: 1 }}>
                     <div style={{
