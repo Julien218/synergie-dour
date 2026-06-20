@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useState } from "react";
-import { Plus, Edit, Trash2, ArrowLeft, Check, X, ExternalLink, MapPin } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, Check, X, ExternalLink, MapPin, Wand2, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -34,9 +34,9 @@ export default function ManageMerchants() {
   const [formData, setFormData] = useState(emptyForm());
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [googleUrl, setGoogleUrl]   = React.useState("");
-  const [isScraping, setIsScraping] = React.useState(false);
-  const [scrapeMsg, setScrapeMsg]   = React.useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [googleUrl, setGoogleUrl]   = useState("");
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeMsg, setScrapeMsg]   = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
 
