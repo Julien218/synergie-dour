@@ -14,22 +14,45 @@ async function requireAdmin(
   res: express.Response,
   next: express.NextFunction
 ) {
-  // Lire les deux cookies possibles : synergie_session (login classique) ET app_session_id (trpc/sdk)
+  // Lire les deux cookies : synergie_session (login classique) ET app_session_id (sdk/trpc)
   const token =
     req.cookies?.["synergie_session"] ||
     req.cookies?.["app_session_id"] ||
     req.headers.authorization?.replace("Bearer ", "");
-  const uid = await verifySessionToken(token);
-  if (!uid) return res.status(401).json({ message: "Non authentifié" });
 
-  const db = await getDb();
-  if (!db) return res.status(500).json({ message: "DB indisponible" });
-  const user = (
-    await db.select().from(users).where(eq(users.id, uid)).limit(1)
-  )[0];
-  if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
+  if (!token) return res.status(401).json({ message: "Non authentifié" });
+
+  const dbConn = await getDb();
+  if (!dbConn) return res.status(500).json({ message: "DB indisponible" });
+
+  let user: any = null;
+
+  // Essai 1 : format synergie_session (payload.uid = number)
+  const uid = await verifySessionToken(token);
+  if (uid) {
+    const rows = await dbConn.select().from(users).where(eq(users.id, uid)).limit(1);
+    user = rows[0] ?? null;
+  }
+
+  // Essai 2 : format SDK/trpc (payload.openId = string)
+  if (!user) {
+    try {
+      const { jwtVerify } = await import("jose");
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET ?? "");
+      const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+      const openId = payload.openId as string | undefined;
+      if (openId) {
+        const rows = await dbConn.select().from(users).where(eq(users.openId, openId)).limit(1);
+        user = rows[0] ?? null;
+      }
+    } catch { /* token invalide dans ce format */ }
+  }
+
+  if (!user) return res.status(401).json({ message: "Non authentifié" });
+  if (user.role !== "admin" && user.role !== "super_admin") {
     return res.status(403).json({ message: "Accès refusé" });
   }
+
   (req as any).user = user;
   next();
 }
