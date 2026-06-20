@@ -71,71 +71,82 @@ async function requireAdmin(
 // Génère un visuel IA pour un post réseau social
 socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
   try {
-    const { template, title, subtitle, content, post_type } = req.body as {
+    const { template, title, content, post_type, format, quality } = req.body as {
       template?: string;
       title?: string;
-      subtitle?: string;
       content?: string;
       post_type?: string;
+      format?: string;
+      quality?: string;
     };
+    const user = (req as any).user;
 
-    // Construire un prompt riche selon le type de post
-    const templatePrompts: Record<string, string> = {
-      nouveau_membre: `Professional corporate social media post for a Belgian business association "Synergie Dour". 
-        Style: navy blue and gold color scheme, modern and elegant. 
-        Content: Welcome a new member. Title: "${title || 'Nouveau Membre'}". 
-        Text: "${content || ''}". 
-        Include Synergie Dour branding, clean typography, white background elements.
-        Format: square 1:1, suitable for Facebook and Instagram.`,
-
-      local_commercial: `Professional real estate social media post for "Synergie Dour" Belgian business association.
-        Style: navy blue (#0B1C3D) and gold (#EEA415) corporate design.
-        Content: Commercial property available. Title: "${title || 'Local Commercial Disponible'}".
-        Details: "${content || ''}".
-        Include building icon, professional layout, website www.synergiedour.be.
-        Format: square 1:1 for Facebook/Instagram.`,
-
-      evenement: `Event announcement social media post for "Synergie Dour" Belgian business association.
-        Style: festive yet professional, navy blue and gold palette.
-        Event title: "${title || 'Événement Synergie Dour'}".
-        Description: "${content || ''}".
-        Include calendar/event visual elements, Synergie Dour branding.
-        Format: square 1:1 for social media.`,
-
-      actualite: `News/announcement social media post for "Synergie Dour" Belgian business association.
-        Style: clean corporate, navy blue and gold.
-        Headline: "${title || 'Actualité Synergie Dour'}".
-        Content: "${content || ''}".
-        Professional newspaper/magazine style layout.
-        Format: square 1:1 for Facebook/Instagram.`,
-
-      offre_emploi: `Job offer social media post for "Synergie Dour" Belgian business network.
-        Style: professional, navy and gold corporate design.
-        Job title: "${title || 'Offre d\'emploi'}".
-        Description: "${content || ''}".
-        Include job/briefcase visual elements, Synergie Dour branding.
-        Format: square 1:1 for social media.`,
-
-      promotion: `Promotional social media post for "Synergie Dour" Belgian business association.
-        Style: eye-catching, navy blue and gold with accent colors.
-        Promotion title: "${title || 'Promotion Spéciale'}".
-        Details: "${content || ''}".
-        Include discount/promotion visual elements, Synergie Dour logo area.
-        Format: square 1:1 for Facebook/Instagram.`,
+    // Charger les brand_settings
+    await ensureBrandTable();
+    await ensureGenerationsTable();
+    const db = await getDb();
+    let brand: Record<string, string> = {
+      signature: "By JS-Innov.IA",
+      color_primary: "#001533",
+      color_secondary: "#1a3ba0",
+      color_accent: "#00aaff",
+      color_premium: "#E8C547",
+      hashtags: "#SynergieDour #JsInnovIA #CommerceLocal #Dour",
+      system_prompt: "",
+      default_quality: "high",
+      lock_signature: "true",
+      require_validation: "false",
     };
-
-    const prompt =
-      templatePrompts[post_type || template || "actualite"] ||
-      `Professional social media post for Synergie Dour Belgian business association. 
-       Navy blue and gold style. Title: "${title}". Content: "${content}".`;
-
-    const result = await generateImage({ prompt });
-
-    if (!result.url) {
-      return res.status(500).json({ message: "Génération d'image échouée" });
+    if (db) {
+      try {
+        const [brandRows] = await db.execute("SELECT key_name, value FROM brand_settings") as any;
+        for (const r of (brandRows as any[])) { brand[r.key_name] = r.value; }
+      } catch (_) {}
     }
 
-    res.json({ url: result.url, prompt });
+    const usedQuality = ["high", "medium", "auto"].includes(quality || "") 
+      ? quality! : (["high","medium","auto"].includes(brand.default_quality) ? brand.default_quality : "high");
+
+    const signature = brand.lock_signature !== "false" ? (brand.signature || "By JS-Innov.IA") : "";
+    const hashtags  = brand.hashtags || "#SynergieDour #JsInnovIA";
+
+    const systemBase = brand.system_prompt ||
+      "Each visual must strictly respect the Synergie Dour visual DNA: deep night blue background (#001533), royal blue gradients (#1a3ba0) and electric blue (#00aaff), metallic gold accents (#E8C547), premium white text. Professional, local, institutional, modern, high-end style. Reserve top-right corner for Synergie Dour logo (white space 180x60px). Signature 'By JS-Innov.IA' at bottom, discreet but readable. No overlapping elements. Text readable on mobile. Format: 1080x1080. Quality: high.";
+
+    const typeLabels: Record<string, string> = {
+      nouveau_membre: "Welcome new member announcement",
+      local_commercial: "Commercial property available for rent",
+      evenement: "Event announcement",
+      actualite: "News/announcement",
+      offre_emploi: "Job offer",
+      promotion: "Special promotion",
+    };
+    const typeLabel = typeLabels[post_type || template || "actualite"] || "Announcement";
+
+    const prompt = `${systemBase}\n---\nPOST TYPE: ${typeLabel}\nTITLE: ${title || "Synergie Dour"}\nCONTENT: ${content || ""}\nSIGNATURE: ${signature}\nHASHTAGS: ${hashtags}\nFORMAT: ${format || "1080x1080"} square\n---\nIMPORTANT: Reserve top-right corner (15% width, 10% height) for logo. Place signature "${signature}" at bottom center in small white text. Navy blue #001533 background mandatory. Gold #E8C547 for titles.`;
+
+    const result = await generateImage({ prompt });
+    if (!result.url) return res.status(500).json({ message: "Génération d'image échouée" });
+
+    let generationId: number | null = null;
+    if (db) {
+      try {
+        const [ins] = await db.execute(
+          "INSERT INTO image_generations (user_id, user_name, user_email, template, title, content, prompt, image_url, format, quality, status, logo_present, signature_present, brand_compliant) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1)",
+          [user?.id ?? null, user?.name ?? null, user?.email ?? null,
+           post_type || template || "actualite", title || null, content || null,
+           prompt, result.url, format || "1080x1080", usedQuality,
+           brand.require_validation === "true" ? "pending_validation" : "approved"]
+        ) as any;
+        generationId = ins.insertId;
+      } catch (dbErr: any) { console.warn("[generate-image] DB log:", dbErr.message); }
+    }
+
+    res.json({
+      url: result.url, prompt, generation_id: generationId,
+      status: brand.require_validation === "true" ? "pending_validation" : "approved",
+      brand_applied: { signature, quality: usedQuality },
+    });
   } catch (err: any) {
     console.error("[social/generate-image]", err);
     res.status(500).json({ message: err.message || "Erreur serveur" });
