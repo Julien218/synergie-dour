@@ -38,6 +38,8 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
+import PostsPage from "@/pages/PostsPage";
+
 function Router() {
   return (
     <Switch>
