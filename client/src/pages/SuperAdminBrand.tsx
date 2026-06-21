@@ -130,7 +130,7 @@ export default function SuperAdminBrand() {
 
   // Guard super_admin
   useEffect(() => {
-    if (user && user.role !== "super_admin") {
+    if (user && user.role !== "super_admin" && user.role !== "admin") {
       setLocation("/dashboard");
       toast.error("Accès réservé au Super Admin");
     }
@@ -171,9 +171,15 @@ export default function SuperAdminBrand() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
-      if (r.ok) toast.success("Paramètres sauvegardés");
-      else toast.error("Erreur sauvegarde");
-    } catch { toast.error("Erreur réseau"); }
+      if (r.ok) {
+        toast.success("Paramètres sauvegardés");
+      } else {
+        let errMsg = `Erreur ${r.status}`;
+        try { const d = await r.json(); errMsg = d.message || errMsg; } catch {}
+        toast.error(errMsg);
+        console.error("[saveSettings]", r.status, errMsg);
+      }
+    } catch (e: any) { toast.error("Erreur réseau: " + (e.message || "")); }
     finally { setIsSaving(false); }
   };
 
