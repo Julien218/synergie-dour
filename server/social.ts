@@ -1,5 +1,6 @@
 import express from "express";
 import { composeWithLogos } from "./imageCompose";
+import { syncAllPosts, generateMembrePost, generateLocalPost, saveGeneratedPost } from "./postGenerator";
 import { generateImage } from "./_core/imageGeneration";
 import { ENV } from "./_core/env";
 import { verifySessionToken } from "./authService";
