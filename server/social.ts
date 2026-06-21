@@ -8,6 +8,24 @@ import { eq } from "drizzle-orm";
 
 export const socialRouter = express.Router();
 
+// ── Helper mysql2 natif pour les tables non-Drizzle ──────────────────────────
+let _rawPool: any = null;
+async function getRawPool() {
+  if (!_rawPool) {
+    const mysql2 = await import("mysql2/promise");
+    _rawPool = mysql2.createPool({
+      uri: (process.env.DATABASE_URL || "").split("?")[0],
+      ssl: { rejectUnauthorized: false },
+      waitForConnections: true,
+      connectionLimit: 3,
+      connectTimeout: 15000,
+    });
+  }
+  return _rawPool;
+}
+
+
+
 // ─── Middleware auth admin ────────────────────────────────────────────────────
 async function requireAdmin(
   req: express.Request,
@@ -69,9 +87,8 @@ async function requireAdmin(
 
 // ── Assurer la table brand_settings ──────────────────────────────────────────
 async function ensureBrandTable() {
-  const db = await getDb();
-  if (!db) return;
-  await db.execute(`CREATE TABLE IF NOT EXISTS brand_settings (
+  const pool = await getRawPool();
+  await pool.execute(`CREATE TABLE IF NOT EXISTS brand_settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     key_name VARCHAR(100) NOT NULL UNIQUE,
     value TEXT,
@@ -533,7 +550,8 @@ socialRouter.get("/brand-settings", requireAdmin, async (req, res) => {
     await ensureBrandTable();
     const db = await getDb();
     if (!db) return res.status(500).json({ message: "DB indisponible" });
-    const [rows] = await db.execute("SELECT key_name, value FROM brand_settings") as any;
+    const _pool = await getRawPool();
+    const [rows] = await _pool.execute("SELECT key_name, value FROM brand_settings") as any;
     const settings: Record<string, string> = {};
     for (const row of (rows as any[])) {
       settings[row.key_name] = row.value;
@@ -570,16 +588,16 @@ socialRouter.get("/brand-settings", requireAdmin, async (req, res) => {
 socialRouter.put("/brand-settings", requireAdmin, async (req, res) => {
   try {
     await ensureBrandTable();
-    const db = await getDb();
-    if (!db) return res.status(500).json({ message: "DB indisponible" });
+    const pool = await getRawPool();
     const settings = req.body as Record<string, string>;
     for (const [key, value] of Object.entries(settings)) {
-      await db.execute(
-        "INSERT INTO brand_settings (key_name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?, updated_at = NOW()",
-        [key, value, value]
+      const safeVal = value === null || value === undefined ? "" : String(value);
+      await pool.execute(
+        "INSERT INTO brand_settings (key_name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()",
+        [String(key), safeVal]
       );
     }
-    res.json({ message: "Paramètres sauvegardés" });
+    res.json({ message: "Param\u00e8tres sauvegard\u00e9s" });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
   }
