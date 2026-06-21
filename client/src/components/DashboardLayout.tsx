@@ -32,7 +32,7 @@ import {
   ClipboardList,
   Image,
   Building2,
-  Share2,
+  Share2, FileEdit,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -116,6 +116,7 @@ function DashboardLayoutContent({
     { icon: Calendar, label: "Événements", path: "/dashboard/events" },
     { icon: Building2, label: "Locaux à Louer", path: "/dashboard/locaux" },
     { icon: Share2, label: "Réseaux Sociaux", path: "/dashboard/social" },
+    { icon: FileEdit, label: "Posts à publier", path: "/dashboard/posts" },
     { icon: Users, label: "Membres CA", path: "/dashboard/members" },
   ];
 
