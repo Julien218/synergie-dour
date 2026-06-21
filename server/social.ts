@@ -1,4 +1,5 @@
 import express from "express";
+import { composeWithLogos } from "./imageCompose";
 import { generateImage } from "./_core/imageGeneration";
 import { ENV } from "./_core/env";
 import { verifySessionToken } from "./authService";
@@ -184,6 +185,24 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     const result = await generateImage({ prompt });
     if (!result.url) return res.status(500).json({ message: "Génération d'image échouée" });
 
+    // ── Composition des vrais logos officiels via sharp ────────────────────
+    let finalImageUrl = result.url;
+    try {
+      const composed = await composeWithLogos(result.url, {
+        logoSD: true,
+        logoJS: true,
+        outputWidth: 1080,
+        outputHeight: 1080,
+      });
+      // Convertir en data URL pour retour immédiat (ou uploader vers /api/upload)
+      const b64 = composed.toString("base64");
+      finalImageUrl = `data:image/png;base64,${b64}`;
+      console.log("[generate-image] Composition logos OK — image finale générée");
+    } catch (compErr: any) {
+      console.warn("[generate-image] Composition logos échouée, utilisation image brute:", compErr.message);
+      // On garde l'image OpenAI sans logos si la composition échoue
+    }
+
     let generationId: number | null = null;
     if (db) {
       try {
@@ -191,7 +210,7 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
           "INSERT INTO image_generations (user_id, user_name, user_email, template, title, content, prompt, image_url, format, quality, status, logo_present, signature_present, brand_compliant) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1)",
           [user?.id ?? null, user?.name ?? null, user?.email ?? null,
            post_type || template || "actualite", title || null, content || null,
-           prompt, result.url, format || "1080x1080", usedQuality,
+           prompt, finalImageUrl.startsWith("data:") ? "[base64]" : finalImageUrl, format || "1080x1080", usedQuality,
            brand.require_validation === "true" ? "pending_validation" : "approved"]
         ) as any;
         generationId = ins.insertId;
@@ -199,7 +218,7 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     }
 
     res.json({
-      url: result.url, prompt, generation_id: generationId,
+      url: finalImageUrl, prompt, generation_id: generationId,
       status: brand.require_validation === "true" ? "pending_validation" : "approved",
       brand_applied: { signature, quality: usedQuality },
     });
