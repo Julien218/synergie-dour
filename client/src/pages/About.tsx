@@ -111,8 +111,8 @@ export default function About() {
           muted
           playsInline
           preload="auto"
-          className="absolute inset-0 w-full h-full object-cover object-center"
-          style={{ zIndex: 0 }}
+          className="absolute inset-0 w-full h-full"
+          style={{ zIndex: 0, objectFit: "contain", objectPosition: "center", background: "#001a3d" }}
         />
         {/* Overlay sombre */}
         <div
