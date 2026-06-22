@@ -101,44 +101,47 @@ export default function About() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero — Photo de groupe officielle */}
-      <div className="relative overflow-hidden">
-        {/* Vidéo bannière en fond */}
-        <div className="relative h-[380px] md:h-[480px] w-full overflow-hidden bg-[#001a3d]">
-          <video
-            src="/hero-banner.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="absolute inset-0 w-full h-full object-cover object-center z-0"
-          />
-          {/* Overlay gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#001a3d]/90 via-[#001a3d]/30 to-transparent z-10" />
-          {/* Contenu overlay */}
-          <div className="absolute inset-0 flex flex-col justify-end pb-8 px-4 z-20">
-            <div className="container mx-auto max-w-6xl">
-              <Button
-                onClick={() => setLocation("/")}
-                variant="ghost"
-                className="text-white hover:bg-white/10 mb-4 absolute top-4 left-4 md:left-8"
-              >
-                <ArrowLeft className="mr-2 w-4 h-4" />
-                Retour
-              </Button>
-              <div className="flex items-end gap-4">
-                <div>
-                  <h1 className="text-3xl md:text-5xl font-bold text-[#D4AF37] mb-2 drop-shadow-lg">
-                    Notre équipe
-                  </h1>
-                  <p className="text-white/90 text-lg max-w-2xl drop-shadow">
-                    Le conseil d'administration de l'ASBL Synergie Dour —
-                    commerçants et indépendants engagés pour Dour.
-                  </p>
-                </div>
-              </div>
-            </div>
+      {/* Hero — Vidéo bannière */}
+      <div className="relative h-[320px] md:h-[440px] w-full overflow-hidden bg-[#001a3d]">
+        {/* Vidéo en fond */}
+        <video
+          src="/hero-banner.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ zIndex: 0 }}
+        />
+        {/* Overlay sombre */}
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-[#001a3d]/85 via-[#001a3d]/25 to-transparent"
+          style={{ zIndex: 1 }}
+        />
+        {/* Bouton retour */}
+        <Button
+          onClick={() => setLocation("/")}
+          variant="ghost"
+          className="absolute top-4 left-4 md:left-8 text-white hover:bg-white/10"
+          style={{ zIndex: 2 }}
+        >
+          <ArrowLeft className="mr-2 w-4 h-4" />
+          Retour
+        </Button>
+        {/* Titre centré en bas */}
+        <div
+          className="absolute bottom-0 left-0 right-0 pb-8 px-6"
+          style={{ zIndex: 2 }}
+        >
+          <div className="container mx-auto max-w-6xl">
+            <h1 className="text-3xl md:text-5xl font-bold text-[#D4AF37] mb-2 drop-shadow-lg">
+              Notre équipe
+            </h1>
+            <p className="text-white/90 text-base md:text-lg max-w-2xl drop-shadow">
+              Le conseil d'administration de l'ASBL Synergie Dour —
+              commerçants et indépendants engagés pour Dour.
+            </p>
           </div>
         </div>
       </div>
