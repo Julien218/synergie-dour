@@ -405,104 +405,118 @@ CONTEXTE ACTUEL : ${context}` : ""}`;
 });
 
 
-// ─── POST /api/merchants/google-scrape ───────────────────────────────────────
-// Extrait les données d'une fiche Google Business via son URL
-socialRouter.post("/google-scrape", requireAdmin, async (req, res) => {
+// ─── POST /api/social/google-scrape ──────────────────────────────────────────
+// Extrait les données d'une fiche Google Business via Places API ou fallback nom
+socialRouter.post("/google-scrape", requireAdmin, async (req: any, res: any) => {
   try {
     const { url } = req.body as { url: string };
-    if (!url || !url.includes("google")) {
-      return res.status(400).json({ message: "URL Google invalide. Utilisez une URL Google Maps." });
+    if (!url) {
+      return res.status(400).json({ message: "URL manquante" });
     }
 
-    const apiKey = process.env.CLE_API_OPENAI || process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ message: "Clé OpenAI non configurée" });
-    }
+    const GAPI_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_API_KEY;
 
-    // Fetch de la page Google Maps
-    const fetchHeaders: Record<string, string> = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      "Accept-Language": "fr-BE,fr;q=0.9",
-    };
+    // ── Étape 1 : extraire le nom/place_id depuis l'URL ──
+    // Formats supportés :
+    //   https://maps.google.com/?cid=XXX
+    //   https://www.google.com/maps/place/Nom+du+Commerce/@lat,lng,...
+    //   https://share.google/XXXXX  (lien court — on résout la redirection)
+    //   https://g.page/SLUG
+    //   https://goo.gl/maps/XXXXX
 
-    let html = "";
-    let finalUrl = url.trim();
-    try {
-      const resp = await fetch(finalUrl, { headers: fetchHeaders });
-      html = await resp.text();
-      finalUrl = resp.url;
-    } catch {
-      return res.status(502).json({ message: "Impossible d'accéder à Google Maps" });
-    }
+    let resolvedUrl = url.trim();
 
-    // Nettoyer le HTML pour l'IA
-    const cleanText = html
-      .replace(/[\s\S]*?/g, "")
-      .replace(/[\s\S]*?/g, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .substring(0, 4000);
-
-    // Extraction via OpenAI
-    const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + apiKey,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{
-          role: "user",
-          content: [
-            "Extrait les informations de cette fiche Google Business.",
-            "Réponds UNIQUEMENT en JSON avec ces clés (null si absent):",
-            '{"businessName":"","address":"","phone":"","website":"","email":"","category":"","description":""}',
-            "URL analysée: " + finalUrl,
-            "Contenu extrait:",
-            cleanText
-          ].join("\n")
-        }],
-        max_tokens: 400,
-        temperature: 0.1,
-      })
-    });
-
-    if (!aiResp.ok) {
-      return res.status(502).json({ message: "Erreur OpenAI: " + aiResp.status });
-    }
-
-    const aiData = await aiResp.json() as any;
-    const aiText = aiData.choices?.[0]?.message?.content || "{}";
-    
-    // Extraire le JSON de la réponse
-    const jsonStart = aiText.indexOf("{");
-    const jsonEnd = aiText.lastIndexOf("}");
-    let extracted: Record<string, string> = {};
-    
-    if (jsonStart !== -1 && jsonEnd !== -1) {
+    // Résoudre les redirections (liens courts share.google, goo.gl, g.page)
+    if (
+      resolvedUrl.includes("share.google") ||
+      resolvedUrl.includes("goo.gl/maps") ||
+      resolvedUrl.includes("g.page/")
+    ) {
       try {
-        extracted = JSON.parse(aiText.slice(jsonStart, jsonEnd + 1));
-        // Nettoyer les valeurs "null" string
-        for (const k of Object.keys(extracted)) {
-          if (extracted[k] === "null" || extracted[k] === "N/A") extracted[k] = "";
+        const r = await fetch(resolvedUrl, {
+          method: "GET",
+          redirect: "follow",
+          headers: { "User-Agent": "Mozilla/5.0" }
+        });
+        resolvedUrl = r.url;
+      } catch (_) {}
+    }
+
+    // Extraire le nom depuis l'URL résolue
+    let placeName = "";
+    let cid = "";
+
+    const cidMatch = resolvedUrl.match(/[?&]cid=(\d+)/);
+    if (cidMatch) cid = cidMatch[1];
+
+    const placeMatch = resolvedUrl.match(/maps\/place\/([^/@?]+)/);
+    if (placeMatch) {
+      placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, " "));
+    }
+
+    // ── Étape 2 : Places API Text Search ──
+    if (GAPI_KEY && (placeName || cid)) {
+      const query = placeName || ("cid:" + cid);
+      const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=place_id,name,formatted_address,formatted_phone_number,website,types&key=${GAPI_KEY}&language=fr`;
+
+      const searchResp = await fetch(searchUrl);
+      const searchData = await searchResp.json() as any;
+
+      if (searchData.candidates && searchData.candidates.length > 0) {
+        const placeId = searchData.candidates[0].place_id;
+
+        // Détails complets
+        const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,formatted_address,formatted_phone_number,website,types,editorial_summary&key=${GAPI_KEY}&language=fr`;
+        const detailResp = await fetch(detailUrl);
+        const detailData = await detailResp.json() as any;
+        const p = detailData.result || {};
+
+        const categoryMap: Record<string, string> = {
+          food: "Horeca", restaurant: "Horeca", cafe: "Horeca",
+          store: "Commerce", clothing_store: "Commerce", hardware_store: "Commerce",
+          beauty_salon: "Beauté / Bien-être", hair_care: "Beauté / Bien-être",
+          car_repair: "Automobile", car_dealer: "Automobile",
+          health: "Santé", doctor: "Santé", pharmacy: "Santé",
+          lawyer: "Services", accounting: "Services", finance: "Services",
+          real_estate_agency: "Immobilier",
+        };
+
+        const types: string[] = p.types || [];
+        let category = "Commerce";
+        for (const t of types) {
+          if (categoryMap[t]) { category = categoryMap[t]; break; }
         }
-      } catch {
-        extracted = {};
+
+        return res.json({
+          data: {
+            businessName: p.name || placeName,
+            address: p.formatted_address || "",
+            phone: p.formatted_phone_number || "",
+            website: p.website || "",
+            email: "",
+            category,
+            description: p.editorial_summary?.overview || "",
+          }
+        });
       }
     }
 
-    const hasData = Object.values(extracted).some(v => v && v.length > 0);
-    if (!hasData) {
-      return res.status(422).json({
-        message: "Impossible d'extraire les données. Essayez avec l'URL complète Google Maps (pas un lien court).",
+    // ── Étape 3 : Fallback — nom uniquement depuis l'URL ──
+    if (placeName) {
+      return res.json({
+        data: {
+          businessName: placeName,
+          address: "", phone: "", website: "", email: "",
+          category: "Commerce", description: "",
+        }
       });
     }
 
-    res.json({ data: extracted, url: finalUrl });
+    return res.status(422).json({ message: "Impossible d'extraire les données. Ajoutez une clé GOOGLE_PLACES_API_KEY dans les variables Railway pour activer l'extraction complète." });
+
   } catch (err: any) {
-    console.error("[merchants/google-scrape]", err);
-    res.status(500).json({ message: err.message || "Erreur serveur" });
+    console.error("[google-scrape]", err);
+    return res.status(500).json({ message: "Erreur serveur lors de l'extraction" });
   }
 });
 
