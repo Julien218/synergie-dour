@@ -104,19 +104,20 @@ export default function About() {
       {/* Hero — Photo de groupe officielle */}
       <div className="relative overflow-hidden">
         {/* Vidéo bannière en fond */}
-        <div className="relative h-[380px] md:h-[480px] w-full">
+        <div className="relative h-[380px] md:h-[480px] w-full overflow-hidden bg-[#001a3d]">
           <video
             src="/hero-banner.mp4"
             autoPlay
             loop
             muted
             playsInline
-            className="w-full h-full object-cover object-center"
+            preload="auto"
+            className="absolute inset-0 w-full h-full object-cover object-center z-0"
           />
           {/* Overlay gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#001a3d]/95 via-[#001a3d]/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#001a3d]/90 via-[#001a3d]/30 to-transparent z-10" />
           {/* Contenu overlay */}
-          <div className="absolute inset-0 flex flex-col justify-end pb-8 px-4">
+          <div className="absolute inset-0 flex flex-col justify-end pb-8 px-4 z-20">
             <div className="container mx-auto max-w-6xl">
               <Button
                 onClick={() => setLocation("/")}
