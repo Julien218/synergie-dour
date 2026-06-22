@@ -102,7 +102,7 @@ export default function About() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero — Vidéo bannière */}
-      <div className="relative w-full overflow-hidden bg-[#001a3d]">
+      <div className="relative w-full overflow-hidden bg-[#001a3d]" style={{ height: "380px", maxHeight: "380px" }}>
         {/* Vidéo en fond */}
         <video
           src="/hero-banner.mp4"
@@ -111,8 +111,8 @@ export default function About() {
           muted
           playsInline
           preload="auto"
-          className="w-full block"
-          style={{ zIndex: 0, display: "block", maxHeight: "none" }}
+          className="absolute inset-0 w-full h-full"
+          style={{ zIndex: 0, objectFit: "cover", objectPosition: "center top" }}
         />
         {/* Overlay sombre */}
         <div
