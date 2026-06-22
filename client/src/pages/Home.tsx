@@ -66,11 +66,15 @@ export default function Home() {
                 </Button>
               </div>
             </div>
-            <div className="hidden md:flex items-center justify-center">
-              <img
-                src="/logo.png"
-                alt="Synergie Dour"
-                className="h-80 w-80 object-contain drop-shadow-2xl"
+            <div className="flex items-center justify-center">
+              <video
+                src="/hero-banner.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full max-w-lg rounded-2xl shadow-2xl object-cover"
+                style={{ maxHeight: "420px" }}
               />
             </div>
           </div>
