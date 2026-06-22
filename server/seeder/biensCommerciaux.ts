@@ -224,13 +224,30 @@ export async function seedBiensCommerciaux(): Promise<void> {
     console.log("[Seed] Peuplement initial de biens_commerciaux...");
     let inserted = 0;
     for (const b of SEED_BIENS) {
-      await db.execute(
-        "INSERT IGNORE INTO biens_commerciaux (id, titre, adresse, village, surface, loyer, type_bien, description, source, url_source, agence, statut) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [b.id, b.titre, b.adresse ?? null, b.village ?? null, b.surface ?? null, b.loyer ?? null,
-         b.type_bien, b.description ?? null, b.source ?? "Immoweb", b.url_source ?? null,
-         b.agence ?? null, b.statut ?? "disponible"]
-      );
-      inserted++;
+      try {
+        await db.execute(
+          `INSERT IGNORE INTO biens_commerciaux
+            (id, titre, adresse, village, surface, loyer, type_bien, description, source, url_source, agence, statut)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            String(b.id ?? ""),
+            String(b.titre ?? ""),
+            b.adresse ?? null,
+            b.village ?? null,
+            b.surface ?? null,
+            b.loyer ?? null,
+            String(b.type_bien ?? "Commerce"),
+            b.description ?? null,
+            String(b.source ?? "Dour Centre Ville"),
+            b.url_source ?? null,
+            b.agence ?? null,
+            String(b.statut ?? "disponible"),
+          ]
+        );
+        inserted++;
+      } catch (rowErr: any) {
+        console.warn(`[Seed] Skip biens row: ${rowErr.message}`);
+      }
     }
     console.log(`[Seed] ${inserted} biens_commerciaux insérés ✅`);
   } catch (err: any) {
