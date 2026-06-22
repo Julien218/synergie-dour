@@ -1,7 +1,6 @@
-import { getDb } from "../db";
+import mysql2 from "mysql2/promise";
 
 // Données issues de la base Base44 — importées une fois en production
-// Ajoutez vos nouvelles annonces ici ou via l'admin Dashboard
 const SEED_BIENS = [
   {
     id: "6a22eba1cc23b5a7ac1684d5",
@@ -201,34 +200,36 @@ const SEED_BIENS = [
   },
 ];
 
-/**
- * Insère les biens_commerciaux si la table est vide (seed initial unique).
- * Idempotent : INSERT IGNORE évite les doublons par id.
- */
 export async function seedBiensCommerciaux(): Promise<void> {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Seed] DB non disponible — seed ignoré");
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.warn("[Seed] DATABASE_URL non configurée — seed ignoré");
     return;
   }
 
+  let pool: mysql2.Pool | null = null;
   try {
-    const [rows] = await db.execute("SELECT COUNT(*) as cnt FROM biens_commerciaux") as any;
-    const count = (rows as any[])[0]?.cnt ?? 0;
+    pool = mysql2.createPool({
+      uri: dbUrl.split("?")[0],
+      ssl: { rejectUnauthorized: false },
+      connectionLimit: 2,
+    });
 
-    if (Number(count) > 0) {
+    // Vérifier si déjà peuplé
+    const [rows] = await pool.execute("SELECT COUNT(*) as cnt FROM biens_commerciaux") as any;
+    const count = Number((rows as any[])[0]?.cnt ?? 0);
+    if (count > 0) {
       console.log(`[Seed] biens_commerciaux déjà peuplé (${count} entrées) — skip`);
       return;
     }
 
     console.log("[Seed] Peuplement initial de biens_commerciaux...");
     let inserted = 0;
+
     for (const b of SEED_BIENS) {
       try {
-        await db.execute(
-          `INSERT IGNORE INTO biens_commerciaux
-            (id, titre, adresse, village, surface, loyer, type_bien, description, source, url_source, agence, statut)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        await pool.execute(
+          "INSERT IGNORE INTO biens_commerciaux (id, titre, adresse, village, surface, loyer, type_bien, description, source, url_source, agence, statut) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [
             String(b.id ?? ""),
             String(b.titre ?? ""),
@@ -246,11 +247,14 @@ export async function seedBiensCommerciaux(): Promise<void> {
         );
         inserted++;
       } catch (rowErr: any) {
-        console.error(`[Seed] Skip biens row FULL:`, JSON.stringify(rowErr.message), rowErr.sqlMessage || '', rowErr.sql || '');
+        console.error(`[Seed] Row error: ${rowErr.message} | sql: ${rowErr.sql}`);
       }
     }
+
     console.log(`[Seed] ${inserted} biens_commerciaux insérés ✅`);
-  } catch (err: any) {
-    console.warn("[Seed] Erreur seed biens_commerciaux:", err.message);
+  } catch (e: any) {
+    console.error("[Seed] Erreur seed biens_commerciaux:", e.message);
+  } finally {
+    if (pool) await pool.end().catch(() => {});
   }
 }
