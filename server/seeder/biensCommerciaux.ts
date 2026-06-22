@@ -246,7 +246,7 @@ export async function seedBiensCommerciaux(): Promise<void> {
         );
         inserted++;
       } catch (rowErr: any) {
-        console.warn(`[Seed] Skip biens row: ${rowErr.message}`);
+        console.error(`[Seed] Skip biens row FULL:`, JSON.stringify(rowErr.message), rowErr.sqlMessage || '', rowErr.sql || '');
       }
     }
     console.log(`[Seed] ${inserted} biens_commerciaux insérés ✅`);
