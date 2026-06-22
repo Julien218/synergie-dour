@@ -103,12 +103,15 @@ export default function About() {
     <div className="min-h-screen bg-background">
       {/* Hero — Photo de groupe officielle */}
       <div className="relative overflow-hidden">
-        {/* Photo de groupe en fond */}
+        {/* Vidéo bannière en fond */}
         <div className="relative h-[380px] md:h-[480px] w-full">
-          <img
-            src="/equipe/equipe-ca.jpg"
-            alt="Conseil d'administration Synergie Dour"
-            className="w-full h-full object-cover object-top"
+          <video
+            src="/hero-banner.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover object-center"
           />
           {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#001a3d]/95 via-[#001a3d]/40 to-transparent" />
