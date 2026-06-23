@@ -118,6 +118,7 @@ function DashboardLayoutContent({
     { icon: Share2, label: "Réseaux Sociaux", path: "/dashboard/social" },
     { icon: FileEdit, label: "Posts à publier", path: "/dashboard/posts" },
     { icon: Users, label: "Membres CA", path: "/dashboard/members" },
+  { icon: Zap, label: "LeadFinder Pro", path: "/dashboard/leadfinder" },
   ];
 
   const merchantMenuItems = [
