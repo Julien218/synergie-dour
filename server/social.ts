@@ -442,9 +442,10 @@ socialRouter.post("/google-scrape", requireAdmin, async (req: any, res: any) => 
       } catch (_) {}
     }
 
-    // Extraire le nom depuis l'URL résolue
+    // Extraire le nom / place_id depuis l'URL résolue
     let placeName = "";
     let cid = "";
+    let placeId = "";
 
     const cidMatch = resolvedUrl.match(/[?&]cid=(\d+)/);
     if (cidMatch) cid = cidMatch[1];
@@ -454,16 +455,45 @@ socialRouter.post("/google-scrape", requireAdmin, async (req: any, res: any) => 
       placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, " "));
     }
 
-    // ── Étape 2 : Places API Text Search ──
-    if (GAPI_KEY && (placeName || cid)) {
-      const query = placeName || ("cid:" + cid);
-      const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=place_id,name,formatted_address,formatted_phone_number,website,types&key=${GAPI_KEY}&language=fr`;
+    // Extraire place_id depuis URL résolue (format ?q=...)
+    const placeIdMatch = resolvedUrl.match(/place_id[=:]([A-Za-z0-9_-]+)/);
+    if (placeIdMatch) placeId = placeIdMatch[1];
 
-      const searchResp = await fetch(searchUrl);
-      const searchData = await searchResp.json() as any;
+    // Extraire depuis data=!...!1s0x...:0x... (format long Google Maps)
+    const dataMatch = resolvedUrl.match(/data=.*!1s(0x[0-9a-fA-F]+:[0-9a-fA-F]+)/);
+    if (dataMatch && !placeId) {
+      const hexCid = dataMatch[1].split(":")[1];
+      if (hexCid) cid = parseInt(hexCid, 16).toString();
+    }
 
-      if (searchData.candidates && searchData.candidates.length > 0) {
-        const placeId = searchData.candidates[0].place_id;
+    // Extraire depuis ?q=NomCommerce dans l'URL résolue
+    const qMatch = resolvedUrl.match(/[?&]q=([^&]+)/);
+    if (qMatch && !placeName) {
+      placeName = decodeURIComponent(qMatch[1].replace(/\+/g, " "));
+    }
+
+    // Extraire depuis ftid=0x...%3A0x... (format share.google résolu)
+    const ftidMatch = resolvedUrl.match(/ftid=0x[0-9a-fA-F]+%3A([0-9a-fA-F]+)/i);
+    if (ftidMatch && !cid) {
+      cid = parseInt(ftidMatch[1], 16).toString();
+    }
+
+    // ── Étape 2 : Places API Text Search ou Direct ──
+    if (GAPI_KEY && (placeName || cid || placeId)) {
+      // Si pas de placeId direct → Text Search
+      if (!placeId) {
+        const query = placeName || ("cid:" + cid);
+        const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=place_id,name,formatted_address,formatted_phone_number,website,types&key=${GAPI_KEY}&language=fr`;
+
+        const searchResp = await fetch(searchUrl);
+        const searchData = await searchResp.json() as any;
+
+        if (searchData.candidates && searchData.candidates.length > 0) {
+          placeId = searchData.candidates[0].place_id;
+        }
+      }
+
+      if (placeId) {
 
         // Détails complets
         const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,formatted_address,formatted_phone_number,website,types,editorial_summary&key=${GAPI_KEY}&language=fr`;
@@ -501,7 +531,27 @@ socialRouter.post("/google-scrape", requireAdmin, async (req: any, res: any) => 
       }
     }
 
-    // ── Étape 3 : Fallback — nom uniquement depuis l'URL ──
+    // ── Étape 3 : Fallback sans clé API — Places New API (pas de clé)
+    // Tenter d'extraire le nom depuis meta/title de la page résolue
+    if (!placeName && !cid && !placeId) {
+      try {
+        const pageResp = await fetch(resolvedUrl, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" },
+          redirect: "follow",
+        });
+        const html = await pageResp.text();
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) {
+          const rawTitle = titleMatch[1].split(" - ")[0].split(" | ")[0].trim();
+          if (rawTitle && rawTitle.length > 2) placeName = rawTitle;
+        }
+        // Chercher og:title
+        const ogMatch = html.match(/property="og:title"[^>]*content="([^"]+)"/i);
+        if (ogMatch && !placeName) placeName = ogMatch[1].split(" - ")[0].trim();
+      } catch (_) {}
+    }
+
+    // ── Étape 4 : Fallback — nom uniquement depuis l'URL ──
     if (placeName) {
       return res.json({
         data: {
