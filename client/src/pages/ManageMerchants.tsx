@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useState } from "react";
-import { Plus, Edit, Trash2, ArrowLeft, Check, X, ExternalLink, MapPin, Wand2, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, Check, X, ExternalLink, MapPin, Wand2, Loader2, Upload, FileText, AlertCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -37,6 +37,80 @@ export default function ManageMerchants() {
   const [googleUrl, setGoogleUrl]   = useState("");
   const [isScraping, setIsScraping] = useState(false);
   const [scrapeMsg, setScrapeMsg]   = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // Import CSV
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ inserted: number; skipped: number; errors: string[] } | null>(null);
+  const csvInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    setImportResult(null);
+
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) {
+        toast.error("Le fichier CSV est vide ou mal formaté");
+        setIsImporting(false);
+        return;
+      }
+
+      // Détection auto du séparateur (virgule ou point-virgule)
+      const sep = lines[0].includes(";") ? ";" : ",";
+      const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/"/g, ""));
+
+      // Mapping flexible des colonnes
+      const getCol = (row: string[], keys: string[]) => {
+        for (const k of keys) {
+          const idx = headers.findIndex(h => h.includes(k));
+          if (idx !== -1) return row[idx]?.replace(/"/g, "").trim() ?? "";
+        }
+        return "";
+      };
+
+      let inserted = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(sep);
+        const nom = getCol(row, ["nom", "name", "commerce", "société", "societe", "entreprise"]);
+        if (!nom) { skipped++; continue; }
+
+        try {
+          await createMutation.mutateAsync({
+            businessName: nom,
+            businessCategory: getCol(row, ["categorie", "catégorie", "category", "type", "secteur"]) || "Commerce",
+            description: getCol(row, ["description", "activite", "activité", "info"]),
+            address: getCol(row, ["adresse", "address", "rue", "localite", "localité"]),
+            phone: getCol(row, ["telephone", "téléphone", "tel", "phone", "gsm"]),
+            email: getCol(row, ["email", "mail", "courriel", "e-mail"]),
+            website: getCol(row, ["site", "website", "web", "url"]),
+            googleBusinessUrl: getCol(row, ["google", "gmb", "maps", "business_url"]),
+            status: "approved",
+          });
+          inserted++;
+        } catch (err: any) {
+          errors.push(`Ligne ${i + 1} (${nom}): ${err.message}`);
+          skipped++;
+        }
+      }
+
+      setImportResult({ inserted, skipped, errors });
+      if (inserted > 0) {
+        toast.success(`${inserted} commerçant(s) importé(s) avec succès`);
+        refetch();
+      }
+    } catch (err: any) {
+      toast.error(`Erreur lecture CSV: ${err.message}`);
+    } finally {
+      setIsImporting(false);
+      if (csvInputRef.current) csvInputRef.current.value = "";
+    }
+  };
 
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
 
