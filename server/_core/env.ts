@@ -13,6 +13,8 @@ export const ENV = {
   // Stockage
   storageApiUrl: process.env.BUILT_IN_STORAGE_API_URL ?? "",
   storageApiKey: process.env.BUILT_IN_STORAGE_API_KEY ?? "",
+  // Google Places API (pré-remplissage fiches commerçants)
+  googlePlacesKey: process.env.GOOGLE_PLACES_API_KEY ?? "",
   // Réseaux sociaux
   fbPageId:    process.env.FB_PAGE_ID ?? "",
   fbPageToken: process.env.FB_PAGE_TOKEN ?? "",
