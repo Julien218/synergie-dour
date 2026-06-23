@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { loginWithPassword, registerWithPassword, SESSION_COOKIE, SESSION_DURATION_MS, signSession } from "./authService";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, adminProcedure, protectedProcedure } from "./_core/trpc";
+import { getDb } from "./db";
 import {
   getMerchants,
   getMerchantById,
@@ -397,6 +398,19 @@ export const appRouter = router({
       if (!db) throw new Error("Database not available");
       await db.execute("DELETE FROM scheduled_posts WHERE id=?", [input.id]);
       return { success: true };
+    }),
+  }),
+
+  // Memberships — statut membre pour l'espace membre
+  memberships: router({
+    myStatus: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const [rows] = await db.execute(
+        "SELECT * FROM membership_requests WHERE email = ? ORDER BY created_at DESC LIMIT 1",
+        [ctx.user.email]
+      ) as any;
+      return (rows as any[])[0] ?? null;
     }),
   }),
 
