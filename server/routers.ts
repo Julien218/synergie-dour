@@ -421,6 +421,86 @@ export const appRouter = router({
     }),
   }),
 
+  // ── LEADFINDER PRO — Intégration CRM & Campagnes ────────────────────────
+  leadfinder: router({
+    // Liste des contacts LeadFinder
+    contacts: adminProcedure.input((val: any) => val ?? {}).query(async ({ input }) => {
+      const { getAllLeadFinderContacts, getLeadFinderContacts } = await import("./leadfinder");
+      const limit = input?.limit ?? 0;
+      if (limit === 0) return getAllLeadFinderContacts();
+      return getLeadFinderContacts({ limit: input.limit, skip: input.skip ?? 0, query: input.query });
+    }),
+
+    // Liste des campagnes
+    campaigns: adminProcedure.query(async () => {
+      const { getEmailCampaigns } = await import("./leadfinder");
+      return getEmailCampaigns({ limit: 100 });
+    }),
+
+    // Liste des templates
+    templates: adminProcedure.query(async () => {
+      const { getEmailTemplates } = await import("./leadfinder");
+      return getEmailTemplates();
+    }),
+
+    // Créer une campagne
+    createCampaign: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      const { createEmailCampaign } = await import("./leadfinder");
+      return createEmailCampaign(input as any);
+    }),
+
+    // Créer un template
+    createTemplate: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      const { createEmailTemplate } = await import("./leadfinder");
+      return createEmailTemplate(input as any);
+    }),
+
+    // Importer contacts LeadFinder → CRM commerçants Synergie
+    importToMerchants: adminProcedure.input((val: any) => val ?? {}).mutation(async ({ input }) => {
+      const { getAllLeadFinderContacts } = await import("./leadfinder");
+      const { createMerchant } = await import("./db");
+      const contacts = await getAllLeadFinderContacts();
+      // Filtrer ceux avec vrai email
+      const valid = contacts.filter((c: any) => c.email && c.email.includes("@"));
+      let inserted = 0; let skipped = 0; const errors: string[] = [];
+      for (const c of valid) {
+        try {
+          await createMerchant({
+            businessName: c.full_name || c.company || "Sans nom",
+            businessCategory: c.profession || "Professionnel",
+            description: c.notes || "",
+            address: c.location || "",
+            phone: "",
+            email: c.email,
+            website: "",
+            googleBusinessUrl: "",
+            status: "approved",
+          });
+          inserted++;
+        } catch (e: any) {
+          if (e.message?.includes("Duplicate")) skipped++;
+          else errors.push(`${c.full_name}: ${e.message}`);
+        }
+      }
+      return { inserted, skipped, errors: errors.slice(0, 10), total: valid.length };
+    }),
+
+    // Envoyer email à un contact
+    sendEmail: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val;
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      const { sendCampaignEmail } = await import("./leadfinder");
+      return sendCampaignEmail(input as any);
+    }),
+  }),
+
   // ── INBOX — compteur messages non lus ──────────────────────────────────
   inbox: router({
     unreadCount: adminProcedure.query(async () => {
