@@ -18,6 +18,7 @@ import ManageRequests from "@/pages/ManageRequests";
 import MembershipRequestsAdmin from "@/pages/MembershipRequestsAdmin";
 import AgentDashboard from "@/pages/AgentDashboard";
 import MemberDashboard from "@/pages/MemberDashboard";
+import LeadFinderPage from "@/pages/LeadFinderPage";
 import InboxPage from "@/pages/InboxPage";
 import Resources from "@/pages/Resources";
 import Resource from "@/pages/Resource";
