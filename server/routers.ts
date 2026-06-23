@@ -404,13 +404,20 @@ export const appRouter = router({
   // Memberships — statut membre pour l'espace membre
   memberships: router({
     myStatus: protectedProcedure.query(async ({ ctx }) => {
-      const db = await getDb();
-      if (!db) return null;
-      const [rows] = await db.execute(
-        "SELECT * FROM membership_requests WHERE email = ? ORDER BY created_at DESC LIMIT 1",
-        [ctx.user.email]
-      ) as any;
-      return (rows as any[])[0] ?? null;
+      try {
+        const mysql2 = await import("mysql2/promise");
+        const dbUrl = process.env.DATABASE_URL;
+        if (!dbUrl) return null;
+        const pool = mysql2.createPool({ uri: dbUrl.split("?")[0], ssl: { rejectUnauthorized: false }, connectionLimit: 2 });
+        const [rows] = await pool.execute(
+          "SELECT * FROM membership_requests WHERE email = ? ORDER BY created_at DESC LIMIT 1",
+          [ctx.user.email]
+        ) as any;
+        await pool.end().catch(() => {});
+        return (rows as any[])[0] ?? null;
+      } catch {
+        return null;
+      }
     }),
   }),
 
