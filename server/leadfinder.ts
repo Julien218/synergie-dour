@@ -1,7 +1,7 @@
 import { ENV } from "./_core/env";
 
 const LEADFINDER_BASE = "https://pro-leads-hub.base44.app/api";
-const API_KEY = process.env.LEADFINDER_API_KEY ?? "";
+const API_KEY = process.env.LEADFINDER_API_KEY ?? process.env.BASE44_API_KEY ?? "";
 
 async function lfFetch(path: string, options: RequestInit = {}) {
   const url = `${LEADFINDER_BASE}${path}`;
