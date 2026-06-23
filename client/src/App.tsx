@@ -148,6 +148,9 @@ function Router() {
       <Route path="/dashboard/members">
         {() => <MemberDashboard />}
       </Route>
+      <Route path="/dashboard/leadfinder">
+        {() => <LeadFinderPage />}
+      </Route>
 
       {/* Page formulaire local commercial */}
       <Route path="/locaux">
