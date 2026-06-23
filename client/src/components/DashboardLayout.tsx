@@ -32,7 +32,7 @@ import {
   ClipboardList,
   Image,
   Building2,
-  Share2, FileEdit,
+  Share2, FileEdit, Zap,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
