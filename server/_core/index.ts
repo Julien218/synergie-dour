@@ -118,6 +118,14 @@ async function initDatabase() {
 
 async function startServer() {
   await initDatabase();
+  // Patch one-shot : correction email olivier.trevis
+  try {
+    const { patchOlivierEmail } = await import("../seeder/patchOlivierEmail");
+    await patchOlivierEmail();
+  } catch (e: any) {
+    console.warn("[Patch] patchOlivierEmail non disponible:", e.message);
+  }
+
   // Seed initial des biens commerciaux (migration Base44 → MySQL, idempotent)
   try {
     const { seedBiensCommerciaux } = await import("../seeder/biensCommerciaux");
