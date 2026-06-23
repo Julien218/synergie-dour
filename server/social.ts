@@ -414,7 +414,7 @@ socialRouter.post("/google-scrape", requireAdmin, async (req: any, res: any) => 
       return res.status(400).json({ message: "URL manquante" });
     }
 
-    const GAPI_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_API_KEY;
+    const GAPI_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_API_KEY || ENV.googlePlacesKey;
 
     // ── Étape 1 : extraire le nom/place_id depuis l'URL ──
     // Formats supportés :
