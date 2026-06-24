@@ -24,6 +24,63 @@ const emptyForm = () => ({
   status: "approved" as "pending" | "approved" | "rejected",
 });
 
+
+// ─── Structure catégories & sous-catégories Synergie Dour ──────────────────
+const CATEGORIES_SYNERGIE: Record<string, string[]> = {
+  "Commerce de détail": [
+    "Alimentation générale","Boucherie","Charcuterie","Boulangerie","Pâtisserie",
+    "Chocolaterie","Poissonnerie","Fromagerie","Primeur","Caviste","Fleuriste",
+    "Librairie","Papeterie","Presse","Tabac","Vêtements","Chaussures","Lingerie",
+    "Maroquinerie","Bijouterie","Horlogerie","Optique","Parfumerie","Cosmétique",
+    "Jouets","Articles de sport","Chasse et pêche","Informatique","Téléphonie",
+    "Électroménager","Multimédia","Animalerie","Décoration","Ameublement","Literie",
+    "Bricolage","Jardinage","Piscines et spas","Matériel médical","Cadeaux et souvenirs",
+  ],
+  "Horeca": [
+    "Restaurant","Brasserie","Café","Bar","Snack","Friterie","Pizzeria",
+    "Sandwicherie","Salon de thé","Glacier","Traiteur","Hôtel","Chambre d\'hôtes","Gîte",
+  ],
+  "Artisanat et métiers manuels": [
+    "Menuisier","Ébéniste","Ferronnier","Serrurier","Plombier","Chauffagiste",
+    "Électricien","Carreleur","Maçon","Couvreur","Peintre","Vitrier","Tapissier",
+    "Couturier","Artisan d\'art",
+  ],
+  "Construction et bâtiment": [
+    "Entrepreneur général","Architecte","Géomètre","Promoteur immobilier","Cuisiniste",
+    "Façadier","Isolation","Terrassement","Aménagement extérieur",
+  ],
+  "Automobile et mobilité": [
+    "Garage","Carrosserie","Vente de véhicules","Vente de motos","Pneus",
+    "Contrôle technique","Auto-école","Location de véhicules","Vélo et mobilité douce",
+  ],
+  "Bien-être et beauté": [
+    "Coiffure","Barbier","Institut de beauté","Onglerie","Pédicure",
+    "Massage","Spa","Tatouage","Piercing",
+  ],
+  "Santé et professions médicales": [
+    "Médecin généraliste","Médecin spécialiste","Dentiste","Kinésithérapeute",
+    "Infirmier","Psychologue","Ostéopathe","Orthophoniste","Pharmacie",
+    "Opticien","Audioprothésiste",
+  ],
+  "Professions libérales et services": [
+    "Avocat","Notaire","Huissier","Comptable","Expert-comptable","Conseiller fiscal",
+    "Courtier en assurances","Conseiller financier","Consultant","Secrétariat","Traduction",
+  ],
+  "Numérique, communication et médias": [
+    "Développement web","Graphisme","Marketing digital","Communication","Publicité",
+    "Impression","Photographie","Vidéo","Community management","Média local",
+  ],
+  "Sport, loisirs et culture": [
+    "Salle de fitness","Club sportif","Danse","Arts martiaux","Musique",
+    "Théâtre","Loisirs créatifs","Organisation de loisirs",
+  ],
+  "Services à la personne": [
+    "Titres-services","Nettoyage","Jardinage","Aide à domicile",
+    "Garde d\'enfants","Aide aux seniors","Pet-sitting",
+  ],
+};
+const MAIN_CATEGORIES = Object.keys(CATEGORIES_SYNERGIE);
+
 export default function ManageMerchants() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -32,6 +89,7 @@ export default function ManageMerchants() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState(emptyForm());
+  const [selectedMainCat, setSelectedMainCat] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const [googleUrl, setGoogleUrl]   = useState("");
@@ -419,16 +477,42 @@ export default function ManageMerchants() {
                   <div>
                     <label className="text-sm font-semibold text-[#001a3d]">Catégorie *</label>
                     <select
-                      value={formData.businessCategory}
-                      onChange={(e) => setFormData({ ...formData, businessCategory: e.target.value })}
+                      value={selectedMainCat}
+                      onChange={(e) => {
+                        setSelectedMainCat(e.target.value);
+                        setFormData({ ...formData, businessCategory: e.target.value });
+                      }}
                       className="w-full border border-input rounded-md p-2 mt-1 text-sm"
                       required
                     >
-                      <option value="">— Sélectionnez —</option>
-                      {categories.map((cat: any) => (
-                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      <option value="">— Catégorie principale —</option>
+                      {MAIN_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
+                    {selectedMainCat && CATEGORIES_SYNERGIE[selectedMainCat]?.length > 0 && (
+                      <select
+                        value={
+                          formData.businessCategory.includes(" > ")
+                            ? formData.businessCategory.split(" > ")[1]
+                            : ""
+                        }
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            businessCategory: e.target.value
+                              ? `${selectedMainCat} > ${e.target.value}`
+                              : selectedMainCat,
+                          })
+                        }
+                        className="w-full border border-input rounded-md p-2 mt-1 text-sm"
+                      >
+                        <option value="">— Sous-catégorie (optionnel) —</option>
+                        {CATEGORIES_SYNERGIE[selectedMainCat].map((sub) => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 
