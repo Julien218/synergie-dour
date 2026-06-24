@@ -89,7 +89,7 @@ export function Footer() {
               </li>
               <li>
                 <button onClick={() => setLocation("/membership")} className="text-blue-100 hover:text-[#D4AF37] transition-colors">
-                  Devenir membre — 50€/an
+                  Devenir membre
                 </button>
               </li>
             </ul>
