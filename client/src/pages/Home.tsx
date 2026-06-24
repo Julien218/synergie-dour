@@ -62,7 +62,7 @@ export default function Home() {
                   variant="outline"
                   className="border-white text-white hover:bg-white/10"
                 >
-                  Devenir membre — 50€/an
+                  Devenir membre
                 </Button>
               </div>
             </div>
@@ -276,8 +276,8 @@ export default function Home() {
             Devenez membre de Synergie Dour
           </h2>
           <p className="text-lg text-[#F0E68C] mb-2 max-w-2xl mx-auto">
-            50€ par an pour soutenir l'ASBL, accéder aux services exclusifs membres
-            (alertes personnalisées, accompagnement, événements réservés) et faire partie
+            Soutenez l'ASBL, accédez aux services exclusifs membres
+            (alertes personnalisées, accompagnement, événements réservés) et faites partie
             d'un réseau d'indépendants engagés dans le commerce local.
           </p>
           <p className="text-sm text-blue-100 mb-8">
