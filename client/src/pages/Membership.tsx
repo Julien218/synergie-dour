@@ -42,20 +42,59 @@ const STRUCTURE_TYPES = [
   "Autre",
 ];
 
-const SECTORS = [
-  "Alimentation / Épicerie",
-  "Horeca (restaurant, café, traiteur)",
-  "Mode / Beauté / Bien-être",
-  "Services aux entreprises",
-  "Santé / Médical / Paramédical",
-  "Construction / Rénovation",
-  "Commerce de détail",
-  "Art / Culture / Événementiel",
-  "Tech / Digital / Informatique",
-  "Immobilier",
-  "Éducation / Formation",
-  "Autre",
-];
+const SECTORS_MAP: Record<string, string[]> = {
+  "Commerce de détail": [
+    "Alimentation générale","Boucherie","Charcuterie","Boulangerie","Pâtisserie",
+    "Chocolaterie","Poissonnerie","Fromagerie","Primeur","Caviste","Fleuriste",
+    "Librairie","Papeterie","Presse","Tabac","Vêtements","Chaussures","Lingerie",
+    "Maroquinerie","Bijouterie","Horlogerie","Optique","Parfumerie","Cosmétique",
+    "Jouets","Articles de sport","Chasse et pêche","Informatique","Téléphonie",
+    "Électroménager","Multimédia","Animalerie","Décoration","Ameublement","Literie",
+    "Bricolage","Jardinage","Piscines et spas","Matériel médical","Cadeaux et souvenirs",
+  ],
+  "Horeca": [
+    "Restaurant","Brasserie","Café","Bar","Snack","Friterie","Pizzeria",
+    "Sandwicherie","Salon de thé","Glacier","Traiteur","Hôtel","Chambre d'hôtes","Gîte",
+  ],
+  "Artisanat et métiers manuels": [
+    "Menuisier","Ébéniste","Ferronnier","Serrurier","Plombier","Chauffagiste",
+    "Électricien","Carreleur","Maçon","Couvreur","Peintre","Vitrier","Tapissier",
+    "Couturier","Artisan d'art",
+  ],
+  "Construction et bâtiment": [
+    "Entrepreneur général","Architecte","Géomètre","Promoteur immobilier","Cuisiniste",
+    "Façadier","Isolation","Terrassement","Aménagement extérieur",
+  ],
+  "Automobile et mobilité": [
+    "Garage","Carrosserie","Vente de véhicules","Vente de motos","Pneus",
+    "Contrôle technique","Auto-école","Location de véhicules","Vélo et mobilité douce",
+  ],
+  "Bien-être et beauté": [
+    "Coiffure","Barbier","Institut de beauté","Onglerie","Pédicure",
+    "Massage","Spa","Tatouage","Piercing",
+  ],
+  "Santé et professions médicales": [
+    "Médecin généraliste","Médecin spécialiste","Dentiste","Kinésithérapeute",
+    "Infirmier","Psychologue","Ostéopathe","Orthophoniste","Pharmacie","Opticien","Audioprothésiste",
+  ],
+  "Professions libérales et services": [
+    "Avocat","Notaire","Huissier","Comptable","Expert-comptable","Conseiller fiscal",
+    "Courtier en assurances","Conseiller financier","Consultant","Secrétariat","Traduction",
+  ],
+  "Numérique, communication et médias": [
+    "Développement web","Graphisme","Marketing digital","Communication","Publicité",
+    "Impression","Photographie","Vidéo","Community management","Média local",
+  ],
+  "Sport, loisirs et culture": [
+    "Salle de fitness","Club sportif","Danse","Arts martiaux","Musique",
+    "Théâtre","Loisirs créatifs","Organisation de loisirs",
+  ],
+  "Services à la personne": [
+    "Titres-services","Nettoyage","Jardinage","Aide à domicile",
+    "Garde d'enfants","Aide aux seniors","Pet-sitting",
+  ],
+};
+const SECTORS = Object.keys(SECTORS_MAP);
 
 const EMPLOYEE_COUNTS = [
   "0 (solo)",
@@ -103,6 +142,7 @@ export default function Membership() {
     rgpdConsent: false,
   });
   const [gbLoading, setGbLoading] = useState(false);
+  const [mainSector, setMainSector] = useState("");
   const [gbPrefilled, setGbPrefilled] = useState(false);
 
   // Pré-remplissage IA depuis l'URL Google Business
@@ -440,14 +480,42 @@ export default function Membership() {
                         options={STRUCTURE_TYPES}
                         placeholder="Choisir..."
                       />
-                      <SelectField
-                        id="sector"
-                        label="Secteur d'activité"
-                        value={form.sector}
-                        onChange={(v) => set("sector", v)}
-                        options={SECTORS}
-                        placeholder="Choisir..."
-                      />
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 block mb-1">Secteur d'activité</label>
+                        <select
+                          value={mainSector}
+                          onChange={(e) => {
+                            setMainSector(e.target.value);
+                            set("sector", e.target.value);
+                          }}
+                          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                        >
+                          <option value="">— Catégorie principale —</option>
+                          {SECTORS.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        {mainSector && SECTORS_MAP[mainSector]?.length > 0 && (
+                          <select
+                            value={
+                              form.sector.includes(" > ")
+                                ? form.sector.split(" > ")[1]
+                                : ""
+                            }
+                            onChange={(e) =>
+                              set("sector", e.target.value
+                                ? `${mainSector} > ${e.target.value}`
+                                : mainSector)
+                            }
+                            className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                          >
+                            <option value="">— Sous-catégorie (optionnel) —</option>
+                            {SECTORS_MAP[mainSector].map((sub) => (
+                              <option key={sub} value={sub}>{sub}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     </div>
 
                     <div>
