@@ -350,6 +350,14 @@ export async function getMembershipRequests() {
   return await db.select().from(membershipRequests);
 }
 
+export async function getMembershipRequestById(id: number) {
+  const pool = await getPool();
+  if (!pool) return null;
+  const [rows] = await pool.execute("SELECT * FROM membership_requests WHERE id = ? LIMIT 1", [id]);
+  const arr = rows as any[];
+  return arr.length > 0 ? arr[0] : null;
+}
+
 export async function getGalleryByMerchant(merchantId: number) {
   const db = await getDb();
   if (!db) return [];
