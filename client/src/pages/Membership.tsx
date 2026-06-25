@@ -134,6 +134,7 @@ export default function Membership() {
     email: "",
     phone: "",
     address: "",
+    village: "",
     // Section 3 — Votre activité
     message: "",
     howDidYouHear: "",
@@ -616,10 +617,44 @@ export default function Membership() {
                       <Input
                         id="address"
                         required
-                        placeholder="Rue, numéro, code postal, ville"
+                        placeholder="Rue, numéro"
                         value={form.address}
                         onChange={(e) => set("address", e.target.value)}
                       />
+                    </div>
+                    <div>
+                      <Label htmlFor="village">Village / Localité <span className="text-red-500">*</span></Label>
+                      <select
+                        id="village"
+                        required
+                        value={(form as any).village || ""}
+                        onChange={(e) => set("village", e.target.value)}
+                        className="w-full border border-input rounded-md p-2 text-sm bg-white"
+                      >
+                        <option value="">— Sélectionner votre localité —</option>
+                        <optgroup label="7370 — Commune de Dour">
+                          <option value="7370 Dour">7370 Dour (centre)</option>
+                          <option value="7370 Elouges">7370 Élouges</option>
+                          <option value="7370 Wihéries">7370 Wihéries</option>
+                          <option value="7370 Blaugies">7370 Blaugies</option>
+                          <option value="7370 Douvrain">7370 Douvrain</option>
+                          <option value="7370 Petit-Dour">7370 Petit-Dour</option>
+                          <option value="7370 Wadelincourt">7370 Wadelincourt</option>
+                        </optgroup>
+                        <optgroup label="7380 — Commune de Quiévrain">
+                          <option value="7380 Quiévrain">7380 Quiévrain</option>
+                          <option value="7380 Audregnies">7380 Audregnies</option>
+                          <option value="7380 Baisieux">7380 Baisieux</option>
+                          <option value="7380 Erquennes">7380 Erquennes</option>
+                          <option value="7380 Honnelles">7380 Honnelles</option>
+                        </optgroup>
+                        <optgroup label="Autres communes">
+                          <option value="7390 Quaregnon">7390 Quaregnon</option>
+                          <option value="7300 Boussu">7300 Boussu</option>
+                          <option value="7320 Bernissart">7320 Bernissart</option>
+                          <option value="Autre">Autre (préciser dans l'adresse)</option>
+                        </optgroup>
+                      </select>
                     </div>
                   </div>
                 </CardContent>
