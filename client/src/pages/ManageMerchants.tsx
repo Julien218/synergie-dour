@@ -17,6 +17,7 @@ const emptyForm = () => ({
   businessCategory: "",
   description: "",
   address: "",
+  village: "",
   phone: "",
   email: "",
   website: "",
@@ -278,6 +279,7 @@ export default function ManageMerchants() {
       logo: merchant.logo || "",
       photos: Array.isArray(merchant.photos) ? merchant.photos : [],
       videos: Array.isArray(merchant.videos) ? merchant.videos : [],
+      village: (merchant as any).village || "",
       status: merchant.status || "approved",
     });
     setEditingId(merchant.id);
@@ -522,16 +524,51 @@ export default function ManageMerchants() {
                   </div>
                 </div>
 
-                {/* Adresse */}
-                <div>
-                  <label className="text-sm font-semibold text-[#001a3d]">Adresse *</label>
-                  <Input
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Ex : Grand'Place 5, 7370 Dour"
-                    required
-                    className="mt-1"
-                  />
+                {/* Adresse + Village */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-semibold text-[#001a3d]">Adresse *</label>
+                    <Input
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="Ex : Grand'Place 5"
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-[#001a3d]">Village / Localité *</label>
+                    <select
+                      value={(formData as any).village || ""}
+                      onChange={(e) => setFormData({ ...formData, village: e.target.value } as any)}
+                      className="w-full border border-input rounded-md p-2 mt-1 text-sm"
+                      required
+                    >
+                      <option value="">— Sélectionner —</option>
+                      <optgroup label="7370 — Commune de Dour">
+                        <option value="7370 Dour">7370 Dour (centre)</option>
+                        <option value="7370 Elouges">7370 Élouges</option>
+                        <option value="7370 Wihéries">7370 Wihéries</option>
+                        <option value="7370 Blaugies">7370 Blaugies</option>
+                        <option value="7370 Douvrain">7370 Douvrain</option>
+                        <option value="7370 Petit-Dour">7370 Petit-Dour</option>
+                        <option value="7370 Wadelincourt">7370 Wadelincourt</option>
+                      </optgroup>
+                      <optgroup label="7380 — Commune de Quiévrain">
+                        <option value="7380 Quiévrain">7380 Quiévrain</option>
+                        <option value="7380 Audregnies">7380 Audregnies</option>
+                        <option value="7380 Baisieux">7380 Baisieux</option>
+                        <option value="7380 Erquennes">7380 Erquennes</option>
+                        <option value="7380 Honnelles">7380 Honnelles</option>
+                      </optgroup>
+                      <optgroup label="Autres communes">
+                        <option value="7390 Quaregnon">7390 Quaregnon</option>
+                        <option value="7300 Boussu">7300 Boussu</option>
+                        <option value="7320 Bernissart">7320 Bernissart</option>
+                        <option value="Autre">Autre (préciser dans l'adresse)</option>
+                      </optgroup>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Téléphone + Email */}
