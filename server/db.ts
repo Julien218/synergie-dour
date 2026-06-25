@@ -220,7 +220,20 @@ export async function getMerchantByUserId(userId: number) {
 export async function createMerchant(data: InsertMerchant) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  return await db.insert(merchants).values(data);
+  // Construire l'objet sans les champs undefined/null non critiques
+  const safeData: any = {
+    userId: data.userId || 1,
+    businessName: data.businessName,
+    businessCategory: data.businessCategory || "Commerce",
+    address: data.address || "",
+    status: data.status || "approved",
+  };
+  if (data.description) safeData.description = data.description;
+  if (data.phone) safeData.phone = data.phone;
+  if (data.email) safeData.email = data.email;
+  if (data.website) safeData.website = data.website;
+  if (data.googleBusinessUrl) safeData.googleBusinessUrl = data.googleBusinessUrl;
+  return await db.insert(merchants).values(safeData);
 }
 
 export async function updateMerchant(id: number, data: Partial<InsertMerchant>) {
