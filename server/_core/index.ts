@@ -64,16 +64,9 @@ async function initDatabase() {
       // Migration 0007: paiementStatut dans membership_requests
       try {
         const connPay = await pool.getConnection();
-        await connPay.execute("ALTER TABLE membership_requests ADD COLUMN IF NOT EXISTS paiementStatut ENUM('en_attente','paye','gratuit') NOT NULL DEFAULT 'en_attente'");
+        await connPay.execute("ALTER TABLE membership_requests ADD COLUMN IF NOT EXISTS paiementStatut VARCHAR(20) NOT NULL DEFAULT 'en_attente'");
         connPay.release();
-      } catch (_migPay) { /* colonne deja presente */ }
-
-      // Migration 0007: paiementStatut dans membership_requests
-      try {
-        const connPay = await pool.getConnection();
-        await connPay.execute("ALTER TABLE `membership_requests` ADD COLUMN IF NOT EXISTS `paiementStatut` ENUM('en_attente','paye','gratuit') NOT NULL DEFAULT 'en_attente'");
-        connPay.release();
-      } catch (_migPay) { /* colonne déjà présente */ }
+      } catch (_migPay) { /* colonne deja presente ou non supportee */ }
 
       const sqls = [
         `CREATE TABLE IF NOT EXISTS \`users\` (\`id\` int AUTO_INCREMENT NOT NULL, \`openId\` varchar(64) NOT NULL, \`name\` text, \`email\` varchar(320), \`loginMethod\` varchar(64), \`passwordHash\` varchar(255), \`emailVerifiedAt\` timestamp NULL, \`role\` enum('user','admin','super_admin') NOT NULL DEFAULT 'user', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, \`lastSignedIn\` timestamp NOT NULL DEFAULT (now()), CONSTRAINT \`users_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`users_openId_unique\` UNIQUE(\`openId\`))`,
