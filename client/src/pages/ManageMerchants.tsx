@@ -665,6 +665,170 @@ export default function ManageMerchants() {
                   </p>
                 </div>
 
+                {/* Galerie photos */}
+                <div>
+                  <label className="text-sm font-semibold text-[#001a3d]">
+                    Galerie photos <span style={{ fontWeight: 400, color: "#6b7280" }}>(plusieurs photos)</span>
+                  </label>
+                  {(formData.photos || []).length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8, marginBottom: 8 }}>
+                      {(formData.photos || []).map((url: string, i: number) => (
+                        <div key={i} style={{ position: "relative" }}>
+                          <img
+                            src={url}
+                            alt={`photo-${i}`}
+                            style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, border: "1.5px solid #e5e7eb" }}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newPhotos = [...(formData.photos || [])];
+                              newPhotos.splice(i, 1);
+                              setFormData({ ...formData, photos: newPhotos });
+                            }}
+                            style={{
+                              position: "absolute", top: 2, right: 2,
+                              background: "rgba(220,38,38,0.85)", color: "#fff",
+                              border: "none", borderRadius: "50%", width: 20, height: 20,
+                              cursor: "pointer", fontSize: 11, lineHeight: "20px", textAlign: "center",
+                            }}
+                          >✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                    <label
+                      htmlFor="merchant-gallery-upload"
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 7,
+                        padding: "7px 14px", borderRadius: 8, cursor: "pointer",
+                        background: "linear-gradient(135deg,#1a4d2e,#2d7a4f)",
+                        color: "#fff", fontSize: 13, fontWeight: 600,
+                        border: "1.5px solid rgba(45,122,79,0.5)",
+                      }}
+                    >
+                      🖼 Ajouter photos
+                      <input
+                        id="merchant-gallery-upload"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          files.forEach((file) => {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              setFormData((prev: any) => ({
+                                ...prev,
+                                photos: [...(prev.photos || []), ev.target?.result as string],
+                              }));
+                            };
+                            reader.readAsDataURL(file);
+                          });
+                        }}
+                      />
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="URL d'une photo à ajouter..."
+                      className="flex-1 border border-input rounded-md p-2 text-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const val = (e.target as HTMLInputElement).value.trim();
+                          if (val) {
+                            setFormData((prev: any) => ({ ...prev, photos: [...(prev.photos || []), val] }));
+                            (e.target as HTMLInputElement).value = "";
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Upload multiple photos ou ajoutez des URLs (Entrée pour valider chaque URL).
+                  </p>
+                </div>
+
+                {/* Vidéos */}
+                <div>
+                  <label className="text-sm font-semibold text-[#001a3d]">
+                    Vidéos <span style={{ fontWeight: 400, color: "#6b7280" }}>(MP4, YouTube, Facebook...)</span>
+                  </label>
+                  {(formData.videos || []).length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, marginBottom: 8 }}>
+                      {(formData.videos || []).map((url: string, i: number) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f9fafb", borderRadius: 8, padding: "6px 10px", border: "1px solid #e5e7eb" }}>
+                          <span style={{ fontSize: 18 }}>🎬</span>
+                          <span style={{ flex: 1, fontSize: 12, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newVideos = [...(formData.videos || [])];
+                              newVideos.splice(i, 1);
+                              setFormData({ ...formData, videos: newVideos });
+                            }}
+                            style={{ background: "rgba(220,38,38,0.85)", color: "#fff", border: "none", borderRadius: 4, padding: "2px 8px", cursor: "pointer", fontSize: 12 }}
+                          >✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                    <label
+                      htmlFor="merchant-video-upload"
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 7,
+                        padding: "7px 14px", borderRadius: 8, cursor: "pointer",
+                        background: "linear-gradient(135deg,#1e3a5f,#2563eb)",
+                        color: "#fff", fontSize: 13, fontWeight: 600,
+                        border: "1.5px solid rgba(37,99,235,0.5)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      🎬 Upload vidéo
+                      <input
+                        id="merchant-video-upload"
+                        type="file"
+                        accept="video/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setFormData((prev: any) => ({
+                              ...prev,
+                              videos: [...(prev.videos || []), ev.target?.result as string],
+                            }));
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="URL YouTube, Facebook, ou lien direct MP4..."
+                      className="flex-1 border border-input rounded-md p-2 text-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const val = (e.target as HTMLInputElement).value.trim();
+                          if (val) {
+                            setFormData((prev: any) => ({ ...prev, videos: [...(prev.videos || []), val] }));
+                            (e.target as HTMLInputElement).value = "";
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Upload un fichier vidéo ou collez un lien (YouTube, Facebook, MP4). Entrée pour valider l'URL.
+                  </p>
+                </div>
+
                 {/* Statut */}
                 <div>
                   <label className="text-sm font-semibold text-[#001a3d]">Statut</label>
