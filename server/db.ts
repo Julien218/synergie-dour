@@ -218,65 +218,58 @@ export async function getMerchantByUserId(userId: number) {
 }
 
 export async function createMerchant(data: InsertMerchant) {
-  const db = await getDb();
-  if (!db) throw new Error('Database not available');
+  const pool = await getPool();
+  if (!pool) throw new Error('Database not available');
 
-  // Récupérer les colonnes existantes pour éviter "Unknown column"
-  let existingCols: string[] = [];
-  try {
-    const rows = await db.execute(
-      sql`SELECT COLUMN_NAME as col FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'merchants'`
-    );
-    existingCols = (rows as any[]).map((r: any) => r.col ?? r.COLUMN_NAME ?? '');
-  } catch (_) {
-    // fallback — colonnes minimales connues
-    existingCols = ['id','userId','businessName','businessCategory','description','address','phone','email','website','logo','isVerified','status','createdAt','updatedAt'];
-  }
+  // Récupérer les colonnes qui existent réellement en base
+  const [colRows] = await pool.execute(
+    "SELECT COLUMN_NAME as col FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'merchants'"
+  );
+  const existingCols = new Set((colRows as any[]).map((r: any) => r.col ?? r.COLUMN_NAME ?? ''));
 
-  const colValMap: Record<string, any> = {
-    userId:           data.userId || 1,
-    businessName:     data.businessName,
-    businessCategory: data.businessCategory || 'Commerce',
-    address:          (data as any).address ?? '',
-    status:           data.status || 'approved',
-    description:      data.description,
-    phone:            data.phone,
-    email:            data.email,
-    website:          data.website,
-    logo:             data.logo,
-    googleBusinessUrl:(data as any).googleBusinessUrl,
-    photos:           (data as any).photos?.length ? JSON.stringify((data as any).photos) : undefined,
-    videos:           (data as any).videos?.length ? JSON.stringify((data as any).videos) : undefined,
+  // Map de toutes les valeurs possibles
+  const allFields: Record<string, any> = {
+    userId:            data.userId || 1,
+    businessName:      data.businessName,
+    businessCategory:  data.businessCategory || 'Commerce',
+    address:           (data as any).address ?? '',
+    status:            data.status || 'approved',
+    description:       data.description,
+    phone:             data.phone,
+    email:             data.email,
+    website:           data.website,
+    logo:              data.logo,
+    googleBusinessUrl: (data as any).googleBusinessUrl,
+    photos:            (data as any).photos?.length ? JSON.stringify((data as any).photos) : undefined,
+    videos:            (data as any).videos?.length ? JSON.stringify((data as any).videos) : undefined,
   };
 
   const cols: string[] = [];
   const vals: any[] = [];
-  for (const [col, val] of Object.entries(colValMap)) {
-    if (existingCols.includes(col) && val !== undefined && val !== null && val !== '') {
-      cols.push(col);
-      vals.push(val);
+
+  // Colonnes obligatoires (inclure même si vides)
+  for (const req of ['userId','businessName','businessCategory','address','status']) {
+    if (existingCols.has(req)) {
+      cols.push(req);
+      vals.push(allFields[req] ?? '');
     }
   }
 
-  // Assurer les colonnes obligatoires même si vides
-  for (const req of ['userId','businessName','businessCategory','address','status']) {
-    if (!cols.includes(req)) {
-      cols.push(req);
-      vals.push(colValMap[req] ?? '');
+  // Colonnes optionnelles — seulement si présentes en DB et non vides
+  for (const opt of ['description','phone','email','website','logo','googleBusinessUrl','photos','videos']) {
+    if (existingCols.has(opt) && allFields[opt] !== undefined && allFields[opt] !== null && allFields[opt] !== '') {
+      cols.push(opt);
+      vals.push(allFields[opt]);
     }
   }
 
   const colStr = cols.map(c => `\`${c}\``).join(', ');
   const placeholders = vals.map(() => '?').join(', ');
-
-  // Utiliser le driver sous-jacent directement
-  const driver = (db as any).session?.client ?? (db as any)._driver ?? (db as any).client;
-  if (driver && typeof driver.execute === 'function') {
-    return await driver.execute(`INSERT INTO \`merchants\` (${colStr}) VALUES (${placeholders})`, vals);
-  }
-  // Fallback — tenter via db.execute avec SQL template
-  const insertSql = sql.raw(`INSERT INTO \`merchants\` (${colStr}) VALUES (${placeholders})`);
-  return await (db as any).execute(insertSql, vals);
+  const [result] = await pool.execute(
+    `INSERT INTO \`merchants\` (${colStr}) VALUES (${placeholders})`,
+    vals
+  );
+  return result;
 }
 
 export async function updateMerchant(id: number, data: Partial<InsertMerchant>) {
