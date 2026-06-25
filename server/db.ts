@@ -239,7 +239,15 @@ export async function createMerchant(data: InsertMerchant) {
 export async function updateMerchant(id: number, data: Partial<InsertMerchant>) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  await db.update(merchants).set(data).where(eq(merchants.id, id));
+  const safeData: any = {};
+  const allowed = ['businessName','businessCategory','description','address','phone','email','website','status','googleBusinessUrl','logo','isVerified'];
+  for (const key of allowed) {
+    if (key in data && (data as any)[key] !== undefined) {
+      safeData[key] = (data as any)[key];
+    }
+  }
+  if (Object.keys(safeData).length === 0) return;
+  await db.update(merchants).set(safeData).where(eq(merchants.id, id));
 }
 
 export async function getCategories() {
