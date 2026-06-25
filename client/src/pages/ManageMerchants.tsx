@@ -788,6 +788,30 @@ function MerchantCard({
     <Card className="border-gray-200 hover:shadow-md transition-shadow">
       <CardContent className="pt-4 pb-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          {/* Miniature photo */}
+          {merchant.logo && (
+            <div style={{ flexShrink: 0 }}>
+              <img
+                src={merchant.logo}
+                alt={merchant.businessName}
+                style={{
+                  width: 64, height: 64, objectFit: "cover",
+                  borderRadius: 10, border: "2px solid #e5e7eb",
+                }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            </div>
+          )}
+          {!merchant.logo && (
+            <div style={{
+              width: 64, height: 64, flexShrink: 0,
+              borderRadius: 10, border: "2px dashed #d1d5db",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "#f9fafb", color: "#9ca3af", fontSize: 24,
+            }}>
+              🏪
+            </div>
+          )}
           {/* Infos */}
           <div className="flex-1 space-y-1">
             <div className="flex items-center gap-3 flex-wrap">
