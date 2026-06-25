@@ -8900,7 +8900,7 @@ export default function ListeClients() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 w-full">
       {/* En-tête */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
@@ -8955,9 +8955,9 @@ export default function ListeClients() {
       <p className="text-xs text-blue-300 mb-3">{filtered.length} résultat(s) affiché(s)</p>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[700px] text-sm">
             <thead>
               <tr className="bg-[#001a3d] text-white">
                 <th className="px-4 py-3 text-left font-semibold w-12">#</th>
@@ -8966,7 +8966,7 @@ export default function ListeClients() {
                 <th className="px-4 py-3 text-left font-semibold hidden lg:table-cell">Adresse</th>
                 <th className="px-4 py-3 text-left font-semibold hidden lg:table-cell">Téléphone</th>
                 <th className="px-4 py-3 text-left font-semibold hidden xl:table-cell">Email</th>
-                <th className="px-4 py-3 text-center font-semibold w-24">Diffusion</th>
+                <th className="px-4 py-3 text-center font-semibold min-w-[110px]">Diffusion</th>
               </tr>
             </thead>
             <tbody>
