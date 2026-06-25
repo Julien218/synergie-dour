@@ -1025,7 +1025,11 @@ function MerchantCard({
                 {statusLabel[merchant.status]}
               </Badge>
             </div>
-            <p className="text-sm text-gray-600">{merchant.businessCategory} • {merchant.address}</p>
+            <p className="text-sm text-gray-600">
+              {merchant.businessCategory}
+              {(merchant as any).village && <span className="text-[#001a3d] font-medium"> • 📍 {(merchant as any).village}</span>}
+              {merchant.address && <span> • {merchant.address}</span>}
+            </p>
             {merchant.phone && <p className="text-sm text-gray-500">📞 {merchant.phone}</p>}
             {merchant.email && <p className="text-sm text-gray-500">✉️ {merchant.email}</p>}
             {merchant.website && (
