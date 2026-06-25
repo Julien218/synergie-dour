@@ -368,14 +368,37 @@ export default function ManageMerchants() {
           </Card>
         </div>
 
-        {/* Recherche */}
-        <div>
+        {/* Recherche + Filtre village */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <Input
             placeholder="Rechercher un commerce, une adresse, une catégorie..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="max-w-md"
           />
+          <select
+            value={filterVillage}
+            onChange={(e) => setFilterVillage(e.target.value)}
+            className="border border-input rounded-md p-2 text-sm bg-white min-w-[200px]"
+          >
+            <option value="">📍 Tous les villages</option>
+            <optgroup label="7370 — Commune de Dour">
+              <option value="7370 Dour">7370 Dour (centre)</option>
+              <option value="7370 Elouges">7370 Élouges</option>
+              <option value="7370 Wihéries">7370 Wihéries</option>
+              <option value="7370 Blaugies">7370 Blaugies</option>
+              <option value="7370 Douvrain">7370 Douvrain</option>
+              <option value="7370 Petit-Dour">7370 Petit-Dour</option>
+              <option value="7370 Wadelincourt">7370 Wadelincourt</option>
+            </optgroup>
+            <optgroup label="7380 — Commune de Quiévrain">
+              <option value="7380 Quiévrain">7380 Quiévrain</option>
+              <option value="7380 Audregnies">7380 Audregnies</option>
+              <option value="7380 Baisieux">7380 Baisieux</option>
+              <option value="7380 Erquennes">7380 Erquennes</option>
+              <option value="7380 Honnelles">7380 Honnelles</option>
+            </optgroup>
+          </select>
         </div>
 
         {/* Formulaire création / édition */}
