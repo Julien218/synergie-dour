@@ -8926,11 +8926,12 @@ export default function ListeClients() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-          <Input
+          <input
+            type="text"
             placeholder="Rechercher par nom, type, adresse ou email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 w-full rounded-md border border-[#D4AF37]/40 bg-[#002366] text-white placeholder-blue-300 py-2 pr-3 text-sm focus:outline-none focus:border-[#D4AF37]"
           />
         </div>
         <div className="flex gap-2">
