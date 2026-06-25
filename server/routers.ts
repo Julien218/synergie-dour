@@ -37,7 +37,7 @@ import {
   getLocalRequests,
   updateLocalRequest,
 } from "./db";
-import { sendAdminNewMessageNotification } from "./email/notifications";
+import { sendAdminNewMessageNotification, sendInstantAcknowledgement, sendContractEmail } from "./email/notifications";
 
 export const appRouter = router({
   system: systemRouter,
@@ -261,12 +261,20 @@ export const appRouter = router({
         acceptsEmailContact: data.acceptsEmailContact ? 1 : 0,
         rgpdConsent:         data.rgpdConsent         ? 1 : 0,
       });
+      // 1. Notification admin
       sendAdminNewMessageNotification({
         type: "membership",
         name: data.contactName ?? "",
         email: data.email ?? "",
         businessName: data.businessName ?? "",
         message: data.message ?? "",
+      }).catch(() => {});
+      // 2. Accusé de réception immédiat au demandeur
+      sendInstantAcknowledgement({
+        to: data.email,
+        contactName: data.contactName,
+        businessName: data.businessName,
+        village: data.village ?? undefined,
       }).catch(() => {});
       return memberResult;
     }),
@@ -279,7 +287,24 @@ export const appRouter = router({
       throw new Error("Invalid input");
     }).mutation(async ({ input }: any) => {
       const { id, ...data } = input;
-      return updateMembershipRequest(id, data);
+      const result = await updateMembershipRequest(id, data);
+      // Si la demande vient d'être approuvée → envoyer le contrat automatiquement
+      if (data.status === "approved") {
+        getMembershipRequestById(id).then((req: any) => {
+          if (req && req.email) {
+            sendContractEmail({
+              to: req.email,
+              contactName: req.contactName ?? req.businessName,
+              businessName: req.businessName,
+              address: req.address ?? "",
+              village: req.village ?? undefined,
+              vatNumber: req.vatNumber ?? undefined,
+              structureType: req.structureType ?? undefined,
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
+      return result;
     }),
     delete: adminProcedure.input((val: unknown) => {
       if (typeof val === "number") return val;
