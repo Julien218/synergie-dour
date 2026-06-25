@@ -8941,8 +8941,8 @@ export default function ListeClients() {
               onClick={() => setFiltre(f)}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 filtre === f
-                  ? "bg-[#001a3d] text-white border-[#001a3d]"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-[#001a3d]"
+                  ? "bg-[#D4AF37] text-[#001a3d] border-[#D4AF37] font-bold"
+                  : "bg-[#002366] text-blue-200 border-[#D4AF37]/30 hover:border-[#D4AF37] hover:text-white"
               }`}
             >
               {f === "tous" ? `Tous (${clients.length})` : f === "actifs" ? `Actifs (${actifCount})` : `Inactifs (${inactifCount})`}
@@ -8952,7 +8952,7 @@ export default function ListeClients() {
       </div>
 
       {/* Compteur résultats */}
-      <p className="text-xs text-gray-400 mb-3">{filtered.length} résultat(s) affiché(s)</p>
+      <p className="text-xs text-blue-300 mb-3">{filtered.length} résultat(s) affiché(s)</p>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
