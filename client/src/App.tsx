@@ -41,6 +41,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
 import PostsPage from "@/pages/PostsPage";
+import GalleryPage from "@/pages/GalleryPage";
 
 function Router() {
   return (
@@ -148,6 +149,9 @@ function Router() {
       </Route>
       <Route path="/dashboard/members">
         {() => <MemberDashboard />}
+      </Route>
+      <Route path="/dashboard/gallery">
+        {() => <GalleryPage />}
       </Route>
       <Route path="/dashboard/leadfinder">
         {() => <LeadFinderPage />}
