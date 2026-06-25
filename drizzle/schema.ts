@@ -154,6 +154,7 @@ export const membershipRequests = mysqlTable("membership_requests", {
   rgpdConsent: int("rgpdConsent").default(1).notNull(),
   // Statut
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  paiementStatut: mysqlEnum("paiementStatut", ["en_attente", "paye", "gratuit"]).default("en_attente").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
