@@ -1,4 +1,4 @@
-import { sql, eq, sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
