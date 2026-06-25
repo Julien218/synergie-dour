@@ -119,6 +119,7 @@ function DashboardLayoutContent({
     { icon: FileEdit, label: "Posts à publier", path: "/dashboard/posts" },
     { icon: Users, label: "Membres CA", path: "/dashboard/members" },
   { icon: Zap, label: "LeadFinder Pro", path: "/dashboard/leadfinder" },
+  { icon: Users, label: "Liste Clients", path: "/dashboard/liste-clients" },
   ];
 
   const merchantMenuItems = [
