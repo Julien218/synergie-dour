@@ -21,6 +21,7 @@ const emptyForm = () => ({
   email: "",
   website: "",
   googleBusinessUrl: "",
+  logo: "",
   status: "approved" as "pending" | "approved" | "rejected",
 });
 
@@ -272,6 +273,7 @@ export default function ManageMerchants() {
       email: merchant.email || "",
       website: merchant.website || "",
       googleBusinessUrl: merchant.googleBusinessUrl || "",
+      logo: merchant.logo || "",
       status: merchant.status || "approved",
     });
     setEditingId(merchant.id);
@@ -589,6 +591,74 @@ export default function ManageMerchants() {
                     rows={3}
                     className="mt-1"
                   />
+                </div>
+
+
+                {/* Photo du commerce */}
+                <div>
+                  <label className="text-sm font-semibold text-[#001a3d]">
+                    Photo du commerce
+                  </label>
+                  {formData.logo && (
+                    <div className="mt-2 mb-2 relative w-full" style={{ maxHeight: 180, overflow: "hidden", borderRadius: 10, border: "1.5px solid #e5e7eb" }}>
+                      <img
+                        src={formData.logo}
+                        alt="Aperçu"
+                        style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 10 }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, logo: "" })}
+                        style={{
+                          position: "absolute", top: 6, right: 6,
+                          background: "rgba(220,38,38,0.85)", color: "#fff",
+                          border: "none", borderRadius: "50%", width: 26, height: 26,
+                          cursor: "pointer", fontSize: 14, lineHeight: "26px", textAlign: "center",
+                        }}
+                        title="Supprimer la photo"
+                      >✕</button>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: formData.logo ? 0 : 6 }}>
+                    <label
+                      htmlFor="merchant-photo-upload"
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 7,
+                        padding: "7px 14px", borderRadius: 8, cursor: "pointer",
+                        background: "linear-gradient(135deg,#001533,#0d2260)",
+                        color: "#E8C547", fontSize: 13, fontWeight: 600,
+                        border: "1.5px solid rgba(232,197,71,0.5)",
+                      }}
+                    >
+                      📷 Choisir une photo
+                      <input
+                        id="merchant-photo-upload"
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setFormData({ ...formData, logo: ev.target?.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.logo || ""}
+                      onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
+                      placeholder="ou collez une URL d'image..."
+                      className="flex-1 border border-input rounded-md p-2 text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Téléversez depuis votre appareil ou collez un lien URL. Formats : JPG, PNG, WebP.
+                  </p>
                 </div>
 
                 {/* Statut */}
