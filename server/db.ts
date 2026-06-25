@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { sql, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -220,23 +220,69 @@ export async function getMerchantByUserId(userId: number) {
 export async function createMerchant(data: InsertMerchant) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  // Construire l'objet sans les champs undefined/null non critiques
-  const safeData: any = {
-    userId: data.userId || 1,
-    businessName: data.businessName,
-    businessCategory: data.businessCategory || "Commerce",
-    address: data.address || "",
-    status: data.status || "approved",
-  };
-  if (data.description) safeData.description = data.description;
-  if (data.phone) safeData.phone = data.phone;
-  if (data.email) safeData.email = data.email;
-  if (data.website) safeData.website = data.website;
-  if (data.googleBusinessUrl) safeData.googleBusinessUrl = data.googleBusinessUrl;
-  if (data.logo) safeData.logo = data.logo;
-  if (data.photos && Array.isArray(data.photos) && data.photos.length > 0) safeData.photos = data.photos;
-  if (data.videos && Array.isArray(data.videos) && data.videos.length > 0) safeData.videos = data.videos;
-  return await db.insert(merchants).values(safeData);
+
+  // Colonnes de base toujours présentes en DB (depuis migration 0001)
+  const cols = ['userId', 'businessName', 'businessCategory', 'address', 'status'];
+  const vals: any[] = [
+    data.userId || 1,
+    data.businessName,
+    data.businessCategory || 'Commerce',
+    data.address || '',
+    data.status || 'approved',
+  ];
+
+  // Colonnes optionnelles — vérifiées dynamiquement
+  const optionals: Array<{ col: string; val: any }> = [
+    { col: 'description', val: data.description },
+    { col: 'phone',       val: data.phone },
+    { col: 'email',       val: data.email },
+    { col: 'website',     val: data.website },
+    { col: 'logo',        val: data.logo },
+  ];
+
+  // Colonnes ajoutées par migrations 0005+ — incluses seulement si elles ont une valeur
+  // (la colonne peut ne pas exister encore en DB, on la saute silencieusement)
+  const extended: Array<{ col: string; val: any }> = [
+    { col: 'googleBusinessUrl', val: data.googleBusinessUrl },
+    { col: 'photos',            val: data.photos && Array.isArray(data.photos) && data.photos.length > 0 ? JSON.stringify(data.photos) : null },
+    { col: 'videos',            val: data.videos && Array.isArray(data.videos) && data.videos.length > 0 ? JSON.stringify(data.videos) : null },
+  ];
+
+  for (const { col, val } of optionals) {
+    if (val !== undefined && val !== null && val !== '') {
+      cols.push(col);
+      vals.push(val);
+    }
+  }
+
+  // Vérifier dynamiquement si les colonnes extended existent dans information_schema
+  let existingCols: string[] = [];
+  try {
+    const res = await db.execute(
+      sql`SELECT COLUMN_NAME FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'merchants'
+          AND COLUMN_NAME IN ('googleBusinessUrl','photos','videos')`
+    );
+    existingCols = (res as any[]).map((r: any) => r.COLUMN_NAME || r.column_name);
+  } catch (_) {
+    existingCols = [];
+  }
+
+  for (const { col, val } of extended) {
+    if (existingCols.includes(col) && val !== undefined && val !== null) {
+      cols.push(col);
+      vals.push(val);
+    }
+  }
+
+  const placeholders = vals.map(() => '?').join(', ');
+  const colStr = cols.map(c => `\`${c}\``).join(', ');
+
+  return await db.execute(
+    sql.raw(`INSERT INTO \`merchants\` (${colStr}) VALUES (${placeholders})`),
+    vals
+  );
 }
 
 export async function updateMerchant(id: number, data: Partial<InsertMerchant>) {
