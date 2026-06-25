@@ -30,6 +30,7 @@ import {
   updateContactRequest,
   deleteContactRequest,
   getMembershipRequests,
+  getMembershipRequestById,
   updateMembershipRequest,
   deleteMembershipRequest,
   getMerchantByUserId,
