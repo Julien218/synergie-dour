@@ -245,6 +245,7 @@ export async function createMerchant(data: InsertMerchant) {
     email:             data.email,
     website:           data.website,
     logo:              data.logo,
+    village:           (data as any).village,
     googleBusinessUrl: (data as any).googleBusinessUrl,
     photos:            (data as any).photos?.length ? JSON.stringify((data as any).photos) : undefined,
     videos:            (data as any).videos?.length ? JSON.stringify((data as any).videos) : undefined,
@@ -262,7 +263,7 @@ export async function createMerchant(data: InsertMerchant) {
   }
 
   // Colonnes optionnelles — seulement si présentes en DB et non vides
-  for (const opt of ['description','phone','email','website','logo','googleBusinessUrl','photos','videos']) {
+  for (const opt of ['description','phone','email','website','logo','village','googleBusinessUrl','photos','videos']) {
     if (existingCols.has(opt) && allFields[opt] !== undefined && allFields[opt] !== null && allFields[opt] !== '') {
       cols.push(opt);
       vals.push(allFields[opt]);
@@ -282,7 +283,7 @@ export async function updateMerchant(id: number, data: Partial<InsertMerchant>) 
   const db = await getDb();
   if (!db) throw new Error('Database not available');
   const safeData: any = {};
-  const allowed = ['businessName','businessCategory','description','address','phone','email','website','status','googleBusinessUrl','logo','photos','videos','isVerified'];
+  const allowed = ['businessName','businessCategory','description','address','village','phone','email','website','status','googleBusinessUrl','logo','photos','videos','isVerified'];
   for (const key of allowed) {
     if (key in data && (data as any)[key] !== undefined) {
       safeData[key] = (data as any)[key];
