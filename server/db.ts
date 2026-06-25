@@ -233,6 +233,7 @@ export async function createMerchant(data: InsertMerchant) {
   if (data.email) safeData.email = data.email;
   if (data.website) safeData.website = data.website;
   if (data.googleBusinessUrl) safeData.googleBusinessUrl = data.googleBusinessUrl;
+  if (data.logo) safeData.logo = data.logo;
   return await db.insert(merchants).values(safeData);
 }
 
