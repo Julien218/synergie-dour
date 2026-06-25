@@ -64,9 +64,9 @@ async function initDatabase() {
       // Migration 0007: paiementStatut dans membership_requests
       try {
         const connPay = await pool.getConnection();
-        await connPay.execute("ALTER TABLE `membership_requests` ADD COLUMN IF NOT EXISTS `paiementStatut` ENUM(\'en_attente\',\'paye\',\'gratuit\') NOT NULL DEFAULT \'en_attente\'");
+        await connPay.execute("ALTER TABLE membership_requests ADD COLUMN IF NOT EXISTS paiementStatut ENUM('en_attente','paye','gratuit') NOT NULL DEFAULT 'en_attente'");
         connPay.release();
-      } catch (_migPay) { /* colonne déjà présente */ }
+      } catch (_migPay) { /* colonne deja presente */ }
 
       // Migration 0007: paiementStatut dans membership_requests
       try {
