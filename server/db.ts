@@ -234,6 +234,8 @@ export async function createMerchant(data: InsertMerchant) {
   if (data.website) safeData.website = data.website;
   if (data.googleBusinessUrl) safeData.googleBusinessUrl = data.googleBusinessUrl;
   if (data.logo) safeData.logo = data.logo;
+  if (data.photos && Array.isArray(data.photos) && data.photos.length > 0) safeData.photos = data.photos;
+  if (data.videos && Array.isArray(data.videos) && data.videos.length > 0) safeData.videos = data.videos;
   return await db.insert(merchants).values(safeData);
 }
 
@@ -241,7 +243,7 @@ export async function updateMerchant(id: number, data: Partial<InsertMerchant>) 
   const db = await getDb();
   if (!db) throw new Error('Database not available');
   const safeData: any = {};
-  const allowed = ['businessName','businessCategory','description','address','phone','email','website','status','googleBusinessUrl','logo','isVerified'];
+  const allowed = ['businessName','businessCategory','description','address','phone','email','website','status','googleBusinessUrl','logo','photos','videos','isVerified'];
   for (const key of allowed) {
     if (key in data && (data as any)[key] !== undefined) {
       safeData[key] = (data as any)[key];
