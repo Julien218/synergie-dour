@@ -153,6 +153,7 @@ function Router() {
         {() => <LeadFinderPage />}
       </Route>
       <Route path="/dashboard/clients">
+        {() => <ListeClients />}
       </Route>
       <Route path="/dashboard/liste-clients">
         {() => <ListeClients />}
