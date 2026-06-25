@@ -22,6 +22,8 @@ const emptyForm = () => ({
   website: "",
   googleBusinessUrl: "",
   logo: "",
+  photos: [] as string[],
+  videos: [] as string[],
   status: "approved" as "pending" | "approved" | "rejected",
 });
 
@@ -274,6 +276,8 @@ export default function ManageMerchants() {
       website: merchant.website || "",
       googleBusinessUrl: merchant.googleBusinessUrl || "",
       logo: merchant.logo || "",
+      photos: Array.isArray(merchant.photos) ? merchant.photos : [],
+      videos: Array.isArray(merchant.videos) ? merchant.videos : [],
       status: merchant.status || "approved",
     });
     setEditingId(merchant.id);
