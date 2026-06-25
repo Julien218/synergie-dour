@@ -95,6 +95,7 @@ export default function ManageMerchants() {
   const [formData, setFormData] = useState(emptyForm());
   const [selectedMainCat, setSelectedMainCat] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterVillage, setFilterVillage] = useState("");
 
   const [googleUrl, setGoogleUrl]   = useState("");
   const [isScraping, setIsScraping] = useState(false);
