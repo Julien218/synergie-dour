@@ -19,6 +19,7 @@ import MembershipRequestsAdmin from "@/pages/MembershipRequestsAdmin";
 import AgentDashboard from "@/pages/AgentDashboard";
 import MemberDashboard from "@/pages/MemberDashboard";
 import LeadFinderPage from "@/pages/LeadFinderPage";
+import ListeClients from "@/pages/ListeClients";
 import InboxPage from "@/pages/InboxPage";
 import Resources from "@/pages/Resources";
 import Resource from "@/pages/Resource";
@@ -150,6 +151,9 @@ function Router() {
       </Route>
       <Route path="/dashboard/leadfinder">
         {() => <LeadFinderPage />}
+      </Route>
+      <Route path="/dashboard/liste-clients">
+        {() => <ListeClients />}
       </Route>
 
       {/* Page formulaire local commercial */}
