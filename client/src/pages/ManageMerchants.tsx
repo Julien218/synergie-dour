@@ -1014,6 +1014,34 @@ function MerchantCard({
             {merchant.description && (
               <p className="text-sm text-gray-500 line-clamp-2 mt-1">{merchant.description}</p>
             )}
+            {/* Aperçu médias (galerie + vidéos) */}
+            {((Array.isArray(merchant.photos) && merchant.photos.length > 0) || (Array.isArray(merchant.videos) && merchant.videos.length > 0)) && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                {(Array.isArray(merchant.photos) ? merchant.photos : []).slice(0, 4).map((url: string, i: number) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt=""
+                    style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 6, border: "1.5px solid #e5e7eb" }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                ))}
+                {(Array.isArray(merchant.videos) ? merchant.videos : []).slice(0, 2).map((_: string, i: number) => (
+                  <div key={i} style={{
+                    width: 44, height: 44, borderRadius: 6, border: "1.5px solid #e5e7eb",
+                    background: "#1e3a5f", display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 18,
+                  }}>🎬</div>
+                ))}
+                {(Array.isArray(merchant.photos) && merchant.photos.length > 4) && (
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 6, border: "1.5px dashed #9ca3af",
+                    background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 11, color: "#6b7280", fontWeight: 600,
+                  }}>+{merchant.photos.length - 4}</div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Actions */}
