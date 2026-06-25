@@ -67,15 +67,99 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center justify-center">
-              <video
-                src="/hero-banner.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full max-w-lg rounded-2xl shadow-2xl object-cover"
-                style={{ maxHeight: "420px" }}
-              />
+              <div
+                className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl"
+                style={{ minHeight: "340px", background: "linear-gradient(135deg, #001a3d 0%, #003d99 50%, #001a3d 100%)" }}
+              >
+                {/* Cercles animés en arrière-plan */}
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: "radial-gradient(circle at 30% 40%, rgba(212,175,55,0.18) 0%, transparent 60%), radial-gradient(circle at 75% 65%, rgba(0,100,255,0.18) 0%, transparent 55%)",
+                  animation: "pulse 4s ease-in-out infinite",
+                }} />
+                {/* Anneau animé */}
+                <div style={{
+                  position: "absolute", top: "50%", left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "260px", height: "260px",
+                  border: "2px solid rgba(212,175,55,0.3)",
+                  borderRadius: "50%",
+                  animation: "spin 12s linear infinite",
+                }} />
+                <div style={{
+                  position: "absolute", top: "50%", left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "200px", height: "200px",
+                  border: "1.5px solid rgba(212,175,55,0.2)",
+                  borderRadius: "50%",
+                  animation: "spin 8s linear infinite reverse",
+                }} />
+                {/* Contenu central */}
+                <div style={{
+                  position: "relative", zIndex: 10,
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center",
+                  minHeight: "340px", padding: "40px 30px", textAlign: "center",
+                }}>
+                  {/* Logo/icône */}
+                  <div style={{
+                    width: "72px", height: "72px",
+                    background: "linear-gradient(135deg, #D4AF37, #F0E68C)",
+                    borderRadius: "50%",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    marginBottom: "20px",
+                    boxShadow: "0 0 30px rgba(212,175,55,0.4)",
+                    fontSize: "32px",
+                  }}>🏛️</div>
+                  {/* Titre animé */}
+                  <h2 style={{
+                    color: "#D4AF37",
+                    fontSize: "clamp(1.4rem, 4vw, 2rem)",
+                    fontWeight: "800",
+                    letterSpacing: "0.05em",
+                    margin: "0 0 10px",
+                    textShadow: "0 2px 12px rgba(212,175,55,0.4)",
+                    animation: "fadeInUp 1s ease both",
+                  }}>SYNERGIE DOUR</h2>
+                  <p style={{
+                    color: "rgba(240,230,140,0.85)",
+                    fontSize: "clamp(0.8rem, 2vw, 1rem)",
+                    fontWeight: "500",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    margin: "0 0 20px",
+                    animation: "fadeInUp 1.2s ease both",
+                  }}>Commerçants &amp; Indépendants</p>
+                  <div style={{
+                    display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center",
+                  }}>
+                    {["Fédérer", "Soutenir", "Développer"].map((w) => (
+                      <span key={w} style={{
+                        background: "rgba(212,175,55,0.15)",
+                        border: "1px solid rgba(212,175,55,0.35)",
+                        color: "#D4AF37",
+                        borderRadius: "20px",
+                        padding: "4px 14px",
+                        fontSize: "0.78rem",
+                        fontWeight: "600",
+                        letterSpacing: "0.05em",
+                      }}>{w}</span>
+                    ))}
+                  </div>
+                  {/* Ligne décorative */}
+                  <div style={{
+                    width: "60px", height: "2px",
+                    background: "linear-gradient(90deg, transparent, #D4AF37, transparent)",
+                    margin: "20px auto 0",
+                  }} />
+                </div>
+                {/* CSS animations inline */}
+                <style>{`
+                  @keyframes spin { from { transform: translate(-50%,-50%) rotate(0deg); } to { transform: translate(-50%,-50%) rotate(360deg); } }
+                  @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+                  @keyframes pulse { 0%,100% { opacity:0.7; } 50% { opacity:1; } }
+                `}</style>
+              </div>
             </div>
           </div>
         </div>
