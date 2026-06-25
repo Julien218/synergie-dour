@@ -406,3 +406,251 @@ export async function sendAdminNewMessageNotification(input: {
     html,
   });
 }
+
+
+/* ------------------------------------------------------------------------- */
+/* 6. ENVOI CONTRAT D'ADHÉSION EN PDF (email automatique)                      */
+/* ------------------------------------------------------------------------- */
+
+export async function sendContractEmail(input: {
+  to: string;
+  contactName: string;
+  businessName: string;
+  address: string;
+  village?: string;
+  vatNumber?: string;
+  structureType?: string;
+  requestedAt?: string;
+}): Promise<void> {
+  const today = new Date().toLocaleDateString("fr-BE", { day: "numeric", month: "long", year: "numeric" });
+  const year = new Date().getFullYear();
+  const expiresYear = year + 1;
+  const address = input.village ? `${input.address}, ${input.village}` : input.address;
+  const vatLine = input.vatNumber ? `<br>N° TVA / BCE : <strong>${input.vatNumber}</strong>` : "";
+  const structureLine = input.structureType ? `<br>Type de structure : <strong>${input.structureType}</strong>` : "";
+
+  const contractHtml = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Georgia, serif; font-size: 13px; color: #111; margin: 40px; line-height: 1.6; }
+  h1 { color: #001a3d; font-size: 22px; text-align: center; margin-bottom: 4px; }
+  h2 { color: #001a3d; font-size: 15px; margin: 28px 0 8px; border-bottom: 1.5px solid #D4AF37; padding-bottom: 4px; }
+  .header { text-align: center; margin-bottom: 30px; }
+  .logo { font-size: 28px; font-weight: bold; color: #D4AF37; letter-spacing: 2px; }
+  .asbl { font-size: 13px; color: #666; }
+  .ref { background: #f9f7f0; border: 1px solid #D4AF37; padding: 10px 16px; border-radius: 4px; margin: 16px 0; font-size: 12px; }
+  table.parties { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  table.parties td { padding: 6px 12px; vertical-align: top; border: 1px solid #ddd; font-size: 13px; }
+  table.parties th { background: #001a3d; color: #D4AF37; padding: 8px 12px; font-size: 13px; text-align: left; }
+  .article { margin: 16px 0; }
+  .montant { font-size: 22px; font-weight: bold; color: #001a3d; text-align: center; padding: 12px; background: #f9f7f0; border: 2px solid #D4AF37; border-radius: 6px; margin: 12px 0; }
+  .signatures { display: flex; gap: 60px; margin-top: 40px; }
+  .sig-box { flex: 1; border-top: 1px solid #333; padding-top: 8px; font-size: 12px; color: #555; }
+  .footer { margin-top: 40px; font-size: 11px; color: #999; text-align: center; border-top: 1px solid #eee; padding-top: 12px; }
+  .important { background: #fff3cd; border-left: 4px solid #D4AF37; padding: 10px 14px; margin: 12px 0; border-radius: 0 4px 4px 0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">SYNERGIE DOUR</div>
+  <div class="asbl">ASBL — Association des commerçants et indépendants<br>Grand'Place 9 · 7370 Dour · BE 1036.801.623</div>
+</div>
+
+<h1>CONTRAT D'ADHÉSION ${year}</h1>
+<p style="text-align:center;color:#666;font-size:12px;">Année civile ${year} — valable jusqu'au 31 décembre ${year}</p>
+
+<div class="ref">
+  <strong>Référence :</strong> SD-${year}-${Date.now().toString().slice(-6)}<br>
+  <strong>Date d'établissement :</strong> ${today}
+</div>
+
+<h2>Article 1 — Parties contractantes</h2>
+<table class="parties">
+  <tr><th colspan="2">L'ASBL (partie 1)</th></tr>
+  <tr><td width="40%"><strong>Dénomination</strong></td><td>SYNERGIE DOUR ASBL</td></tr>
+  <tr><td><strong>Siège social</strong></td><td>Grand'Place 9, 7370 Dour</td></tr>
+  <tr><td><strong>N° BCE</strong></td><td>BE 1036.801.623</td></tr>
+  <tr><td><strong>Représentée par</strong></td><td>Olivier Trévis (Président)</td></tr>
+</table>
+<table class="parties" style="margin-top:8px;">
+  <tr><th colspan="2">Le membre adhérent (partie 2)</th></tr>
+  <tr><td width="40%"><strong>Nom / Dénomination</strong></td><td><strong>${input.businessName}</strong></td></tr>
+  <tr><td><strong>Responsable</strong></td><td>${input.contactName}</td></tr>
+  <tr><td><strong>Adresse</strong></td><td>${address}</td></tr>
+  ${input.vatNumber ? `<tr><td><strong>N° TVA / BCE</strong></td><td>${input.vatNumber}</td></tr>` : ""}
+  ${input.structureType ? `<tr><td><strong>Type de structure</strong></td><td>${input.structureType}</td></tr>` : ""}
+</table>
+
+<h2>Article 2 — Objet de l'adhésion</h2>
+<div class="article">
+  Le membre adhère à l'ASBL <strong>Synergie Dour</strong> pour l'année civile <strong>${year}</strong>.
+  Cette adhésion donne accès à l'ensemble des services et avantages réservés aux membres :
+  <ul>
+    <li>Inscription dans l'annuaire public des commerçants de Dour</li>
+    <li>Invitation aux réunions, événements et conférences de l'ASBL</li>
+    <li>Mini-vidéo promotionnelle du commerce (valeur estimée : 150 €)</li>
+    <li>Accompagnement administratif et veille légale (TVA, social, fiscal)</li>
+    <li>Représentation collective auprès de la commune et des autorités</li>
+    <li>Visibilité sur les réseaux sociaux de l'ASBL</li>
+  </ul>
+</div>
+
+<h2>Article 3 — Cotisation annuelle</h2>
+<div class="montant">50,00 € / an (TVAC)</div>
+<div class="article">
+  La cotisation annuelle est fixée à <strong>50 € par an</strong> pour l'année ${year}.
+  Elle est payable par virement bancaire ou via le lien de paiement sécurisé transmis par l'ASBL.
+  <div class="important">
+    <strong>Coordonnées bancaires :</strong><br>
+    IBAN : BE XX XXXX XXXX XXXX (communiqué par email séparé)<br>
+    Communication : <em>Adhésion SD-${year} — ${input.businessName}</em>
+  </div>
+  La cotisation est renouvelable chaque année civile. La résiliation doit être notifiée par écrit avant le <strong>30 novembre</strong>.
+</div>
+
+<h2>Article 4 — Engagements du membre</h2>
+<div class="article">
+  Le membre s'engage à :
+  <ul>
+    <li>Respecter les statuts et le règlement d'ordre intérieur de l'ASBL</li>
+    <li>Agir dans l'intérêt collectif des commerçants de la commune</li>
+    <li>Informer l'ASBL de tout changement d'adresse ou de cessation d'activité</li>
+    <li>S'acquitter de la cotisation annuelle dans les délais impartis</li>
+  </ul>
+</div>
+
+<h2>Article 5 — Protection des données (RGPD)</h2>
+<div class="article">
+  Les données personnelles collectées sont utilisées exclusivement pour la gestion de l'adhésion et la communication interne de l'ASBL.
+  Elles ne sont pas transmises à des tiers. Le membre dispose d'un droit d'accès, de rectification et de suppression
+  en écrivant à <a href="mailto:contact@synergiedour.be">contact@synergiedour.be</a>.
+</div>
+
+<h2>Article 6 — Résiliation</h2>
+<div class="article">
+  L'adhésion est résiliable annuellement, avec préavis écrit avant le <strong>30 novembre</strong> de l'année en cours.
+  L'ASBL se réserve le droit d'exclure un membre en cas de manquement grave aux statuts, après décision du bureau.
+</div>
+
+<div class="signatures" style="display:flex;gap:60px;margin-top:50px;">
+  <div class="sig-box" style="flex:1;border-top:1px solid #333;padding-top:10px;">
+    <p style="font-size:12px;color:#555;margin:0;"><strong>Pour SYNERGIE DOUR ASBL</strong><br>
+    Olivier Trévis, Président<br><br><br>
+    Signature : ______________________<br>
+    Date : ____________________________</p>
+  </div>
+  <div class="sig-box" style="flex:1;border-top:1px solid #333;padding-top:10px;">
+    <p style="font-size:12px;color:#555;margin:0;"><strong>Le membre adhérent</strong><br>
+    ${input.contactName}<br><br><br>
+    Signature : ______________________<br>
+    Date : ____________________________</p>
+  </div>
+</div>
+
+<div class="footer">
+  SYNERGIE DOUR ASBL · Grand'Place 9, 7370 Dour · BE 1036.801.623 · contact@synergiedour.be · www.synergiedour.be<br>
+  Plateforme gérée par JS-Innov.IA — www.jsinnovia.com
+</div>
+</body>
+</html>`;
+
+  const emailBody = emailLayout(`
+    <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bonjour ${input.contactName},</h2>
+    <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Votre demande d'adhésion pour <strong>${input.businessName}</strong> a été <strong style="color:#1a7d3d;">validée</strong> par le bureau de Synergie Dour.
+    </p>
+    <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Vous trouverez ci-joint votre <strong>contrat d'adhésion ${year}</strong> en pièce jointe. 
+      Veuillez le signer et le retourner par email à <a href="mailto:contact@synergiedour.be" style="color:#003d99;">contact@synergiedour.be</a>.
+    </p>
+    <div style="background:#f0f4fa;border-left:3px solid #003d99;padding:14px 18px;border-radius:0 6px 6px 0;margin:16px 0;">
+      <p style="margin:0;font-size:14px;color:#333;"><strong>Prochaine étape :</strong> règlement de la cotisation de <strong>50 €</strong><br>
+      Vous recevrez sous peu le lien de paiement sécurisé (carte bancaire ou Bancontact).</p>
+    </div>
+    <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 16px 0 0;">
+      Bienvenue dans la famille Synergie Dour !<br>
+      <em>Le bureau — Olivier Trévis, Président</em>
+    </p>
+  `);
+
+  // Encoder le HTML du contrat en base64 pour l'envoyer comme pièce jointe
+  const contractBase64 = Buffer.from(contractHtml).toString("base64");
+
+  await resend.emails.send({
+    from: FROM_CONTACT,
+    to: input.to,
+    subject: `Contrat d'adhésion Synergie Dour ${year} — ${input.businessName}`,
+    html: emailBody,
+    attachments: [
+      {
+        filename: `Contrat_Adhesion_SynergieDour_${year}_${input.businessName.replace(/[^a-zA-Z0-9]/g, "_")}.html`,
+        content: contractBase64,
+        content_type: "text/html",
+      },
+    ],
+  });
+}
+
+/* ------------------------------------------------------------------------- */
+/* 7. EMAIL ACCUSÉ DE RÉCEPTION IMMÉDIAT (soumission formulaire)               */
+/* ------------------------------------------------------------------------- */
+
+export async function sendInstantAcknowledgement(input: {
+  to: string;
+  contactName: string;
+  businessName: string;
+  village?: string;
+}): Promise<void> {
+  const today = new Date().toLocaleDateString("fr-BE", { day: "numeric", month: "long", year: "numeric" });
+  const locationLine = input.village ? `<br>📍 Localité : <strong>${input.village}</strong>` : "";
+
+  const html = emailLayout(`
+    <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bonjour ${input.contactName},</h2>
+    <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Nous avons bien reçu votre demande d'adhésion à <strong>Synergie Dour</strong> pour 
+      <strong>${input.businessName}</strong>${locationLine}.
+    </p>
+    <div style="background:#f9f7f0;border:1.5px solid #D4AF37;border-radius:8px;padding:18px 22px;margin:16px 0;">
+      <p style="margin:0;font-size:15px;color:#001a3d;"><strong>Récapitulatif de votre demande</strong></p>
+      <p style="margin:8px 0 0;font-size:14px;color:#555;">
+        📅 Reçue le : <strong>${today}</strong><br>
+        🏢 Commerce : <strong>${input.businessName}</strong><br>
+        👤 Contact : <strong>${input.contactName}</strong>
+        ${locationLine}
+      </p>
+    </div>
+    <h3 style="color: #001a3d; font-size: 17px; margin: 20px 0 10px;">Prochaines étapes</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <td style="width:36px;vertical-align:top;padding:6px 0;font-size:20px;">1️⃣</td>
+        <td style="padding:6px 0;font-size:14px;color:#333;">Le bureau de l'ASBL examine votre candidature <strong>(sous 7 jours)</strong></td>
+      </tr>
+      <tr>
+        <td style="vertical-align:top;padding:6px 0;font-size:20px;">2️⃣</td>
+        <td style="padding:6px 0;font-size:14px;color:#333;">Vous recevez par email votre <strong>contrat d'adhésion</strong> à signer</td>
+      </tr>
+      <tr>
+        <td style="vertical-align:top;padding:6px 0;font-size:20px;">3️⃣</td>
+        <td style="padding:6px 0;font-size:14px;color:#333;">Règlement de la cotisation annuelle : <strong>50 €</strong> (lien sécurisé Stripe)</td>
+      </tr>
+      <tr>
+        <td style="vertical-align:top;padding:6px 0;font-size:20px;">4️⃣</td>
+        <td style="padding:6px 0;font-size:14px;color:#333;"><strong>Activation</strong> de votre profil dans l'annuaire Synergie Dour</td>
+      </tr>
+    </table>
+    <p style="color: #555; font-size: 14px; line-height: 1.6; margin: 20px 0 0;">
+      Pour toute question : <a href="mailto:contact@synergiedour.be" style="color:#003d99;">contact@synergiedour.be</a> 
+      ou 0475/42.69.42 (Olivier Trévis)<br>
+      <em>Le bureau — Synergie Dour</em>
+    </p>
+  `);
+
+  await resend.emails.send({
+    from: FROM_CONTACT,
+    to: input.to,
+    subject: "Synergie Dour — Votre demande d'adhésion est bien reçue",
+    html,
+  });
+}
