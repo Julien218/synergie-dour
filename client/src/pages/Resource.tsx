@@ -39,6 +39,35 @@ export default function Resource() {
   const categoryInfo = RESOURCE_CATEGORIES[resource.category];
   const styles = categoryStyles[resource.category] ?? categoryStyles.starter;
 
+
+  // ===== OG Meta Tags dynamiques =====
+  const ogImage = resource.ogImage
+    ? \`https://synergiedour.be/og-ressources/\${resource.ogImage}\`
+    : "https://synergiedour.be/og-image-new.jpg";
+  const ogUrl = \`https://synergiedour.be/resources/\${resource.slug}\`;
+  const ogTitle = resource.title + " | Synergie Dour";
+  const ogDesc = resource.summary;
+
+  // Inject meta tags
+  if (typeof document !== "undefined") {
+    document.title = ogTitle;
+    const setMeta = (prop: string, val: string, attr = "property") => {
+      let el = document.querySelector(\`meta[\${attr}="\${prop}"]\`) as HTMLMetaElement | null;
+      if (!el) { el = document.createElement("meta"); el.setAttribute(attr, prop); document.head.appendChild(el); }
+      el.setAttribute("content", val);
+    };
+    setMeta("og:title", ogTitle);
+    setMeta("og:description", ogDesc);
+    setMeta("og:image", ogImage);
+    setMeta("og:url", ogUrl);
+    setMeta("og:type", "article");
+    setMeta("twitter:card", "summary_large_image", "name");
+    setMeta("twitter:title", ogTitle, "name");
+    setMeta("twitter:description", ogDesc, "name");
+    setMeta("twitter:image", ogImage, "name");
+  }
+  // ===== Fin OG Meta Tags =====
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* BREADCRUMB — texte foncé sur fond blanc */}
