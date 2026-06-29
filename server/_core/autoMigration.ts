@@ -268,4 +268,15 @@ export async function runAutoMigration(): Promise<void> {
   }
 
   console.log(`[AutoMigration] Terminé — ${created} tables OK, ${errors} erreurs`);
+
+  // ─── Migrations structurelles (idempotentes) ─────────────────────────────
+  const structMigrations = [
+    // userId nullable dans merchants — évite FK violation lors de la création admin
+    `ALTER TABLE merchants MODIFY COLUMN userId INT NULL`,
+    // userId nullable dans memberships
+    `ALTER TABLE memberships MODIFY COLUMN userId INT NULL`,
+  ];
+  for (const sql of structMigrations) {
+    try { await db.execute(sql as any); } catch { /* déjà nullable ou table absente */ }
+  }
 }
