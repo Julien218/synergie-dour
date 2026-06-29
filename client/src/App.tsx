@@ -32,6 +32,7 @@ import Login from "@/pages/Login";
 import SoumettreLocal from "@/pages/SoumettreLocal";
 import ManageLocaux from "@/pages/ManageLocaux";
 import LocauxCommerciaux from "@/pages/LocauxCommerciaux";
+import LocalDetail from "@/pages/LocalDetail";
 import ManagePosts from "@/pages/ManagePosts";
 import SocialMediaPage from "@/pages/SocialMediaPage";
 import SuperAdminBrand from "@/pages/SuperAdminBrand";
@@ -164,6 +165,9 @@ function Router() {
       </Route>
 
       {/* Page formulaire local commercial */}
+      <Route path="/locaux/:id">
+        {(params) => <LocalDetail />}
+      </Route>
       <Route path="/locaux">
         <LocauxCommerciaux />
       </Route>
