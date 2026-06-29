@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Maximize2, ExternalLink, Building2, Plus, Mail } from "lucide-react";
+import { MapPin, Maximize2, ExternalLink, Building2, Plus, Mail, Share2 } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 
@@ -123,21 +123,44 @@ function LocalCard({ local }: { local: any }) {
         )}
 
         {/* Boutons — en bas */}
-        <div className="mt-auto pt-2 border-t border-gray-50 flex gap-2">
+        <div className="mt-auto pt-2 border-t border-gray-50 flex flex-col gap-2">
+          {/* Bouton détail + partage */}
+          <div className="flex gap-2">
+            <Link href={`/locaux/${local.id}`} className="flex-1">
+              <Button size="sm" className="w-full bg-[#D4AF37] hover:bg-[#F0C040] text-[#001a3d] font-bold text-xs transition-colors">
+                Voir le détail →
+              </Button>
+            </Link>
+            <button
+              onClick={async () => {
+                const url = `https://www.synergiedour.be/locaux/${local.id}`;
+                if (navigator.share) {
+                  try { await navigator.share({ title: local.titre, url }); } catch {}
+                } else {
+                  await navigator.clipboard.writeText(url);
+                  alert("Lien copié !");
+                }
+              }}
+              className="px-3 py-1.5 border border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded-md transition-colors"
+              title="Partager"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {/* Lien source secondaire */}
           {hasValidUrl ? (
             <a
               href={local.url_source}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1"
             >
-              <Button size="sm" className="w-full bg-[#001a3d] hover:bg-[#003d99] text-white text-xs font-semibold transition-colors">
+              <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-500 hover:bg-slate-50 text-xs transition-colors">
                 <ExternalLink className="w-3 h-3 mr-1.5" />
-                Voir l'annonce
+                Source originale
               </Button>
             </a>
           ) : (
-            <Link href="/contact" className="flex-1">
+            <Link href="/contact">
               <Button size="sm" variant="outline" className="w-full border-[#003d99] text-[#003d99] hover:bg-[#003d99] hover:text-white text-xs transition-colors">
                 <Mail className="w-3 h-3 mr-1.5" />
                 Demander infos

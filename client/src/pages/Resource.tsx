@@ -42,9 +42,9 @@ export default function Resource() {
 
   // ===== OG Meta Tags dynamiques =====
   const ogImage = resource.ogImage
-    ? \`https://synergiedour.be/og-ressources/\${resource.ogImage}\`
-    : "https://synergiedour.be/og-image-new.jpg";
-  const ogUrl = \`https://synergiedour.be/resources/\${resource.slug}\`;
+    ? \`https://www.synergiedour.be/og-ressources/\${resource.ogImage}\`
+    : "https://www.synergiedour.be/og-image-new.jpg";
+  const ogUrl = \`https://www.synergiedour.be/resources/\${resource.slug}\`;
   const ogTitle = resource.title + " | Synergie Dour";
   const ogDesc = resource.summary;
 
