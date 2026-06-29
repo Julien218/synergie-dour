@@ -164,6 +164,61 @@ export default function Home() {
       {/* Live Feed Carousel — Actualités + Locaux + Ressources */}
       <LiveFeedCarousel />
 
+      {/* Section Vidéo Facebook — Reel officiel Synergie Dour */}
+      <section className="py-14 px-4 bg-gradient-to-b from-[#001533] to-[#001a3d]">
+        <div className="container mx-auto max-w-6xl">
+          <div className="flex flex-col md:flex-row items-center gap-10">
+            {/* Texte gauche */}
+            <div className="flex-1 text-white space-y-5">
+              <div className="inline-block bg-[#D4AF37]/20 border border-[#D4AF37]/40 rounded-full px-4 py-1 text-[#D4AF37] text-sm font-semibold tracking-wide uppercase">
+                Synergie Dour · Vidéo officielle
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#D4AF37] leading-tight">
+                Découvrez Synergie Dour<br />en vidéo
+              </h2>
+              <p className="text-blue-100 text-lg leading-relaxed">
+                Qui sommes-nous ? Que faisons-nous pour les commerçants et indépendants de Dour ?
+                Retrouvez notre présentation officielle et rejoignez le réseau local le plus actif de la région.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <a
+                  href="https://www.facebook.com/reel/1473854520704268/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001533] font-bold px-5 py-3 rounded-lg transition-colors"
+                >
+                  Voir sur Facebook
+                </a>
+                <a
+                  href="/membership"
+                  className="inline-flex items-center gap-2 border border-[#D4AF37]/60 text-[#D4AF37] hover:bg-[#D4AF37]/10 font-semibold px-5 py-3 rounded-lg transition-colors"
+                >
+                  Devenir membre
+                </a>
+              </div>
+            </div>
+            {/* Vidéo droite */}
+            <div className="flex-shrink-0 flex justify-center">
+              <div className="rounded-2xl overflow-hidden shadow-2xl border border-[#D4AF37]/30"
+                   style={{ width: 267, height: 476 }}>
+                <iframe
+                  src="https://www.facebook.com/plugins/video.php?height=476&href=https%3A%2F%2Fwww.facebook.com%2Freel%2F1473854520704268%2F&show_text=false&width=267&t=19"
+                  width="267"
+                  height="476"
+                  style={{ border: "none", overflow: "hidden" }}
+                  scrolling="no"
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                  title="Synergie Dour — Vidéo officielle"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
       {/* Featured Resources — le cœur de la proposition de valeur */}
       <section className="py-16 px-4 bg-gradient-to-b from-white/95 to-gray-50/95">
         <div className="container mx-auto max-w-6xl">
