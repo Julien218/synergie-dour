@@ -34,6 +34,8 @@ export interface Resource {
   verifiedAt: string;
   /** Contenu en markdown léger (paragraphes séparés par \n\n) */
   content: string;
+  /** Image OG personnalisée pour réseaux sociaux (nom du fichier dans /public/og-ressources/) */
+  ogImage?: string;
   /** Liens officiels et partenaires */
   links: ResourceLink[];
   /** Contacts locaux à Dour / Borinage si pertinent */
@@ -69,6 +71,7 @@ export const RESOURCES: Resource[] = [
   // =====================================================================
   {
     slug: "creer-mon-activite-independant",
+  ogImage: "og_record-independants-belgique.jpg",
     title: "Créer mon activité d'indépendant",
     summary: "Les 5 étapes essentielles avant d'émettre votre première facture.",
     category: "starter",
@@ -123,6 +126,7 @@ export const RESOURCES: Resource[] = [
   // =====================================================================
   {
     slug: "cotisations-sociales",
+  ogImage: "og_aides-crise-energetique-2026.jpg",
     title: "Cotisations sociales d'indépendant",
     summary: "Calcul, paiement, régularisation : ce que vous devez verser chaque trimestre.",
     category: "gestion",
@@ -148,6 +152,7 @@ export const RESOURCES: Resource[] = [
 
   {
     slug: "tva-bases",
+  ogImage: "og_tva-12-horeca-hotels-2026.jpg",
     title: "TVA : les bases pour un indépendant",
     summary: "Taux, déclarations, franchise pour les petites entreprises.",
     category: "gestion",
@@ -171,6 +176,7 @@ export const RESOURCES: Resource[] = [
 
   {
     slug: "facturation-mentions-obligatoires",
+  ogImage: "og_facturation-electronique-peppol.jpg",
     title: "Facturation : mentions obligatoires",
     summary: "Ce que doit contenir une facture conforme en Belgique.",
     category: "gestion",
@@ -252,6 +258,7 @@ export const RESOURCES: Resource[] = [
 
   {
     slug: "cheques-entreprises",
+  ogImage: "og_suppression-guichets-entreprises.jpg",
     title: "Chèques-Entreprises wallons",
     summary: "Comment financer 50 à 75 % de votre consultance externe.",
     category: "developpement",
@@ -375,6 +382,7 @@ export const RESOURCES: Resource[] = [
 
   {
     slug: "plan-financier-obligation",
+  ogImage: "og_reforme-fiscale-2026-2030.jpg",
     title: "Plan financier : obligation et contenu",
     summary: "Obligatoire pour créer une société, le plan financier engage votre responsabilité.",
     category: "starter",
@@ -483,6 +491,7 @@ export const RESOURCES: Resource[] = [
 
   {
     slug: "bail-commercial",
+  ogImage: "og_taxes-plus-values-2026.jpg",
     title: "Bail commercial : droits et obligations",
     summary: "Durée minimale, loyer, renouvellement et résiliation d'un bail commercial.",
     category: "gestion",
@@ -508,6 +517,7 @@ export const RESOURCES: Resource[] = [
 
   {
     slug: "rgpd-independant",
+  ogImage: "og_modernisation-droit-travail-2026.jpg",
     title: "RGPD pour les indépendants et PME",
     summary: "Ce que vous devez faire concrètement pour être en conformité avec le RGPD.",
     category: "gestion",
@@ -617,6 +627,7 @@ export const RESOURCES: Resource[] = [
 
   {
     slug: "embauche-premier-employe",
+  ogImage: "og_heures-supplementaires-2026.jpg",
     title: "Embaucher son premier employé",
     summary: "ONSS, Dimona, contrat de travail et aides à l'embauche en Wallonie.",
     category: "developpement",
