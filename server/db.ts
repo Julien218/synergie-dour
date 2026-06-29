@@ -235,7 +235,7 @@ export async function createMerchant(data: InsertMerchant) {
 
   // Map de toutes les valeurs possibles
   const allFields: Record<string, any> = {
-    userId:            data.userId || 1,
+    userId:            data.userId ?? null,
     businessName:      data.businessName,
     businessCategory:  data.businessCategory || 'Commerce',
     address:           (data as any).address ?? '',
@@ -255,11 +255,17 @@ export async function createMerchant(data: InsertMerchant) {
   const vals: any[] = [];
 
   // Colonnes obligatoires (inclure même si vides)
-  for (const req of ['userId','businessName','businessCategory','address','status']) {
+  for (const req of ['businessName','businessCategory','address','status']) {
     if (existingCols.has(req)) {
       cols.push(req);
       vals.push(allFields[req] ?? '');
     }
+  }
+
+  // userId optionnel — seulement si fourni et non null
+  if (existingCols.has('userId') && allFields['userId'] !== null && allFields['userId'] !== undefined) {
+    cols.push('userId');
+    vals.push(allFields['userId']);
   }
 
   // Colonnes optionnelles — seulement si présentes en DB et non vides

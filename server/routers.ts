@@ -85,8 +85,13 @@ export const appRouter = router({
     create: adminProcedure.input((val: unknown) => {
       if (typeof val === "object" && val !== null) return val;
       throw new Error("Invalid input");
-    }).mutation(async ({ input }) => {
-      return createMerchant(input as any);
+    }).mutation(async ({ input, ctx }) => {
+      // Injecter l'userId de l'admin connecté — évite la FK violation
+      const data = { ...(input as any) };
+      if (!data.userId && ctx?.user?.id) {
+        data.userId = ctx.user.id;
+      }
+      return createMerchant(data);
     }),
     update: adminProcedure.input((val: unknown) => {
       if (typeof val === "object" && val !== null) return val;
