@@ -74,6 +74,10 @@ const CATEGORIES_SYNERGIE: Record<string, string[]> = {
     "Développement web","Graphisme","Marketing digital","Communication","Publicité",
     "Impression","Photographie","Vidéo","Community management","Média local",
   ],
+  "Intelligence artificielle & Digital": [
+    "Agence d'intelligence artificielle","Conseil en IA","Automatisation","Chatbot & Agents IA",
+    "Data & Analytique","Solutions numériques","Transformation digitale","SaaS","No-code / Low-code",
+  ],
   "Sport, loisirs et culture": [
     "Salle de fitness","Club sportif","Danse","Arts martiaux","Musique",
     "Théâtre","Loisirs créatifs","Organisation de loisirs",
