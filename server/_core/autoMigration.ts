@@ -241,6 +241,20 @@ const CREATE_TABLES = [
     createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS scheduled_posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL DEFAULT '',
+    content TEXT NOT NULL,
+    day_of_week INT NOT NULL DEFAULT 1,
+    scheduled_time VARCHAR(20) NOT NULL DEFAULT '09:00:00',
+    platforms VARCHAR(255) NOT NULL DEFAULT 'facebook,instagram',
+    status ENUM('draft','approved','published','rejected') NOT NULL DEFAULT 'draft',
+    source_type VARCHAR(100) NOT NULL DEFAULT 'manual',
+    approved_by VARCHAR(100),
+    approved_at DATETIME NULL,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 ];
 
 export async function runAutoMigration(): Promise<void> {
