@@ -42,6 +42,10 @@ const CARD_TINTS = [
 
 /* CSS minimal — un seul glow pulsé très lent, discret */
 const GLOBAL_CSS = `
+.sd-resources-feed { display: none; }
+@media (min-width: 1780px) {
+  .sd-resources-feed { display: block; }
+}
 @keyframes sd-card-glow {
   0%,100% {
     box-shadow: 0 4px 18px rgba(0,0,0,0.40);
@@ -87,8 +91,8 @@ export function ResourcesScrollFeed() {
 
   return (
     <div
-      className="fixed left-3 top-1/2 -translate-y-1/2 hidden xl:block"
-      style={{ width: 245, zIndex: 9999 }}
+      className="sd-resources-feed fixed left-3 top-1/2 -translate-y-1/2"
+      style={{ width: 245, zIndex: 30 }}
     >
       <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
 
