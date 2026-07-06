@@ -36,8 +36,8 @@ const CREATE_TABLES = [
     phone VARCHAR(30),
     email VARCHAR(320),
     website VARCHAR(500),
-    logo TEXT,
-    googleBusinessUrl TEXT,
+    logo LONGTEXT,
+    googleBusinessUrl LONGTEXT,
     isVerified TINYINT(1) NOT NULL DEFAULT 0,
     status ENUM('active','inactive','pending') NOT NULL DEFAULT 'pending',
     createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -289,6 +289,9 @@ export async function runAutoMigration(): Promise<void> {
     `ALTER TABLE merchants MODIFY COLUMN userId INT NULL`,
     // userId nullable dans memberships
     `ALTER TABLE memberships MODIFY COLUMN userId INT NULL`,
+    // logo/googleBusinessUrl en LONGTEXT — les uploads sont envoyés en base64 (data URI), largement > 255/500 caractères
+    `ALTER TABLE merchants MODIFY COLUMN logo LONGTEXT`,
+    `ALTER TABLE merchants MODIFY COLUMN googleBusinessUrl LONGTEXT`,
   ];
   for (const sql of structMigrations) {
     try { await db.execute(sql as any); } catch { /* déjà nullable ou table absente */ }
