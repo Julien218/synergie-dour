@@ -32,7 +32,7 @@ import {
   ClipboardList,
   Image,
   Building2,
-  Share2, FileEdit, Zap,
+  Share2, FileEdit, Zap, Rocket,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -117,6 +117,7 @@ function DashboardLayoutContent({
     { icon: Building2, label: "Locaux à Louer", path: "/dashboard/locaux" },
     { icon: Share2, label: "Réseaux Sociaux", path: "/dashboard/social" },
     { icon: FileEdit, label: "Posts à publier", path: "/dashboard/posts" },
+    { icon: Rocket, label: "Synergie AutoPublish", path: "/dashboard/autopublish" },
     { icon: Users, label: "Membres CA", path: "/dashboard/members" },
   { icon: Zap, label: "LeadFinder Pro", path: "/dashboard/leadfinder" },
   { icon: Users, label: "Liste Clients", path: "/dashboard/clients" },

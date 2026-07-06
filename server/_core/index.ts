@@ -14,6 +14,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
 import { socialRouter } from "../social";
+import { autopublishRouter } from "../autopublish/router";
+import { cronAutopublishHandler } from "../cron/autopublishCron";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -196,6 +198,8 @@ async function startServer() {
     await setupVite(app, server);
   } else {
     app.use("/api/social", socialRouter);
+    app.use("/api/autopublish", autopublishRouter);
+    app.post("/api/cron/autopublish", cronAutopublishHandler);
 
   // ─── Backup automatique quotidien à 2h00 ─────────────────────────────────
   (async () => {

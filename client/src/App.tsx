@@ -35,6 +35,7 @@ import LocauxCommerciaux from "@/pages/LocauxCommerciaux";
 import LocalDetail from "@/pages/LocalDetail";
 import ManagePosts from "@/pages/ManagePosts";
 import SocialMediaPage from "@/pages/SocialMediaPage";
+import AutopublishPage from "@/pages/AutopublishPage";
 import SuperAdminBrand from "@/pages/SuperAdminBrand";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Route, Switch } from "wouter";
@@ -144,6 +145,9 @@ function Router() {
       </Route>
       <Route path="/dashboard/social">
         {() => <SocialMediaPage />}
+      </Route>
+      <Route path="/dashboard/autopublish">
+        {() => <AutopublishPage />}
       </Route>
       <Route path="/dashboard/super-admin">
         {() => <SuperAdminBrand />}
