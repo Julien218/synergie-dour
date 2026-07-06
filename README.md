@@ -164,6 +164,14 @@ Command  : curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://www.syne
 - Aucune publication n'a lieu tant qu'un post n'est pas au statut `validated` (immédiate) ou `scheduled` (programmée) — un `draft` ne peut jamais être publié, y compris par le cron.
 - Le endpoint cron est protégé par `CRON_SECRET` (même variable que les autres crons du projet).
 
+### ⚠️ Comportement si `AUTOPUBLISH_ENCRYPTION_KEY` est absente
+
+**La variable est obligatoire pour utiliser pleinement Synergie AutoPublish, mais son absence ne casse jamais le site :**
+- Le serveur démarre normalement, le dashboard `/dashboard/autopublish` reste accessible, la création/validation/programmation de brouillons fonctionne normalement (aucune de ces actions ne touche au chiffrement).
+- **Facebook reste fonctionnel sans cette variable** grâce à la rétro-compatibilité avec `FB_PAGE_ID`/`FB_PAGE_TOKEN` (déjà configurées en production) — tant qu'aucun compte n'est connecté via le dashboard, `AUTOPUBLISH_ENCRYPTION_KEY` n'est jamais sollicitée.
+- Elle n'est requise qu'au moment précis où un admin **connecte un compte** (Facebook, Instagram, TikTok ou LinkedIn) via le dashboard — c'est-à-dire dès qu'un token doit être chiffré/déchiffré. Si elle est absente à ce moment-là, l'action échoue proprement avec un message d'erreur explicite (`AUTOPUBLISH_ENCRYPTION_KEY manquante ou invalide`), sans jamais interrompre le reste du site ni du dashboard.
+- **Conclusion : à ajouter sur Railway avant toute connexion de compte social via le dashboard — non bloquant pour le reste du module.**
+
 ### Génération de la clé de chiffrement
 
 ```bash
