@@ -25,4 +25,19 @@ export const ENV = {
   // Réseaux sociaux
   fbPageId: process.env.FB_PAGE_ID ?? "",
   fbPageToken: process.env.FB_PAGE_TOKEN ?? "",
+
+  // Synergie AutoPublish — chiffrement des tokens sociaux (obligatoire en prod)
+  autopublishEncryptionKey: process.env.AUTOPUBLISH_ENCRYPTION_KEY ?? "",
+
+  // Synergie AutoPublish — LinkedIn
+  linkedinClientId: process.env.LINKEDIN_CLIENT_ID ?? "",
+  linkedinClientSecret: process.env.LINKEDIN_CLIENT_SECRET ?? "",
+  linkedinOrganizationId: process.env.LINKEDIN_ORGANIZATION_ID ?? "",
+
+  // Synergie AutoPublish — TikTok Content Posting API
+  tiktokClientKey: process.env.TIKTOK_CLIENT_KEY ?? "",
+  tiktokClientSecret: process.env.TIKTOK_CLIENT_SECRET ?? "",
+
+  // Cron interne (Railway Cron Jobs)
+  cronSecret: process.env.CRON_SECRET ?? "",
 };
