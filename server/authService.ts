@@ -23,7 +23,13 @@ function verifyPassword(password: string, stored: string): boolean {
 }
 
 function getSecret() {
-  return new TextEncoder().encode(ENV.cookieSecret || "dev-secret-change-me");
+  if (ENV.isProduction && !ENV.cookieSecret) {
+    throw new Error("JWT_SECRET ou SESSION_SECRET doit être défini en production");
+  }
+
+  return new TextEncoder().encode(
+    ENV.cookieSecret || "dev-secret-change-me"
+  );
 }
 
 export async function signSession(user: Pick<User, "id" | "email" | "name" | "role">) {

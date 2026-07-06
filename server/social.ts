@@ -264,7 +264,14 @@ socialRouter.post("/publish", requireAdmin, async (req, res) => {
         .filter(Boolean)
         .join("\n\n");
 
-      if (image_url) {
+      if (image_url?.startsWith("data:")) {
+        // Facebook Graph API attend une URL publique — une data URL base64 est rejetée.
+        // TODO: héberger l'image (Supabase Storage / S3 / Cloudflare R2 / stockage public Railway)
+        // et transmettre l'URL publique obtenue avant de publier.
+        results.facebook = {
+          error: "Image non publiable : l'image doit être hébergée sur une URL publique avant publication Facebook.",
+        };
+      } else if (image_url) {
         // Publication avec photo
         const photoRes = await fetch(
           `https://graph.facebook.com/v19.0/${fbPageId}/photos`,
@@ -669,7 +676,7 @@ socialRouter.get("/brand-settings", requireAdmin, async (req, res) => {
 });
 
 // ── PUT brand settings (super_admin only) ─────────────────────────────────────
-socialRouter.put("/brand-settings", requireAdmin, async (req, res) => {
+socialRouter.put("/brand-settings", requireSuperAdmin, async (req, res) => {
   try {
     await ensureBrandTable();
     const pool = await getRawPool();

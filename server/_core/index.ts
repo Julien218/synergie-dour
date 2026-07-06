@@ -90,32 +90,52 @@ async function initDatabase() {
     } catch (e: any) {
       console.warn("[DB] Setup tables:", e.message?.slice(0,150));
     }
-    // Seed super admin si absent
+    // Seed super admin si absent — uniquement via variables d'environnement sécurisées
     try {
-      const existing = await db.select().from(users).where(eq(users.email, process.env.SUPER_ADMIN_EMAIL || "julien.pagin.pv@gmail.com")).limit(1);
-      if (!existing[0]) {
-        const salt = crypto.randomBytes(16).toString("hex");
-        const hash = crypto.scryptSync("Synergie2025!", salt, 64).toString("hex");
-        await db.insert(users).values({
-          openId: "local_" + nanoid(21),
-          name: "Julien Pagin",
-          email: process.env.SUPER_ADMIN_EMAIL || "julien.pagin.pv@gmail.com",
-          loginMethod: "password",
-          passwordHash: salt + ":" + hash,
-          lastSignedIn: new Date(),
-          role: "super_admin",
-        } as any);
-        console.log("[DB] Super admin créé ✅");
+      const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
+      const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
+
+      if (!superAdminEmail) {
+        console.warn("[DB] SUPER_ADMIN_EMAIL non défini — seed super_admin ignoré");
       } else {
-        if (existing[0].role !== "super_admin") {
-          await db.update(users).set({ role: "super_admin" }).where(eq(users.id, existing[0].id));
+        const existing = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, superAdminEmail))
+          .limit(1);
+
+        if (!existing[0]) {
+          if (!superAdminPassword) {
+            console.warn("[DB] SUPER_ADMIN_PASSWORD non défini — création super_admin ignorée");
+          } else {
+            const salt = crypto.randomBytes(16).toString("hex");
+            const hash = crypto.scryptSync(superAdminPassword, salt, 64).toString("hex");
+
+            await db.insert(users).values({
+              openId: "local_" + nanoid(21),
+              name: "Super Admin",
+              email: superAdminEmail,
+              loginMethod: "password",
+              passwordHash: salt + ":" + hash,
+              lastSignedIn: new Date(),
+              role: "super_admin",
+            } as any);
+
+            console.log("[DB] Super admin créé depuis variables d'environnement ✅");
+          }
+        } else if (existing[0].role !== "super_admin") {
+          await db
+            .update(users)
+            .set({ role: "super_admin" })
+            .where(eq(users.id, existing[0].id));
+
           console.log("[DB] Rôle super_admin appliqué ✅");
         } else {
           console.log("[DB] Super admin déjà présent ✅");
         }
       }
-    } catch(e: any) {
-      console.warn("[DB] Seed skipped:", e.message?.slice(0,100));
+    } catch (e: any) {
+      console.warn("[DB] Seed skipped:", e.message?.slice(0, 100));
     }
     await pool.end();
   } catch (e: any) {
@@ -171,33 +191,6 @@ async function startServer() {
       createContext,
     })
   );
-
-  // Endpoint de debug DB (temporaire)
-  app.get("/api/debug/db", async (req, res) => {
-    const mysql2 = await import("mysql2/promise");
-    const results: Record<string, any> = {};
-    const urlsToTest = [
-      process.env.DATABASE_URL,
-      process.env.MYSQL_PUBLIC_URL,
-      "***REMOVED_SECRET_JS_INNOVIA***",
-    ].filter(Boolean) as string[];
-    for (const rawUrl of urlsToTest) {
-      const key = rawUrl.includes("railway.internal") ? "internal" : rawUrl.includes("proxy.rlwy") ? "proxy" : "other";
-      try {
-        const conn = await mysql2.createConnection({
-          uri: rawUrl.split("?")[0],
-          ssl: { rejectUnauthorized: false },
-          connectTimeout: 8000,
-        });
-        const [rows] = await conn.execute("SHOW TABLES");
-        results[key] = { status: "OK", tables: (rows as any[]).length };
-        await conn.end();
-      } catch(e: any) {
-        results[key] = { status: "FAIL", error: e.message?.slice(0,80) };
-      }
-    }
-    res.json(results);
-  });
 
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

@@ -42,9 +42,9 @@ export default function Resource() {
 
   // ===== OG Meta Tags dynamiques =====
   const ogImage = resource.ogImage
-    ? \`https://www.synergiedour.be/og-ressources/\${resource.ogImage}\`
+    ? `https://www.synergiedour.be/og-ressources/${resource.ogImage}`
     : "https://www.synergiedour.be/og-image-new.jpg";
-  const ogUrl = \`https://www.synergiedour.be/resources/\${resource.slug}\`;
+  const ogUrl = `https://www.synergiedour.be/resources/${resource.slug}`;
   const ogTitle = resource.title + " | Synergie Dour";
   const ogDesc = resource.summary;
 
@@ -52,7 +52,7 @@ export default function Resource() {
   if (typeof document !== "undefined") {
     document.title = ogTitle;
     const setMeta = (prop: string, val: string, attr = "property") => {
-      let el = document.querySelector(\`meta[\${attr}="\${prop}"]\`) as HTMLMetaElement | null;
+      let el = document.querySelector(`meta[${attr}="${prop}"]`) as HTMLMetaElement | null;
       if (!el) { el = document.createElement("meta"); el.setAttribute(attr, prop); document.head.appendChild(el); }
       el.setAttribute("content", val);
     };
