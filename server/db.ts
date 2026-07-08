@@ -181,76 +181,47 @@ async function getMerchantsFromMySQLFallback(filter?: { category?: string; searc
   }
 }
 
-export async function getMerchants(filter?: { category?: string; search?: string }) {
-  // 1. Lire depuis l'API Base44 (entité Commercant) — source principale (884 commerçants)
-  const appId  = process.env.VITE_APP_ID ?? "";
-  const apiKey = process.env.BUILT_IN_FORGE_API_KEY ?? "";
-  const apiUrl = process.env.BUILT_IN_FORGE_API_URL ?? "";
+// URL publique de la fonction backend Base44 (annuaire officiel Commercant).
+// Callable directement en HTTPS, sans clé API — voir functions/getMerchantsPublic.ts
+// dans le sandbox de l'agent Synergie Dour Assistant.
+const MERCHANTS_PUBLIC_FN_URL = "https://synergie-dour-assistant-2b4bda38.base44.app/functions/getMerchantsPublic";
 
-  if (!appId || !apiKey || !apiUrl) {
-    console.error("[getMerchants] Credentials Base44 manquantes (VITE_APP_ID/BUILT_IN_FORGE_API_KEY/BUILT_IN_FORGE_API_URL) — bascule sur le fallback MySQL local.");
-  } else {
-    try {
-      const base = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
-      const entityUrl = `${base}webdevtoken.v1.WebDevService/EntityList`;
-      const resp = await fetch(entityUrl, {
-        method: "POST",
-        headers: {
-          "accept": "application/json",
-          "content-type": "application/json",
-          "connect-protocol-version": "1",
-          "authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({ appId, entityName: "Commercant", serviceRole: true }),
-      });
-      if (!resp.ok) {
-        console.error(`[getMerchants] API Base44 a répondu ${resp.status} ${resp.statusText} — bascule sur le fallback MySQL local.`);
+export async function getMerchants(filter?: { category?: string; search?: string }) {
+  // 1. Source principale — fonction backend publique Base44 (entité Commercant, annuaire officiel)
+  try {
+    const resp = await fetch(MERCHANTS_PUBLIC_FN_URL, {
+      method: "GET",
+      headers: { "accept": "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!resp.ok) {
+      console.error(`[getMerchants] Fonction publique Base44 a répondu ${resp.status} ${resp.statusText} — bascule sur le fallback MySQL local.`);
+    } else {
+      const payload = await resp.json().catch(() => ({}));
+      const raw: any[] = Array.isArray(payload?.data) ? payload.data : [];
+      if (!payload?.success) {
+        console.error("[getMerchants] Fonction publique Base44 a renvoyé success=false:", payload?.error, "— bascule sur le fallback MySQL local.");
+      } else if (raw.length === 0) {
+        console.warn("[getMerchants] Fonction publique Base44 a répondu avec 0 commerçant — bascule sur le fallback MySQL local par sécurité.");
       } else {
-        const payload = await resp.json().catch(() => ({}));
-        let raw: any[] = [];
-        if (payload?.jsonData) {
-          try { raw = JSON.parse(payload.jsonData); } catch { raw = []; }
-        } else if (Array.isArray(payload)) {
-          raw = payload;
-        } else if (Array.isArray(payload?.records)) {
-          raw = payload.records;
+        let result = raw;
+        if (filter?.category) {
+          result = result.filter((m: any) =>
+            m.businessCategory?.toLowerCase() === filter.category?.toLowerCase()
+          );
         }
-        if (raw.length === 0) {
-          console.warn("[getMerchants] API Base44 a répondu avec 0 commerçant — bascule sur le fallback MySQL local par sécurité.");
-        } else {
-          // Mapper vers le format attendu par le frontend
-          let result = raw.map((c: any) => ({
-            id: c.id,
-            businessName: c.nom,
-            businessCategory: c.categorie || (Array.isArray(c.categories) ? c.categories[0] : ""),
-            description: c.notes || "",
-            address: c.adresse || "",
-            phone: c.telephone || "",
-            email: c.email || "",
-            website: c.site_web || "",
-            logo: null,
-            isVerified: true,
-            status: c.statut || "Actif",
-            createdAt: c.created_date,
-          }));
-          if (filter?.category) {
-            result = result.filter((m: any) =>
-              m.businessCategory?.toLowerCase() === filter.category?.toLowerCase()
-            );
-          }
-          if (filter?.search) {
-            const s = filter.search.toLowerCase();
-            result = result.filter((m: any) =>
-              m.businessName?.toLowerCase().includes(s) ||
-              m.description?.toLowerCase().includes(s)
-            );
-          }
-          return result;
+        if (filter?.search) {
+          const s = filter.search.toLowerCase();
+          result = result.filter((m: any) =>
+            m.businessName?.toLowerCase().includes(s) ||
+            m.description?.toLowerCase().includes(s)
+          );
         }
+        return result;
       }
-    } catch (e: any) {
-      console.error("[getMerchants] Erreur d'appel API Base44:", e.message, "— bascule sur le fallback MySQL local.");
     }
+  } catch (e: any) {
+    console.error("[getMerchants] Erreur d'appel de la fonction publique Base44:", e.message, "— bascule sur le fallback MySQL local.");
   }
 
   // 2. Fallback fiable — table MySQL locale `merchants` (commerçants inscrits directement sur le site)
