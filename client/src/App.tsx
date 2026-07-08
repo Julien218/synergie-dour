@@ -16,7 +16,7 @@ import ManageEvents from "@/pages/ManageEvents";
 import ManageMerchants from "@/pages/ManageMerchants";
 import ManageRequests from "@/pages/ManageRequests";
 import MembershipRequestsAdmin from "@/pages/MembershipRequestsAdmin";
-import AgentDashboard from "@/pages/AgentDashboard";
+import AgentModuleComingSoon from "@/pages/AgentModuleComingSoon";
 import MemberDashboard from "@/pages/MemberDashboard";
 import LeadFinderPage from "@/pages/LeadFinderPage";
 import ListeClients from "@/pages/ListeClients";
@@ -135,7 +135,7 @@ function Router() {
         {() => <MembershipRequestsAdmin />}
       </Route>
       <Route path="/dashboard/agent">
-        {() => <AgentDashboard />}
+        {() => <AgentModuleComingSoon />}
       </Route>
       <Route path="/dashboard/locaux">
         {() => <ManageLocaux />}
