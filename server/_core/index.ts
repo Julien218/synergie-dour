@@ -37,6 +37,28 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 
+
+async function ensureColumn(pool: any, table: string, column: string, addSql: string) {
+  try {
+    const [rows]: any = await pool.query(
+      "SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+      [table, column]
+    );
+    const exists = rows?.[0]?.cnt > 0;
+    if (!exists) {
+      const conn = await pool.getConnection();
+      try {
+        await conn.execute(addSql);
+        console.log(`[DB] Colonne ${table}.${column} ajoutée ✅`);
+      } finally {
+        conn.release();
+      }
+    }
+  } catch (e: any) {
+    console.error(`[DB] Erreur migration colonne ${table}.${column}:`, e.message);
+  }
+}
+
 async function initDatabase() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
@@ -56,19 +78,13 @@ async function initDatabase() {
     // Création des tables si absentes (idempotent)
     try {
       const conn = await pool.getConnection();
-      // Migration: ajouter googleBusinessUrl si absent
-      try {
-        const conn2 = await pool.getConnection();
-        await conn2.execute("ALTER TABLE `merchants` ADD COLUMN IF NOT EXISTS `googleBusinessUrl` varchar(500)");
-        conn2.release();
-      } catch (_mig) { /* colonne déjà présente ou MySQL < 8 */ }
-
-      // Migration 0007: paiementStatut dans membership_requests
-      try {
-        const connPay = await pool.getConnection();
-        await connPay.execute("ALTER TABLE membership_requests ADD COLUMN IF NOT EXISTS paiementStatut VARCHAR(20) NOT NULL DEFAULT 'en_attente'");
-        connPay.release();
-      } catch (_migPay) { /* colonne deja presente ou non supportee */ }
+      // Migrations de colonnes — robustes indépendamment de la version MySQL
+      // (ADD COLUMN IF NOT EXISTS n'est supporté qu'à partir de MySQL 8.0.29 ;
+      //  sur une version antérieure la requête lève une erreur de syntaxe qui était
+      //  silencieusement avalée, laissant la colonne absente en production —
+      //  cause racine du bug "membership.request" 500 constaté en recette du 08/07/2026)
+      await ensureColumn(pool, "merchants", "googleBusinessUrl", "ALTER TABLE `merchants` ADD COLUMN `googleBusinessUrl` varchar(500)");
+      await ensureColumn(pool, "membership_requests", "paiementStatut", "ALTER TABLE `membership_requests` ADD COLUMN `paiementStatut` VARCHAR(20) NOT NULL DEFAULT 'en_attente'");
 
       const sqls = [
         `CREATE TABLE IF NOT EXISTS \`users\` (\`id\` int AUTO_INCREMENT NOT NULL, \`openId\` varchar(64) NOT NULL, \`name\` text, \`email\` varchar(320), \`loginMethod\` varchar(64), \`passwordHash\` varchar(255), \`emailVerifiedAt\` timestamp NULL, \`role\` enum('user','admin','super_admin') NOT NULL DEFAULT 'user', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, \`lastSignedIn\` timestamp NOT NULL DEFAULT (now()), CONSTRAINT \`users_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`users_openId_unique\` UNIQUE(\`openId\`))`,

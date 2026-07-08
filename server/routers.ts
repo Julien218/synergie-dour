@@ -39,6 +39,7 @@ import {
   updateLocalRequest,
 } from "./db";
 import { sendAdminNewMessageNotification, sendInstantAcknowledgement, sendContractEmail } from "./email/notifications";
+import { TRPCError } from "@trpc/server";
 
 export const appRouter = router({
   system: systemRouter,
@@ -202,10 +203,34 @@ export const appRouter = router({
   // Contact requests
   contact: router({
     submit: publicProcedure.input((val: unknown) => {
-      if (typeof val === "object" && val !== null) return val;
-      throw new Error("Invalid input");
+      if (typeof val !== "object" || val === null) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Formulaire invalide." });
+      }
+      const v = val as Record<string, unknown>;
+      if (!v.name || typeof v.name !== "string" || !v.name.trim()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Le nom est obligatoire." });
+      }
+      if (!v.email || typeof v.email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Une adresse email valide est obligatoire." });
+      }
+      if (!v.subject || typeof v.subject !== "string" || !v.subject.trim()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Le sujet est obligatoire." });
+      }
+      if (!v.message || typeof v.message !== "string" || !v.message.trim()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Le message est obligatoire." });
+      }
+      return v;
     }).mutation(async ({ input }: any) => {
-      const result = await createContactRequest(input as any);
+      let result;
+      try {
+        result = await createContactRequest(input as any);
+      } catch (e: any) {
+        console.error("[contact.submit] Erreur base de données:", e.message);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Votre message n'a pas pu être envoyé pour le moment. Merci de réessayer dans quelques instants ou de nous contacter directement à contact@synergiedour.be.",
+        });
+      }
       sendAdminNewMessageNotification({
         type: "contact",
         name: input.name ?? "",
@@ -249,24 +274,33 @@ export const appRouter = router({
       return v;
     }).mutation(async ({ input }) => {
       const data = input as any;
-      const memberResult = await createMembershipRequest({
-        businessName:        data.businessName,
-        businessCategory:    data.businessCategory    || "",
-        structureType:       data.structureType       || null,
-        vatNumber:           data.vatNumber           || null,
-        sector:              data.sector              || null,
-        website:             data.website             || null,
-        socialMedia:         data.socialMedia         || null,
-        employeeCount:       data.employeeCount       || null,
-        contactName:         data.contactName,
-        email:               data.email,
-        phone:               data.phone,
-        address:             data.address,
-        message:             data.message             || null,
-        howDidYouHear:       data.howDidYouHear       || null,
-        acceptsEmailContact: data.acceptsEmailContact ? 1 : 0,
-        rgpdConsent:         data.rgpdConsent         ? 1 : 0,
-      });
+      let memberResult;
+      try {
+        memberResult = await createMembershipRequest({
+          businessName:        data.businessName,
+          businessCategory:    data.businessCategory    || "",
+          structureType:       data.structureType       || null,
+          vatNumber:           data.vatNumber           || null,
+          sector:              data.sector              || null,
+          website:             data.website             || null,
+          socialMedia:         data.socialMedia         || null,
+          employeeCount:       data.employeeCount       || null,
+          contactName:         data.contactName,
+          email:               data.email,
+          phone:               data.phone,
+          address:             data.address,
+          message:             data.message             || null,
+          howDidYouHear:       data.howDidYouHear       || null,
+          acceptsEmailContact: data.acceptsEmailContact ? 1 : 0,
+          rgpdConsent:         data.rgpdConsent         ? 1 : 0,
+        });
+      } catch (e: any) {
+        console.error("[membership.request] Erreur base de données:", e.message);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Votre demande d'adhésion n'a pas pu être enregistrée pour le moment. Merci de réessayer dans quelques instants ou de contacter directement Synergie Dour à contact@synergiedour.be.",
+        });
+      }
       // 1. Notification admin
       sendAdminNewMessageNotification({
         type: "membership",

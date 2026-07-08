@@ -143,14 +143,54 @@ async function fetchBase44Entity(entityName: string): Promise<any[]> {
   } catch { return []; }
 }
 
-export async function getMerchants(filter?: { category?: string; search?: string }) {
-  // Lire depuis l'API Base44 (entité Commercant)
+async function getMerchantsFromMySQLFallback(filter?: { category?: string; search?: string }) {
   try {
-    const appId  = process.env.VITE_APP_ID ?? "";
-    const apiKey = process.env.BUILT_IN_FORGE_API_KEY ?? "";
-    const apiUrl = process.env.BUILT_IN_FORGE_API_URL ?? "";
+    const db = await getDb();
+    if (!db) return [];
+    let rows = await db.select().from(merchants).where(eq(merchants.status, "approved"));
+    let result = rows.map((m: any) => ({
+      id: m.id,
+      businessName: m.businessName,
+      businessCategory: m.businessCategory || "",
+      description: m.description || "",
+      address: m.address || "",
+      phone: m.phone || "",
+      email: m.email || "",
+      website: m.website || "",
+      logo: m.logo || null,
+      isVerified: !!m.isVerified,
+      status: m.status || "approved",
+      createdAt: m.createdAt,
+    }));
+    if (filter?.category) {
+      result = result.filter((m: any) =>
+        m.businessCategory?.toLowerCase() === filter.category?.toLowerCase()
+      );
+    }
+    if (filter?.search) {
+      const s = filter.search.toLowerCase();
+      result = result.filter((m: any) =>
+        m.businessName?.toLowerCase().includes(s) ||
+        m.description?.toLowerCase().includes(s)
+      );
+    }
+    return result;
+  } catch (e: any) {
+    console.error("[getMerchants] Fallback MySQL error:", e.message);
+    return [];
+  }
+}
 
-    if (appId && apiKey && apiUrl) {
+export async function getMerchants(filter?: { category?: string; search?: string }) {
+  // 1. Lire depuis l'API Base44 (entité Commercant) — source principale (884 commerçants)
+  const appId  = process.env.VITE_APP_ID ?? "";
+  const apiKey = process.env.BUILT_IN_FORGE_API_KEY ?? "";
+  const apiUrl = process.env.BUILT_IN_FORGE_API_URL ?? "";
+
+  if (!appId || !apiKey || !apiUrl) {
+    console.error("[getMerchants] Credentials Base44 manquantes (VITE_APP_ID/BUILT_IN_FORGE_API_KEY/BUILT_IN_FORGE_API_URL) — bascule sur le fallback MySQL local.");
+  } else {
+    try {
       const base = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
       const entityUrl = `${base}webdevtoken.v1.WebDevService/EntityList`;
       const resp = await fetch(entityUrl, {
@@ -163,7 +203,9 @@ export async function getMerchants(filter?: { category?: string; search?: string
         },
         body: JSON.stringify({ appId, entityName: "Commercant", serviceRole: true }),
       });
-      if (resp.ok) {
+      if (!resp.ok) {
+        console.error(`[getMerchants] API Base44 a répondu ${resp.status} ${resp.statusText} — bascule sur le fallback MySQL local.`);
+      } else {
         const payload = await resp.json().catch(() => ({}));
         let raw: any[] = [];
         if (payload?.jsonData) {
@@ -173,40 +215,46 @@ export async function getMerchants(filter?: { category?: string; search?: string
         } else if (Array.isArray(payload?.records)) {
           raw = payload.records;
         }
-        // Mapper vers le format attendu par le frontend
-        let result = raw.map((c: any) => ({
-          id: c.id,
-          businessName: c.nom,
-          businessCategory: c.categorie || (Array.isArray(c.categories) ? c.categories[0] : ""),
-          description: c.notes || "",
-          address: c.adresse || "",
-          phone: c.telephone || "",
-          email: c.email || "",
-          website: c.site_web || "",
-          logo: null,
-          isVerified: true,
-          status: c.statut || "Actif",
-          createdAt: c.created_date,
-        }));
-        if (filter?.category) {
-          result = result.filter((m: any) =>
-            m.businessCategory?.toLowerCase() === filter.category?.toLowerCase()
-          );
+        if (raw.length === 0) {
+          console.warn("[getMerchants] API Base44 a répondu avec 0 commerçant — bascule sur le fallback MySQL local par sécurité.");
+        } else {
+          // Mapper vers le format attendu par le frontend
+          let result = raw.map((c: any) => ({
+            id: c.id,
+            businessName: c.nom,
+            businessCategory: c.categorie || (Array.isArray(c.categories) ? c.categories[0] : ""),
+            description: c.notes || "",
+            address: c.adresse || "",
+            phone: c.telephone || "",
+            email: c.email || "",
+            website: c.site_web || "",
+            logo: null,
+            isVerified: true,
+            status: c.statut || "Actif",
+            createdAt: c.created_date,
+          }));
+          if (filter?.category) {
+            result = result.filter((m: any) =>
+              m.businessCategory?.toLowerCase() === filter.category?.toLowerCase()
+            );
+          }
+          if (filter?.search) {
+            const s = filter.search.toLowerCase();
+            result = result.filter((m: any) =>
+              m.businessName?.toLowerCase().includes(s) ||
+              m.description?.toLowerCase().includes(s)
+            );
+          }
+          return result;
         }
-        if (filter?.search) {
-          const s = filter.search.toLowerCase();
-          result = result.filter((m: any) =>
-            m.businessName?.toLowerCase().includes(s) ||
-            m.description?.toLowerCase().includes(s)
-          );
-        }
-        return result;
       }
+    } catch (e: any) {
+      console.error("[getMerchants] Erreur d'appel API Base44:", e.message, "— bascule sur le fallback MySQL local.");
     }
-  } catch (e) {
-    console.error("getMerchants API error:", e);
   }
-  return [];
+
+  // 2. Fallback fiable — table MySQL locale `merchants` (commerçants inscrits directement sur le site)
+  return getMerchantsFromMySQLFallback(filter);
 }
 
 export async function getMerchantById(id: number) {
