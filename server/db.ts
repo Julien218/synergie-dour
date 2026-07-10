@@ -450,23 +450,62 @@ export async function deleteEvent(id: number) {
 }
 
 export async function getAllMerchants() {
+  // Normalise les statuts Base44 vers les valeurs attendues par le dashboard
+  // (approved / pending / rejected)
+  function normalizeStatus(statut: string | null | undefined): "approved" | "pending" | "rejected" {
+    const s = (statut || "").toLowerCase().trim();
+    if (s === "rejected" || s === "rejeté" || s === "rejete") return "rejected";
+    if (s === "pending" || s === "en attente") return "pending";
+    // Actif, approved, vide, null → approved (c'est le cas des 884 commerçants importés)
+    return "approved";
+  }
+
+  // 1. Essayer Base44
   try {
     const raw = await fetchBase44Entity("Commercant");
-    return raw.map((c: any) => ({
-      id: c.id,
-      businessName: c.nom,
-      businessCategory: c.categorie || (Array.isArray(c.categories) ? c.categories[0] : ""),
-      description: c.notes || "",
-      address: c.adresse || "",
-      phone: c.telephone || "",
-      email: c.email || "",
-      website: c.site_web || "",
-      logo: null,
-      isVerified: true,
-      status: c.statut || "Actif",
-      createdAt: c.created_date,
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw.map((c: any) => ({
+        id: c.id,
+        businessName: c.nom || "",
+        businessCategory: c.categorie || (Array.isArray(c.categories) ? c.categories[0] : ""),
+        description: c.notes || "",
+        address: c.adresse || "",
+        phone: c.telephone || "",
+        email: c.email || "",
+        website: c.site_web || "",
+        logo: null,
+        isVerified: true,
+        status: normalizeStatus(c.statut),
+        createdAt: c.created_date,
+      }));
+    }
+  } catch (e: any) {
+    console.error("[getAllMerchants] Base44 error:", e.message);
+  }
+
+  // 2. Fallback MySQL — retourner TOUS les statuts pour le dashboard admin
+  try {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db.select().from(merchants);
+    return rows.map((m: any) => ({
+      id: m.id,
+      businessName: m.businessName || "",
+      businessCategory: m.businessCategory || "",
+      description: m.description || "",
+      address: m.address || "",
+      phone: m.phone || "",
+      email: m.email || "",
+      website: m.website || "",
+      logo: m.logo || null,
+      isVerified: m.isVerified ?? true,
+      status: m.status || "approved",
+      createdAt: m.createdAt,
     }));
-  } catch { return []; }
+  } catch (e: any) {
+    console.error("[getAllMerchants] MySQL fallback error:", e.message);
+    return [];
+  }
 }
 
 export async function deleteMerchant(id: number) {
