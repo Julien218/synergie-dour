@@ -128,7 +128,7 @@ export default function Dashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Link href="/dashboard/requests">
+                  <Link href="/dashboard/membership-requests">
                     <Button className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900">Voir les demandes</Button>
                   </Link>
                 </CardContent>

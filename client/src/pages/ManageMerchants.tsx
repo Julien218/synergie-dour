@@ -317,12 +317,18 @@ export default function ManageMerchants() {
     );
   }
 
-  const filtered = merchantsList.filter((m: any) =>
-    !searchQuery ||
-    m.businessName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.businessCategory?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = merchantsList.filter((m: any) => {
+    const q = searchQuery.toLowerCase();
+    const matchSearch = !q ||
+      (m.businessName || "").toLowerCase().includes(q) ||
+      (m.address || "").toLowerCase().includes(q) ||
+      (m.businessCategory || "").toLowerCase().includes(q);
+    const v = filterVillage.toLowerCase();
+    const matchVillage = !v ||
+      (m.address || "").toLowerCase().includes(v) ||
+      (m.village || "").toLowerCase().includes(v);
+    return matchSearch && matchVillage;
+  });
 
   const pendingMerchants  = filtered.filter((m: any) => m.status === "pending");
   const approvedMerchants = filtered.filter((m: any) => m.status === "approved");
