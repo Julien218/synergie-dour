@@ -374,19 +374,19 @@ export default function AutopublishPage() {
 
       {/* ─── Dialog création / édition ─────────────────────────────────── */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{form.id ? "Modifier le post" : "Nouveau post"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-[#0D1B3E] text-white">
+          <DialogHeader><DialogTitle className="text-white">{form.id ? "Modifier le post" : "Nouveau post"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Titre interne</Label>
-              <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex : Vidéo — Réforme fiscale juillet" />
+              <Label className="text-white">Titre interne</Label>
+              <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex : Vidéo — Réforme fiscale juillet" className="text-white placeholder:text-white/50 border-white/20 bg-white/10" />
             </div>
 
             <div>
-              <Label>Plateformes</Label>
+              <Label className="text-white">Plateformes</Label>
               <div className="flex gap-4 mt-1">
                 {(Object.keys(PLATFORM_CONFIG) as Platform[]).map(p => (
-                  <label key={p} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <label key={p} className="flex items-center gap-1.5 text-sm cursor-pointer text-white">
                     <Checkbox checked={form.platforms.includes(p)} onCheckedChange={() => togglePlatform(p)} />
                     {PLATFORM_CONFIG[p].label}
                   </label>
@@ -402,26 +402,26 @@ export default function AutopublishPage() {
                 <TabsTrigger value="linkedin">LinkedIn</TabsTrigger>
               </TabsList>
               <TabsContent value="facebook">
-                <Textarea rows={4} value={form.content_facebook} onChange={e => setForm(f => ({ ...f, content_facebook: e.target.value }))} placeholder="Texte Facebook..." />
+                <Textarea rows={4} value={form.content_facebook} onChange={e => setForm(f => ({ ...f, content_facebook: e.target.value }))} placeholder="Texte Facebook..." className="text-white placeholder:text-white/50 border-white/20 bg-white/10" />
               </TabsContent>
               <TabsContent value="instagram">
-                <Textarea rows={4} value={form.content_instagram} onChange={e => setForm(f => ({ ...f, content_instagram: e.target.value }))} placeholder="Texte Instagram..." />
+                <Textarea rows={4} value={form.content_instagram} onChange={e => setForm(f => ({ ...f, content_instagram: e.target.value }))} placeholder="Texte Instagram..." className="text-white placeholder:text-white/50 border-white/20 bg-white/10" />
               </TabsContent>
               <TabsContent value="tiktok">
-                <Textarea rows={4} value={form.content_tiktok} onChange={e => setForm(f => ({ ...f, content_tiktok: e.target.value }))} placeholder="Texte TikTok..." />
+                <Textarea rows={4} value={form.content_tiktok} onChange={e => setForm(f => ({ ...f, content_tiktok: e.target.value }))} placeholder="Texte TikTok..." className="text-white placeholder:text-white/50 border-white/20 bg-white/10" />
               </TabsContent>
               <TabsContent value="linkedin">
-                <Textarea rows={4} value={form.content_linkedin} onChange={e => setForm(f => ({ ...f, content_linkedin: e.target.value }))} placeholder="Texte LinkedIn..." />
+                <Textarea rows={4} value={form.content_linkedin} onChange={e => setForm(f => ({ ...f, content_linkedin: e.target.value }))} placeholder="Texte LinkedIn..." className="text-white placeholder:text-white/50 border-white/20 bg-white/10" />
               </TabsContent>
             </Tabs>
 
             <div>
-              <Label>Hashtags</Label>
-              <Input value={form.hashtags} onChange={e => setForm(f => ({ ...f, hashtags: e.target.value }))} />
+              <Label className="text-white">Hashtags</Label>
+              <Input value={form.hashtags} onChange={e => setForm(f => ({ ...f, hashtags: e.target.value }))} className="text-white placeholder:text-white/50 border-white/20 bg-white/10" />
             </div>
 
             <div>
-              <Label>Média (image ou vidéo)</Label>
+              <Label className="text-white">Média (image ou vidéo)</Label>
               <div className="flex items-center gap-3 mt-1">
                 <Input
                   type="file"
@@ -437,12 +437,12 @@ export default function AutopublishPage() {
             </div>
 
             <div>
-              <Label>Date/heure de programmation (optionnel à ce stade)</Label>
-              <Input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
+              <Label className="text-white">Date/heure de programmation (optionnel à ce stade)</Label>
+              <Input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} className="text-white border-white/20 bg-white/10 [color-scheme:dark]" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>Annuler</Button>
+            <Button variant="outline" onClick={() => setFormOpen(false)} className="border-white/30 text-white hover:bg-white/10">Annuler</Button>
             <Button onClick={saveForm} disabled={saving} className="bg-[#001533]">
               {saving ? "Enregistrement..." : "Enregistrer le brouillon"}
             </Button>
