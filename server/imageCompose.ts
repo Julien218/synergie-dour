@@ -22,19 +22,25 @@ export async function downloadImage(url: string): Promise<Buffer> {
 
 // ── Chemin vers les logos officiels sur le serveur ───────────────────────────
 function getLogoPath(filename: string): string {
-  // Railway: les fichiers public/ sont dans /app/public/ (Express static)
   const candidates = [
     path.join(process.cwd(), "public", filename),
     path.join(process.cwd(), "dist", "public", filename),
     path.join("/app", "public", filename),
+    path.join("/app", "dist", "public", filename),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
   }
-  return candidates[0]; // fallback
+  console.warn("[compose] Logo introuvable dans tous les chemins:", candidates);
+  return candidates[0];
 }
 
-// ── Composer l'image finale avec les vrais logos ─────────────────────────────
+// ── Composer l'image finale avec les vrais logos officiels ───────────────────
+// Règles :
+// - Logo Synergie Dour  : coin haut-droit, 22% largeur, marges sécurité
+// - Logo JS-Innov.IA    : coin bas-droit, 15% largeur, discret
+// - Aucun texte ou logo inventé par l'IA
+// - Les logos sont ajoutés comme calques réels depuis les fichiers officiels
 export async function composeWithLogos(
   baseImageUrl: string,
   options: {
@@ -47,65 +53,79 @@ export async function composeWithLogos(
   const sharp = (await import("sharp")).default;
   const { logoSD = true, logoJS = true, outputWidth = 1080, outputHeight = 1080 } = options;
 
-  // Télécharger l'image de base (générée par OpenAI)
+  // Télécharger l'image de base (générée par OpenAI — fond uniquement)
   const baseBuffer = await downloadImage(baseImageUrl);
-  
-  // Redimensionner à 1080x1080
-  let composite = sharp(baseBuffer).resize(outputWidth, outputHeight, { fit: "cover" });
-  
-  const overlays: sharp.OverlayOptions[] = [];
 
-  // Logo Synergie Dour — coin haut-droit (avec fond blanc semi-transparent)
+  // Redimensionner à la taille cible
+  const baseResized = await sharp(baseBuffer)
+    .resize(outputWidth, outputHeight, { fit: "cover" })
+    .png()
+    .toBuffer();
+
+  const overlays: Array<{ input: Buffer; top: number; left: number }> = [];
+  const margin = Math.round(outputWidth * 0.025); // 2.5% de marge
+
+  // ── Logo Synergie Dour — coin haut-droit ─────────────────────────────────
   if (logoSD) {
     const sdPath = getLogoPath("logo-sd-officiel.png");
     if (fs.existsSync(sdPath)) {
-      const logoW = Math.round(outputWidth * 0.22); // 22% de la largeur
-      const logoH = Math.round(logoW * 0.45);
-      const margin = Math.round(outputWidth * 0.025);
-      
+      // Ratio logo SD : 739x790 ≈ 1:1.07
+      const logoW = Math.round(outputWidth * 0.20);  // 20% de la largeur
+      const logoH = Math.round(logoW * (790 / 739)); // respecter le ratio
       const sdResized = await sharp(sdPath)
-        .resize(logoW, logoH, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .resize(logoW, logoH, {
+          fit: "contain",
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        })
         .png()
         .toBuffer();
-      
       overlays.push({
         input: sdResized,
-        gravity: "northeast",
         top: margin,
-        left: undefined,
+        left: outputWidth - logoW - margin,
       });
+      console.log(`[compose] Logo SD placé : top=${margin} left=${outputWidth - logoW - margin} size=${logoW}x${logoH}`);
     } else {
-      console.warn("[compose] Logo SD non trouvé:", sdPath);
+      console.error("[compose] ❌ Logo Synergie Dour non trouvé:", sdPath);
     }
   }
 
-  // Logo JS-Innov.IA — coin bas-droit
+  // ── Logo JS-Innov.IA — coin bas-droit, discret ───────────────────────────
   if (logoJS) {
     const jsPath = getLogoPath("logo-jsinnovia.png");
     if (fs.existsSync(jsPath)) {
-      const logoW = Math.round(outputWidth * 0.18);
-      const logoH = Math.round(logoW * 0.35);
-      const margin = Math.round(outputWidth * 0.025);
-      
+      // Logo JS est carré 1024x1024
+      const logoW = Math.round(outputWidth * 0.13); // 13% — discret
+      const logoH = logoW;
       const jsResized = await sharp(jsPath)
-        .resize(logoW, logoH, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .resize(logoW, logoH, {
+          fit: "contain",
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        })
         .png()
         .toBuffer();
-      
       overlays.push({
         input: jsResized,
-        gravity: "southeast",
-        top: undefined,
-        left: undefined,
+        top: outputHeight - logoH - margin,
+        left: outputWidth - logoW - margin,
       });
+      console.log(`[compose] Logo JS placé : top=${outputHeight - logoH - margin} left=${outputWidth - logoW - margin} size=${logoW}x${logoH}`);
     } else {
-      console.warn("[compose] Logo JS non trouvé:", jsPath);
+      console.error("[compose] ❌ Logo JS-Innov.IA non trouvé:", jsPath);
     }
   }
 
-  if (overlays.length > 0) {
-    composite = sharp(await composite.png().toBuffer()).composite(overlays);
+  if (overlays.length === 0) {
+    console.warn("[compose] Aucun logo chargé — image retournée sans composition");
+    return baseResized;
   }
 
-  return composite.png().toBuffer();
+  // Composition finale — top/left absolus (pas gravity, évite le bug sharp)
+  const final = await sharp(baseResized)
+    .composite(overlays.map(o => ({ input: o.input, top: o.top, left: o.left })))
+    .png()
+    .toBuffer();
+
+  console.log(`[compose] ✅ Composition finale : ${final.length} octets, ${overlays.length} logo(s) appliqué(s)`);
+  return final;
 }

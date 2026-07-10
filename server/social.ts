@@ -169,7 +169,7 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     const hashtags  = brand.hashtags || "#SynergieDour #JsInnovIA";
 
     const systemBase = brand.system_prompt ||
-      "Each visual must strictly respect the Synergie Dour visual DNA: deep night blue background (#001533), royal blue gradients (#1a3ba0) and electric blue (#00aaff), metallic gold accents (#E8C547), premium white text. Professional, local, institutional, modern, high-end style. Reserve top-right corner for Synergie Dour logo (white space 180x60px). Signature 'By JS-Innov.IA' at bottom, discreet but readable. No overlapping elements. Text readable on mobile. Format: 1080x1080. Quality: high.";
+      "Generate ONLY the background visual layer for a Synergie Dour social media post. STRICT RULES: (1) NO logos — not even a letter 'S', not 'SD', not any monogram, not any symbol resembling a logo. Real logos will be added as separate layers after generation. (2) NO long text paragraphs in the image — at most a short title placeholder in gold if needed. (3) Generate a premium atmospheric background: deep night blue (#001533), royal blue gradient (#1a3ba0), gold/amber light accents (#E8C547). (4) Leave a clear zone top-right (25% width, 25% height) for the official Synergie Dour logo. (5) Leave a clear zone bottom-right (15% width, 15% height) for the JS-Innov.IA signature logo. (6) Style: modern, local, commerce, Dour Belgium, premium, cinematic atmosphere. Format 1080x1080 square.";
 
     const typeLabels: Record<string, string> = {
       nouveau_membre: "Welcome new member announcement",
@@ -181,13 +181,22 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     };
     const typeLabel = typeLabels[post_type || template || "actualite"] || "Announcement";
 
-    const prompt = `${systemBase}\n---\nPOST TYPE: ${typeLabel}\nTITLE: ${title || "Synergie Dour"}\nCONTENT: ${content || ""}\nSIGNATURE: ${signature}\nHASHTAGS: ${hashtags}\nFORMAT: ${format || "1080x1080"} square\n---\nIMPORTANT: Reserve top-right corner (15% width, 10% height) for logo. Place signature "${signature}" at bottom center in small white text. Navy blue #001533 background mandatory. Gold #E8C547 for titles.`;
+    // Template événement avec zones variables
+    const templateZones =
+      post_type === "evenement" || template === "evenement"
+        ? `ZONES: Title area center (bold, gold #E8C547), short description below (white), date/time/location bottom-left (white, small). Clear zone top-right 25% for logo. Clear zone bottom-right 15% for JS-Innov.IA. CTA: "synergiedour.be" bottom center.`
+        : `ZONES: Title area center (bold, gold #E8C547). Clear zone top-right 25% for logo. Clear zone bottom-right 15% for JS-Innov.IA.`;
+
+    const prompt = `${systemBase}\n---\nPOST TYPE: ${typeLabel}\nTITLE: ${title || "Synergie Dour"}\n${content ? `CONTEXT: ${content}` : ""}\n${templateZones}\nFORMAT: ${format || "1080x1080"} square\nQUALITY: high\n---\nREMINDER: Generate background only. NO logos. NO monograms. NO 'S' symbol. Real logos added as layers post-generation.`;
 
     const result = await generateImage({ prompt });
     if (!result.url) return res.status(500).json({ message: "Génération d'image échouée" });
 
-    // ── Composition des vrais logos officiels via sharp ────────────────────
+    // ── Composition des vrais logos officiels via sharp ─────────────────────
+    // Étape A : OpenAI génère le fond uniquement (sans logos)
+    // Étape B : composeWithLogos ajoute les vrais logos comme calques réels
     let finalImageUrl = result.url;
+    let logosApplied = false;
     try {
       const composed = await composeWithLogos(result.url, {
         logoSD: true,
@@ -195,13 +204,27 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
         outputWidth: 1080,
         outputHeight: 1080,
       });
-      // Convertir en data URL pour retour immédiat (ou uploader vers /api/upload)
-      const b64 = composed.toString("base64");
-      finalImageUrl = `data:image/png;base64,${b64}`;
-      console.log("[generate-image] Composition logos OK — image finale générée");
+      // Uploader l'image composée vers le storage pour obtenir une URL permanente
+      try {
+        const { storagePut } = await import("./storage");
+        const { url: storageUrl } = await storagePut(
+          `generated/composed-${Date.now()}.png`,
+          composed,
+          "image/png"
+        );
+        finalImageUrl = storageUrl;
+        console.log("[generate-image] ✅ Image composée uploadée:", storageUrl);
+      } catch (_uploadErr: any) {
+        // Fallback : base64 si upload storage échoue
+        const b64 = composed.toString("base64");
+        finalImageUrl = `data:image/png;base64,${b64}`;
+        console.warn("[generate-image] Storage upload échoué, fallback base64:", _uploadErr.message);
+      }
+      logosApplied = true;
+      console.log("[generate-image] ✅ Composition logos OK — logos SD + JS appliqués comme calques réels");
     } catch (compErr: any) {
-      console.warn("[generate-image] Composition logos échouée, utilisation image brute:", compErr.message);
-      // On garde l'image OpenAI sans logos si la composition échoue
+      console.error("[generate-image] ❌ Composition logos échouée:", compErr.message);
+      // On garde l'image OpenAI sans logos — le frontend affiche un avertissement
     }
 
     let generationId: number | null = null;
@@ -221,7 +244,7 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     res.json({
       url: finalImageUrl, prompt, generation_id: generationId,
       status: brand.require_validation === "true" ? "pending_validation" : "approved",
-      brand_applied: { signature, quality: usedQuality },
+      brand_applied: { signature, quality: usedQuality, logos_applied: logosApplied },
     });
   } catch (err: any) {
     console.error("[social/generate-image]", err);
