@@ -100,8 +100,19 @@ export function SynergieChatbot({ context }: { context?: string }) {
       });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({})) as any;
-        throw new Error(err.message || `Erreur ${resp.status}`);
+        const errData = await resp.json().catch(() => ({})) as any;
+        let friendlyMsg: string;
+        if (resp.status === 401 || resp.status === 403) {
+          friendlyMsg = "Session expirée ou accès non autorisé. Reconnectez-vous.";
+        } else if (resp.status === 429) {
+          friendlyMsg = "Limite temporaire atteinte. Réessayez dans quelques instants.";
+        } else if (resp.status >= 500) {
+          friendlyMsg = "L'assistant IA est momentanément indisponible.";
+        } else {
+          friendlyMsg = errData.message || `Erreur ${resp.status}`;
+        }
+        console.error("[SynergieChatbot] HTTP", resp.status, errData);
+        throw new Error(friendlyMsg);
       }
 
       const data = await resp.json() as any;
@@ -113,11 +124,12 @@ export function SynergieChatbot({ context }: { context?: string }) {
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err: any) {
-      toast.error(err.message || "Erreur de connexion");
+      const msg = err.message || "Erreur de connexion à l'assistant IA.";
+      toast.error(msg);
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Une erreur est survenue. Veuillez réessayer.",
+        content: msg,
         timestamp: new Date(),
       }]);
     } finally {

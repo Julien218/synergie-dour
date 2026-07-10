@@ -340,9 +340,14 @@ socialRouter.post("/chat", requireAdmin, async (req, res) => {
       context?: string;
     };
 
-    const apiKey = process.env.CLE_API_OPENAI || process.env.OPENAI_API_KEY;
+    // Clé principale → fallback sur clé secondaire (Sora/usage distinct)
+    const apiKey =
+      process.env.CLE_API_OPENAI ||
+      process.env.OPENAI_API_KEY ||
+      process.env.OPENAI_API_KEY_2;
     if (!apiKey) {
-      return res.status(500).json({ message: "Clé OpenAI non configurée" });
+      console.error("[social/chat] Aucune clé OpenAI configurée (CLE_API_OPENAI / OPENAI_API_KEY)");
+      return res.status(500).json({ message: "L'assistant IA est momentanément indisponible." });
     }
 
     const systemPrompt = `Tu es l'assistant officiel de SYNERGIE DOUR, une ASBL belge de commerce local basée à Dour (7370), développée par Js-Innov.IA.
@@ -397,8 +402,19 @@ CONTEXTE ACTUEL : ${context}` : ""}`;
 
     if (!openaiResp.ok) {
       const errData = await openaiResp.json() as any;
-      console.error("[social/chat] OpenAI error:", errData);
-      return res.status(500).json({ message: errData?.error?.message || "Erreur OpenAI" });
+      const errCode = errData?.error?.code || "";
+      const errMsg  = errData?.error?.message || "";
+      // Log serveur sans exposer la clé
+      console.error("[social/chat] OpenAI HTTP", openaiResp.status, "code:", errCode, "msg:", errMsg.slice(0, 120));
+      let publicMsg: string;
+      if (openaiResp.status === 429 || errCode === "insufficient_quota" || errCode === "rate_limit_exceeded") {
+        publicMsg = "Limite temporaire atteinte. Réessayez dans quelques instants.";
+      } else if (openaiResp.status === 401 || openaiResp.status === 403) {
+        publicMsg = "L'assistant IA est momentanément indisponible (configuration).";
+      } else {
+        publicMsg = "L'assistant IA est momentanément indisponible.";
+      }
+      return res.status(openaiResp.status === 429 ? 429 : 500).json({ message: publicMsg });
     }
 
     const data = await openaiResp.json() as any;
