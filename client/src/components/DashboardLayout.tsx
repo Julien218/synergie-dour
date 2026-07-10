@@ -22,7 +22,7 @@ import {
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
-  LayoutDashboard, 
+  LayoutDashboard, UserCheck,
   LogOut, 
   PanelLeft, 
   Users, 
@@ -112,6 +112,7 @@ function DashboardLayoutContent({
     { icon: LayoutDashboard, label: "Tableau de Bord", path: "/dashboard" },
     { icon: Store, label: "Commerçants", path: "/dashboard/merchants" },
     { icon: ClipboardList, label: "Demandes", path: "/dashboard/requests" },
+    { icon: UserCheck, label: "Adhésions", path: "/dashboard/membership-requests" },
     { icon: FileText, label: "Actualités", path: "/dashboard/news" },
     { icon: Calendar, label: "Événements", path: "/dashboard/events" },
     { icon: Building2, label: "Locaux à Louer", path: "/dashboard/locaux" },

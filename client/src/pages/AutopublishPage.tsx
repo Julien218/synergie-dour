@@ -100,6 +100,16 @@ export default function AutopublishPage() {
       const params = new URLSearchParams();
       if (filterStatus !== "all") params.set("status", filterStatus);
       const resp = await fetch(`/api/autopublish/posts?${params}`, { credentials: "include" });
+      if (!resp.ok) {
+        if (resp.status === 401) {
+          toast.error("Session expirée ou accès non autorisé");
+        } else if (resp.status >= 500) {
+          toast.error("Erreur serveur AutoPublish");
+        } else {
+          toast.error(`Erreur de chargement (${resp.status})`);
+        }
+        return;
+      }
       const data = await resp.json();
       setPosts(data.posts || []);
     } catch {
@@ -280,6 +290,16 @@ export default function AutopublishPage() {
   const openDetail = async (p: AutopublishPost) => {
     try {
       const resp = await fetch(`/api/autopublish/posts/${p.id}`, { credentials: "include" });
+      if (!resp.ok) {
+        if (resp.status === 401) {
+          toast.error("Session expirée ou accès non autorisé");
+        } else if (resp.status >= 500) {
+          toast.error("Erreur serveur AutoPublish");
+        } else {
+          toast.error(`Erreur de chargement des détails (${resp.status})`);
+        }
+        return;
+      }
       const data = await resp.json();
       setDetail(data);
     } catch {

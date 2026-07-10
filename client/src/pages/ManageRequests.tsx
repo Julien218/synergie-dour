@@ -49,7 +49,8 @@ export default function ManageRequests() {
     }
   };
 
-  if (user?.role !== "admin") {
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  if (!isAdmin) {
     return (
       <DashboardLayout>
         <div className="text-center py-12">

@@ -42,10 +42,7 @@ export function useAuth(options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "synergie-auth-user-info",
-      JSON.stringify(meQuery.data)
-    );
+    // Ne pas stocker l'objet utilisateur complet en localStorage (sécurité)
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,

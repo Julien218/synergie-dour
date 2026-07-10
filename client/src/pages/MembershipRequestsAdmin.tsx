@@ -18,6 +18,8 @@ import {
   Clock,
   Gift,
 } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import DashboardLayout from "@/components/DashboardLayout";
 
 type PaiementStatut = "en_attente" | "paye" | "gratuit";
 
@@ -28,14 +30,27 @@ const PAIEMENT_OPTIONS: { value: PaiementStatut; label: string; color: string; i
 ];
 
 export default function MembershipRequestsAdmin() {
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { data: requests = [], refetch } = trpc.membership.listAll.useQuery();
+
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  if (!isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12 text-red-600 font-semibold">
+          Accès réservé aux administrateurs.
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const pending   = requests.filter((r: any) => r.status === "pending");
   const approved  = requests.filter((r: any) => r.status === "approved");
   const rejected  = requests.filter((r: any) => r.status === "rejected");
 
   return (
+    <DashboardLayout>
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-[#001a3d] to-[#003d99] text-white py-8 px-4">
         <div className="container mx-auto max-w-6xl">
@@ -114,6 +129,7 @@ export default function MembershipRequestsAdmin() {
         )}
       </div>
     </div>
+    </DashboardLayout>
   );
 }
 
