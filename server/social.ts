@@ -193,38 +193,50 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     if (!result.url) return res.status(500).json({ message: "Génération d'image échouée" });
 
     // ── Composition des vrais logos officiels via sharp ─────────────────────
-    // Étape A : OpenAI génère le fond uniquement (sans logos)
-    // Étape B : composeWithLogos ajoute les vrais logos comme calques réels
+    // Étape A (OpenAI)  : génère le fond uniquement — aucun logo, aucun monogramme
+    // Étape B (compose) : applique les vrais logos comme calques sharp
+    const targetW = format === "1080x1920" ? 1080 : 1080;
+    const targetH = format === "1080x1920" ? 1920 : 1080;
     let finalImageUrl = result.url;
     let logosApplied = false;
+    let logosCount = 0;
+    let composeErrors: string[] = [];
     try {
       const composed = await composeWithLogos(result.url, {
         logoSD: true,
         logoJS: true,
-        outputWidth: 1080,
-        outputHeight: 1080,
+        outputWidth: targetW,
+        outputHeight: targetH,
       });
-      // Uploader l'image composée vers le storage pour obtenir une URL permanente
+      logosApplied = composed.logosApplied;
+      logosCount   = composed.logosCount;
+      composeErrors = composed.errors;
+
+      if (composed.errors.length > 0) {
+        console.error("[generate-image] ⚠️  Erreurs composition:", composed.errors.join(" | "));
+      }
+
+      // Uploader l'image composée vers le storage pour une URL permanente
       try {
         const { storagePut } = await import("./storage");
         const { url: storageUrl } = await storagePut(
           `generated/composed-${Date.now()}.png`,
-          composed,
+          composed.buffer,
           "image/png"
         );
         finalImageUrl = storageUrl;
-        console.log("[generate-image] ✅ Image composée uploadée:", storageUrl);
+        console.log("[generate-image] ✅ Image uploadée:", storageUrl, "| logos:", logosCount, "| details:", composed.logosDetails.join("; "));
       } catch (_uploadErr: any) {
         // Fallback : base64 si upload storage échoue
-        const b64 = composed.toString("base64");
+        const b64 = composed.buffer.toString("base64");
         finalImageUrl = `data:image/png;base64,${b64}`;
         console.warn("[generate-image] Storage upload échoué, fallback base64:", _uploadErr.message);
       }
-      logosApplied = true;
-      console.log("[generate-image] ✅ Composition logos OK — logos SD + JS appliqués comme calques réels");
     } catch (compErr: any) {
-      console.error("[generate-image] ❌ Composition logos échouée:", compErr.message);
-      // On garde l'image OpenAI sans logos — le frontend affiche un avertissement
+      // Erreur critique de composition — image OpenAI brute conservée
+      logosApplied = false;
+      composeErrors = [compErr.message || "Erreur inconnue composeWithLogos"];
+      console.error("[generate-image] ❌ composeWithLogos échoué — image brute retournée:", compErr.message, compErr.stack);
     }
 
     let generationId: number | null = null;
@@ -244,7 +256,13 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     res.json({
       url: finalImageUrl, prompt, generation_id: generationId,
       status: brand.require_validation === "true" ? "pending_validation" : "approved",
-      brand_applied: { signature, quality: usedQuality, logos_applied: logosApplied },
+      brand_applied: {
+        signature,
+        quality: usedQuality,
+        logos_applied: logosApplied,
+        logos_count: logosCount,
+        compose_errors: composeErrors.length > 0 ? composeErrors : undefined,
+      },
     });
   } catch (err: any) {
     console.error("[social/generate-image]", err);
