@@ -165,7 +165,12 @@ export default function SocialMediaPage() {
       const data = await resp.json();
       if (resp.ok && data.url) {
         setGeneratedImage(data.url);
-        toast.success("Image générée avec succès !");
+        if (data.brand_applied?.logos_applied === false) {
+          toast.warning("Image générée — logos officiels non appliqués (vérifier les fichiers serveur)");
+          console.warn("[SocialMedia] logos_applied=false — composition logo échouée côté serveur");
+        } else {
+          toast.success("Image générée avec logos Synergie Dour + JS-Innov.IA ✓");
+        }
       } else {
         toast.error(data.message ?? "Erreur lors de la génération");
       }
