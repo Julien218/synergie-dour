@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PublicLayout } from "@/components/PublicLayout";
 import { useLocation } from "wouter";
 import { ArrowLeft, Mail, Phone, MapPin, Send } from "lucide-react";
@@ -17,12 +18,14 @@ export default function Contact() {
     subject: "",
     message: "",
   });
+  const [rgpdConsent, setRgpdConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitContact = trpc.contact.submit.useMutation({
     onSuccess: () => {
       toast.success("Votre message a été envoyé avec succès !");
       setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+      setRgpdConsent(false);
       setIsSubmitting(false);
     },
     onError: (error) => {
@@ -33,6 +36,12 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!rgpdConsent) {
+      toast.error("Vous devez accepter la politique de confidentialité (RGPD) pour envoyer votre message.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -84,8 +93,8 @@ export default function Contact() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <a href="mailto:olivier.trevis@outlook.be" className="text-blue-900 hover:text-amber-600">
-                      olivier.trevis@outlook.be
+                    <a href="mailto:info@synergiedour.be" className="text-blue-900 hover:text-amber-600">
+                      info@synergiedour.be
                     </a>
                   </CardContent>
                 </Card>
@@ -113,8 +122,8 @@ export default function Contact() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-gray-600">
-                      Dour<br />
-                      Belgique
+                      Grand'Place 9<br />
+                      7370 Dour, Belgique
                     </p>
                   </CardContent>
                 </Card>
@@ -211,10 +220,27 @@ export default function Contact() {
                         />
                       </div>
 
+                      {/* Consentement RGPD */}
+                      <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <Checkbox
+                          id="rgpd-consent"
+                          checked={rgpdConsent}
+                          onCheckedChange={(v) => setRgpdConsent(!!v)}
+                          className="mt-1"
+                        />
+                        <label htmlFor="rgpd-consent" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                          J'accepte que mes données personnelles soient traitées conformément à la{" "}
+                          <a href="/privacy" className="text-blue-900 underline hover:text-amber-600 font-medium">
+                            politique de confidentialité
+                          </a>{" "}
+                          de Synergie Dour, aux fins de traitement de ma demande de contact. *
+                        </label>
+                      </div>
+
                       <Button
                         type="submit"
-                        disabled={isSubmitting}
-                        className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
+                        disabled={isSubmitting || !rgpdConsent}
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send className="mr-2 w-4 h-4" />
                         {isSubmitting ? "Envoi en cours..." : "Envoyer le Message"}
@@ -230,4 +256,3 @@ export default function Contact() {
     </PublicLayout>
   );
 }
-
