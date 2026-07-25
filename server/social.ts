@@ -102,7 +102,7 @@ async function ensureBrandTable() {
 async function ensureGenerationsTable() {
   const db = await getDb();
   if (!db) return;
-  await db.execute(`CREATE TABLE IF NOT EXISTS image_generations (
+  await (db as any).execute(`CREATE TABLE IF NOT EXISTS image_generations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
     user_name VARCHAR(255),
@@ -157,7 +157,7 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     };
     if (db) {
       try {
-        const [brandRows] = await db.execute("SELECT key_name, value FROM brand_settings") as any;
+        const [brandRows] = await (db as any).execute("SELECT key_name, value FROM brand_settings") as any;
         for (const r of (brandRows as any[])) { brand[r.key_name] = r.value; }
       } catch (_) {}
     }
@@ -242,7 +242,7 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     let generationId: number | null = null;
     if (db) {
       try {
-        const [ins] = await db.execute(
+        const [ins] = await (db as any).execute(
           "INSERT INTO image_generations (user_id, user_name, user_email, template, title, content, prompt, image_url, format, quality, status, logo_present, signature_present, brand_compliant) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1)",
           [user?.id ?? null, user?.name ?? null, user?.email ?? null,
            post_type || template || "actualite", title || null, content || null,
@@ -763,7 +763,7 @@ socialRouter.get("/generations", requireAdmin, async (req, res) => {
     if (user.role === "user") {
       query = `SELECT * FROM image_generations WHERE user_id = ${user.id} ORDER BY createdAt DESC LIMIT 50`;
     }
-    const [rows] = await db.execute(query) as any;
+    const [rows] = await (db as any).execute(query) as any;
     res.json(rows);
   } catch (err: any) {
     res.status(500).json({ message: err.message });
@@ -778,7 +778,7 @@ socialRouter.patch("/generations/:id/validate", requireSuperAdmin, async (req, r
     const { id } = req.params;
     const { status, note } = req.body as { status: string; note?: string };
     const user = (req as any).user;
-    await db.execute(
+    await (db as any).execute(
       "UPDATE image_generations SET status = ?, validation_note = ?, validated_by = ?, updatedAt = NOW() WHERE id = ?",
       [status, note ?? null, user.name ?? user.email, id]
     );
@@ -794,7 +794,7 @@ socialRouter.delete("/generations/:id", requireSuperAdmin, async (req, res) => {
     const db = await getDb();
     if (!db) return res.status(500).json({ message: "DB indisponible" });
     const { id } = req.params;
-    await db.execute("UPDATE image_generations SET status = 'archived' WHERE id = ?", [id]);
+    await (db as any).execute("UPDATE image_generations SET status = 'archived' WHERE id = ?", [id]);
     res.json({ message: "Génération archivée" });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
@@ -825,7 +825,7 @@ socialRouter.post("/schedule", requireAdmin, async (req, res) => {
     const user = (req as any).user;
 
     // Créer la table si elle n'existe pas encore (auto-migration)
-    await db.execute(
+    await (db as any).execute(
       "CREATE TABLE IF NOT EXISTS social_posts (" +
       "id INT AUTO_INCREMENT PRIMARY KEY," +
       "title VARCHAR(255) NOT NULL DEFAULT ''," +
@@ -843,7 +843,7 @@ socialRouter.post("/schedule", requireAdmin, async (req, res) => {
       ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
 
-    await db.execute(
+    await (db as any).execute(
       "INSERT INTO social_posts (title, content, image_url, platforms, scheduled_at, status, post_type, created_by) VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?)",
       [
         title || "",
@@ -870,7 +870,7 @@ socialRouter.get("/posts", requireAdmin, async (req, res) => {
     if (!db) return res.status(500).json({ message: "DB indisponible" });
     // Auto-créer la table si nécessaire
     try {
-      await db.execute(
+      await (db as any).execute(
         "CREATE TABLE IF NOT EXISTS social_posts (" +
         "id INT AUTO_INCREMENT PRIMARY KEY," +
         "title VARCHAR(255) NOT NULL DEFAULT ''," +
@@ -889,7 +889,7 @@ socialRouter.get("/posts", requireAdmin, async (req, res) => {
       );
     } catch {}
 
-    const posts = await db.execute(
+    const posts = await (db as any).execute(
       "SELECT * FROM social_posts ORDER BY scheduled_at DESC LIMIT 100"
     );
     res.json((posts as any).rows ?? (posts as any)[0] ?? []);

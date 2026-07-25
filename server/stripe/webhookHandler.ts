@@ -23,7 +23,7 @@
 
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
-import { db } from "../db";
+import { getDb } from "../db";
 import { memberships, payments, membershipRequests } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { constructWebhookEvent } from "./stripeService";
@@ -93,7 +93,7 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  const request = await db.query.membershipRequests.findFirst({
+  const request = const db = await getDb(); if (!db) return; await db.query.membershipRequests.findFirst({
     where: eq(membershipRequests.id, parseInt(membershipRequestId, 10)),
   });
   if (!request) {
@@ -126,7 +126,7 @@ async function handleCheckoutCompleted(
     })
     .$returningId();
 
-  await db.insert(payments).values({
+  await (await getDb())?.insert(payments).values({
     membershipId: membership.id,
     userId: userId ?? null,
     stripeEventId: eventId,
@@ -165,10 +165,10 @@ async function handleInvoicePaymentSucceeded(
   invoice: Stripe.Invoice,
   eventId: string
 ): Promise<void> {
-  if (typeof invoice.subscription !== "string") return;
+  const sub = (invoice as any).subscription; if (typeof sub !== "string") return;
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.stripeSubscriptionId, invoice.subscription),
+  const membership = const db = await getDb(); if (!db) return; await db.query.memberships.findFirst({
+    where: eq(memberships.stripeSubscriptionId, sub),
   });
   if (!membership) return;
 
@@ -181,7 +181,7 @@ async function handleInvoicePaymentSucceeded(
     .where(eq(memberships.id, membership.id));
 
   const amountCents = invoice.amount_paid ?? 0;
-  await db.insert(payments).values({
+  await (await getDb())?.insert(payments).values({
     membershipId: membership.id,
     userId: membership.userId,
     stripeEventId: eventId,
@@ -213,7 +213,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, eventId: stri
 /* ------------------------------------------------------------------------- */
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-  const membership = await db.query.memberships.findFirst({
+  const membership = const db = await getDb(); if (!db) return; await db.query.memberships.findFirst({
     where: eq(memberships.stripeSubscriptionId, subscription.id),
   });
   if (!membership) return;

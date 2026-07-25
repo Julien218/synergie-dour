@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface Post {
   id: number;
@@ -68,7 +68,7 @@ export default function PostsPage() {
       setPosts(data.posts || []);
       setTotal(data.total || 0);
     } catch {
-      toast({ title: "Erreur chargement", variant: "destructive" });
+      toast.error("Erreur chargement");
     } finally {
       setLoading(false);
     }
@@ -81,10 +81,10 @@ export default function PostsPage() {
     try {
       const resp = await fetch("/api/social/posts/sync", { method: "POST" });
       const data = await resp.json();
-      toast({ title: `Sync terminée — ${data.created} nouveaux posts créés` });
+      toast(`Sync terminée — ${data.created} nouveaux posts créés`);
       fetchPosts();
     } catch {
-      toast({ title: "Erreur synchronisation", variant: "destructive" });
+      toast.error("Erreur synchronisation");
     } finally {
       setSyncing(false);
     }
@@ -102,9 +102,9 @@ export default function PostsPage() {
         body: JSON.stringify({ review_status }),
       });
       fetchPosts();
-      toast({ title: "Statut mis à jour" });
+      toast("Statut mis à jour");
     } catch {
-      toast({ title: "Erreur mise à jour", variant: "destructive" });
+      toast.error("Erreur mise à jour");
     }
   };
 
@@ -113,9 +113,9 @@ export default function PostsPage() {
     try {
       await fetch(`/api/social/posts/${postId}`, { method: "DELETE" });
       fetchPosts();
-      toast({ title: "Post supprimé" });
+      toast("Post supprimé");
     } catch {
-      toast({ title: "Erreur suppression", variant: "destructive" });
+      toast.error("Erreur suppression");
     }
   };
 
@@ -129,9 +129,9 @@ export default function PostsPage() {
       });
       setEditOpen(false);
       fetchPosts();
-      toast({ title: "Post mis à jour" });
+      toast("Post mis à jour");
     } catch {
-      toast({ title: "Erreur sauvegarde", variant: "destructive" });
+      toast.error("Erreur sauvegarde");
     }
   };
 

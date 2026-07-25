@@ -96,8 +96,8 @@ export default function GalleryPage() {
             <h1 className="text-2xl font-bold text-blue-900">Ma Galerie & Mon Profil</h1>
             <p className="text-sm text-gray-500 mt-1">Gérez la présentation de votre commerce sur Synergie Dour</p>
           </div>
-          <Badge className={profile.status === "Actif" ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-600"}>
-            {profile.status || "Actif"}
+          <Badge className={profile.status === "approved" ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-600"}>
+            {profile.status === "approved" ? "Actif" : "En attente"}
           </Badge>
         </div>
 

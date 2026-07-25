@@ -35,7 +35,6 @@ export async function getDb() {
       waitForConnections: true,
       connectionLimit: 5,
       connectTimeout: 30000,
-      acquireTimeout: 30000,
     });
     _db = drizzle(_pool as any);
   }
@@ -327,7 +326,7 @@ export async function getCategories() {
       if (c.categorie) cats.add(c.categorie);
       if (Array.isArray(c.categories)) c.categories.forEach((cat: string) => cats.add(cat));
     }
-    return [...cats].filter(Boolean).sort().map((name, id) => ({ id, name }));
+    return Array.from(cats).filter(Boolean).sort().map((name, id) => ({ id, name }));
   } catch { return []; }
 }
 

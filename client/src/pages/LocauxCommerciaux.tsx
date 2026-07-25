@@ -213,7 +213,7 @@ export default function LocauxCommerciaux() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {[
             { label: "Annonces actives", value: locauxUniques.length },
-            { label: "Communes", value: [...new Set(locauxUniques.map((l: any) => l.village))].filter(Boolean).length },
+            { label: "Communes", value: Array.from(new Set(locauxUniques.map((l: any) => l.village))).filter(Boolean).length },
             { label: "Dour centre", value: locauxUniques.filter((l: any) => l.village?.toLowerCase().includes("dour")).length },
             { label: "Gratuit", value: "Dépôt" },
           ].map((s, i) => (

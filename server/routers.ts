@@ -370,7 +370,7 @@ export const appRouter = router({
       try {
         const db = await getDb();
         if (db) {
-          const [rows] = await db.execute(
+          const [rows] = await (db as any).execute(
             "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, source, url_source, agence, statut, createdAt FROM biens_commerciaux ORDER BY createdAt DESC"
           ) as any;
           for (const b of (rows as any[])) {
@@ -386,7 +386,7 @@ export const appRouter = router({
       try {
         const db = await getDb();
         if (db) {
-          const [rows] = await db.execute(
+          const [rows] = await (db as any).execute(
             "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, url_source, createdAt FROM local_requests WHERE status = 'published' ORDER BY createdAt DESC"
           ) as any;
           for (const r of rows as any[]) {
@@ -415,14 +415,14 @@ export const appRouter = router({
     listAll: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      const [rows] = await db.execute("SELECT * FROM scheduled_posts ORDER BY day_of_week, scheduled_time");
+      const [rows] = await (db as any).execute("SELECT * FROM scheduled_posts ORDER BY day_of_week, scheduled_time");
       return rows;
     }),
 
     listPending: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      const [rows] = await db.execute("SELECT * FROM scheduled_posts WHERE status = 'draft' ORDER BY day_of_week");
+      const [rows] = await (db as any).execute("SELECT * FROM scheduled_posts WHERE status = 'draft' ORDER BY day_of_week");
       return rows;
     }),
 
@@ -434,7 +434,7 @@ export const appRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const now = new Date().toISOString().slice(0, 19).replace("T", " ");
-      await db.execute(
+      await (db as any).execute(
         "UPDATE scheduled_posts SET status=?, approved_by=?, approved_at=?, updatedAt=? WHERE id=?",
         [status, ctx.user.id, now, now, id]
       );
@@ -448,7 +448,7 @@ export const appRouter = router({
       const { title, content: postContent, day_of_week, scheduled_time, platforms, source_type } = input;
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      await db.execute(
+      await (db as any).execute(
         "INSERT INTO scheduled_posts (title, content, day_of_week, scheduled_time, platforms, status, source_type) VALUES (?, ?, ?, ?, ?, 'draft', ?)",
         [title, postContent, day_of_week, scheduled_time || "09:00:00", platforms || "facebook,instagram", source_type || "manual"]
       );
@@ -461,7 +461,7 @@ export const appRouter = router({
     }).mutation(async ({ input }: any) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      await db.execute("DELETE FROM scheduled_posts WHERE id=?", [input.id]);
+      await (db as any).execute("DELETE FROM scheduled_posts WHERE id=?", [input.id]);
       return { success: true };
     }),
   }),
@@ -571,8 +571,8 @@ export const appRouter = router({
     unreadCount: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) return { contacts: 0, memberships: 0, total: 0 };
-      const [cr] = await db.execute("SELECT COUNT(*) as count FROM contact_requests WHERE status = 'new'");
-      const [mr] = await db.execute("SELECT COUNT(*) as count FROM membership_requests WHERE status = 'pending'");
+      const [cr] = await (db as any).execute("SELECT COUNT(*) as count FROM contact_requests WHERE status = 'new'");
+      const [mr] = await (db as any).execute("SELECT COUNT(*) as count FROM membership_requests WHERE status = 'pending'");
       const c = Number((cr as any[])[0]?.count ?? 0);
       const m = Number((mr as any[])[0]?.count ?? 0);
       return { contacts: c, memberships: m, total: c + m };
