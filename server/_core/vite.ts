@@ -397,7 +397,7 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use("/*splat", async (req, res, next) => {
     const url       = req.originalUrl;
     const routePath = url.split("?")[0];
     try {
@@ -438,7 +438,7 @@ export function serveStatic(app: Express) {
   });
 
   app.use(express.static(distPath));
-  app.use("*", async (req, res) => {
+  app.use("/*splat", async (req, res) => {
     const htmlPath  = path.resolve(distPath, "index.html");
     let html        = fs.readFileSync(htmlPath, "utf-8");
     const meta = await resolveMeta(req.path);

@@ -6,7 +6,15 @@
 import { Resend } from "resend";
 import { query, execute } from "./db";
 
-const resend = new Resend(process.env.RESEND_API_KEY || "dummy");
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) throw new Error("RESEND_API_KEY not configured");
+    _resend = new Resend(key);
+  }
+  return _resend;
+}
 const FROM_BILLING = process.env.EMAIL_FROM_BILLING || "Facturation Synergie Dour <facturation@synergiedour.be>";
 
 interface SendDocumentEmailParams {
@@ -147,7 +155,7 @@ export async function sendDocumentEmail(params: SendDocumentEmailParams): Promis
       ? [{ filename: params.pdfFilename || `${params.documentNumber}.pdf`, content: params.pdfAttachmentBase64 }]
       : undefined;
 
-    const res = await resend.emails.send({
+    const res = await getResend().emails.send({
       from: FROM_BILLING,
       to: params.to,
       subject,

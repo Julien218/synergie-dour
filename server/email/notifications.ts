@@ -16,7 +16,15 @@
 
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) throw new Error("RESEND_API_KEY not configured");
+    _resend = new Resend(key);
+  }
+  return _resend;
+}
 
 const FROM_NOREPLY = process.env.EMAIL_FROM_NOREPLY ?? "Synergie Dour <noreply@synergiedour.be>";
 const FROM_CONTACT = process.env.EMAIL_FROM_CONTACT ?? "Synergie Dour <contact@synergiedour.be>";
@@ -105,7 +113,7 @@ export async function sendApplicationReceivedEmail(input: {
     </p>
   `);
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Votre demande d'adhésion à Synergie Dour est bien reçue",
@@ -140,7 +148,7 @@ export async function sendApplicationApprovedEmail(input: {
     </p>
   `, { label: "Procéder au paiement", url: input.checkoutUrl });
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Votre adhésion à Synergie Dour est validée — finalisez le paiement",
@@ -187,7 +195,7 @@ export async function sendMembershipActivatedEmail(input: {
     </ul>
   `, { label: "Accéder à mon espace", url: `${APP_URL}/dashboard` });
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Bienvenue dans Synergie Dour — votre adhésion est active",
@@ -214,7 +222,7 @@ export async function sendPaymentFailedEmail(input: {
     </p>
   `, input.invoiceUrl ? { label: "Régulariser le paiement", url: input.invoiceUrl } : undefined);
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Synergie Dour — paiement à régulariser",
@@ -263,7 +271,7 @@ export async function sendAgentNotificationEmail(input: {
     url: `${APP_URL}/dashboard/agent/${input.pendingChangeId}`,
   });
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_NOREPLY,
     to: ADMIN_NOTIF,
     subject: `[Synergie Dour] Validation ${input.kind === "major" ? "URGENTE" : "requise"} — ${input.resourceTitle}`,
@@ -321,7 +329,7 @@ export async function sendWeeklyAgentReportEmail(input: {
     </table>
   `, { label: "Voir les changements en attente", url: `${APP_URL}/dashboard/agent` });
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_NOREPLY,
     to: ADMIN_NOTIF,
     subject: `[Synergie Dour] Rapport hebdomadaire — ${input.minor + input.major} validation(s) requise(s)`,
@@ -399,7 +407,7 @@ export async function sendAdminNewMessageNotification(input: {
     </table>
   `, { label: "Voir dans le dashboard", url: `${APP_URL}/dashboard/inbox` });
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_NOREPLY,
     to: ADMIN_NOTIF,
     subject: `${iconEmoji} [Synergie Dour] ${typeLabel} — ${input.name}`,
@@ -578,7 +586,7 @@ export async function sendContractEmail(input: {
   // Encoder le HTML du contrat en base64 pour l'envoyer comme pièce jointe
   const contractBase64 = Buffer.from(contractHtml).toString("base64");
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_CONTACT,
     to: input.to,
     subject: `Contrat d'adhésion Synergie Dour ${year} — ${input.businessName}`,
@@ -647,7 +655,7 @@ export async function sendInstantAcknowledgement(input: {
     </p>
   `);
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Synergie Dour — Votre demande d'adhésion est bien reçue",
