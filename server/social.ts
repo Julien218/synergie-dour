@@ -158,7 +158,7 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     if (db) {
       try {
         const [brandRows] = await db.execute("SELECT key_name, value FROM brand_settings") as any;
-        for (const r of (brandRows as any[])) { brand[r.key_name] = r.value; }
+        for (const r of (brandRows as unknown as any[])) { brand[r.key_name] = r.value; }
       } catch (_) {}
     }
 
@@ -701,7 +701,7 @@ socialRouter.get("/brand-settings", requireAdmin, async (req, res) => {
     const _pool = await getRawPool();
     const [rows] = await _pool.execute("SELECT key_name, value FROM brand_settings") as any;
     const settings: Record<string, string> = {};
-    for (const row of (rows as any[])) {
+    for (const row of (rows as unknown as any[])) {
       settings[row.key_name] = row.value;
     }
     // Valeurs par défaut
@@ -778,10 +778,7 @@ socialRouter.patch("/generations/:id/validate", requireSuperAdmin, async (req, r
     const { id } = req.params;
     const { status, note } = req.body as { status: string; note?: string };
     const user = (req as any).user;
-    await db.execute(
-      "UPDATE image_generations SET status = ?, validation_note = ?, validated_by = ?, updatedAt = NOW() WHERE id = ?",
-      [status, note ?? null, user.name ?? user.email, id]
-    );
+    await rawExecute("UPDATE image_generations SET status = ?, validation_note = ?, validated_by = ?, updatedAt = NOW() WHERE id = ?", [status, note ?? null, user.name ?? user.email, id]);
     res.json({ message: "Statut mis à jour" });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
@@ -794,7 +791,7 @@ socialRouter.delete("/generations/:id", requireSuperAdmin, async (req, res) => {
     const db = await getDb();
     if (!db) return res.status(500).json({ message: "DB indisponible" });
     const { id } = req.params;
-    await db.execute("UPDATE image_generations SET status = 'archived' WHERE id = ?", [id]);
+    await rawExecute("UPDATE image_generations SET status = 'archived' WHERE id = ?", [id]);
     res.json({ message: "Génération archivée" });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
@@ -843,9 +840,7 @@ socialRouter.post("/schedule", requireAdmin, async (req, res) => {
       ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
 
-    await db.execute(
-      "INSERT INTO social_posts (title, content, image_url, platforms, scheduled_at, status, post_type, created_by) VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?)",
-      [
+    await rawExecute("INSERT INTO social_posts (title, content, image_url, platforms, scheduled_at, status, post_type, created_by) VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?)", [
         title || "",
         content,
         image_url || null,

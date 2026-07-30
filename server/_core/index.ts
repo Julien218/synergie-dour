@@ -15,6 +15,8 @@ import { createContext } from "./context";
 import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
 import { socialRouter } from "../social";
 import { autopublishRouter } from "../autopublish/router";
+import { billingRouter } from "../billing/router";
+import { billingPortalRouter } from "../billing/portal";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -215,6 +217,8 @@ async function startServer() {
   } else {
     app.use("/api/social", socialRouter);
     app.use("/api/autopublish", autopublishRouter);
+    app.use("/api/billing", billingRouter);
+    app.use("/api/documents", billingPortalRouter);
     app.post("/api/cron/autopublish", cronAutopublishHandler);
 
   // ─── Backup automatique quotidien à 2h00 ─────────────────────────────────

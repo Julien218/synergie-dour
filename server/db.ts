@@ -37,12 +37,12 @@ export async function getDb() {
       connectTimeout: 30000,
       acquireTimeout: 30000,
     });
-    _db = drizzle(_pool as any);
+    _db = drizzle(_pool as any) as any;
   }
   return _db;
 }
 
-async function getPool() {
+export async function getPool() {
   await getDb();
   return _pool;
 }
@@ -327,7 +327,7 @@ export async function getCategories() {
       if (c.categorie) cats.add(c.categorie);
       if (Array.isArray(c.categories)) c.categories.forEach((cat: string) => cats.add(cat));
     }
-    return [...cats].filter(Boolean).sort().map((name, id) => ({ id, name }));
+    return Array.from(cats).filter(Boolean).sort().map((name, id) => ({ id, name }));
   } catch { return []; }
 }
 
@@ -601,4 +601,20 @@ export async function getPublishedResources() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(resources).where(eq(resources.status, "published" as any));
+}
+
+/** Execute raw SQL with parameters via the pool (bypasses drizzle type issues) */
+export async function rawQuery(sqlText: string, params: unknown[] = []) {
+  const pool = await getPool();
+  if (!pool) throw new Error("Database not available");
+  const [rows] = await pool.query(sqlText, params as any[]);
+  return rows as any[];
+}
+
+/** Execute raw SQL (INSERT/UPDATE/DELETE) via the pool */
+export async function rawExecute(sqlText: string, params: unknown[] = []) {
+  const pool = await getPool();
+  if (!pool) throw new Error("Database not available");
+  const [result] = await pool.execute(sqlText, params as any[]);
+  return result;
 }

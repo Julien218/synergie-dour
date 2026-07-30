@@ -587,7 +587,7 @@ export async function sendContractEmail(input: {
       {
         filename: `Contrat_Adhesion_SynergieDour_${year}_${input.businessName.replace(/[^a-zA-Z0-9]/g, "_")}.html`,
         content: contractBase64,
-        content_type: "text/html",
+        contentType: "text/html",
       },
     ],
   });

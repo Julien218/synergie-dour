@@ -23,7 +23,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { db } from "../db";
+import { getDb } from "../db";
 import { resources, auditLogs, pendingChanges } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -112,6 +112,8 @@ Si kind = "none", patches doit être un tableau vide [].`;
 /* ------------------------------------------------------------------------- */
 
 export async function verifyResource(resourceId: number): Promise<ChangeProposal> {
+  const db = await getDb();
+  if (!db) throw new Error('DB not available');
   const resource = await db.query.resources.findFirst({
     where: eq(resources.id, resourceId),
   });
@@ -152,7 +154,7 @@ ${RESPONSE_SCHEMA}`;
 
   const textBlock = response.content
     .filter((b) => b.type === "text")
-    .map((b) => (b as { type: "text"; text: string }).text)
+    .map((b: { id: number; name: string }) => (b as { type: "text"; text: string }).text)
     .join("\n")
     .trim();
 
@@ -185,6 +187,8 @@ ${RESPONSE_SCHEMA}`;
 /* ------------------------------------------------------------------------- */
 
 export async function applyProposal(resourceId: number, proposal: ChangeProposal): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error('DB not available');
   if (proposal.kind === "none") {
     await db
       .update(resources)

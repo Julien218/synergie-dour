@@ -10,7 +10,8 @@
  * Plateforme conçue par JS-Innov.IA — www.jsinnovia.com
  */
 
-import { db } from "../db";
+import { getDb } from "../db";
+import { eq } from "drizzle-orm";
 import { resources } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { RESOURCES } from "../../client/src/data/resources";
@@ -21,6 +22,7 @@ async function seedResources() {
   let updated = 0;
 
   for (const r of RESOURCES) {
+    const db = await getDb(); if(!db) throw new Error("DB not available");
     const existing = await db.query.resources.findFirst({
       where: eq(resources.slug, r.slug),
     });

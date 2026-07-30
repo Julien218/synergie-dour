@@ -3,7 +3,8 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { loginWithPassword, registerWithPassword, SESSION_COOKIE, SESSION_DURATION_MS, signSession } from "./authService";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, adminProcedure, protectedProcedure } from "./_core/trpc";
-import { getDb } from "./db";
+import { getDb, rawQuery, rawExecute } from "./db";
+import { rawQuery, rawExecute } from "./db";
 import {
   getMerchants,
   getMerchantById,
@@ -373,10 +374,10 @@ export const appRouter = router({
           const [rows] = await db.execute(
             "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, source, url_source, agence, statut, createdAt FROM biens_commerciaux ORDER BY createdAt DESC"
           ) as any;
-          for (const b of (rows as any[])) {
+          for (const b of (rows as unknown as any[])) {
             results.push({ ...b, source: b.source || "Immoweb" });
           }
-          console.log(`[locaux] ${(rows as any[]).length} biens chargés depuis MySQL`);
+          console.log(`[locaux] ${(rows as unknown as any[]).length} biens chargés depuis MySQL`);
         }
       } catch (e) {
         console.error("[locaux] biens_commerciaux MySQL error:", e);
@@ -389,7 +390,7 @@ export const appRouter = router({
           const [rows] = await db.execute(
             "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, url_source, createdAt FROM local_requests WHERE status = 'published' ORDER BY createdAt DESC"
           ) as any;
-          for (const r of rows as any[]) {
+          for (const r of rows as unknown as any[]) {
             results.push({ ...r, source: "Annonce" });
           }
         }
@@ -434,10 +435,7 @@ export const appRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const now = new Date().toISOString().slice(0, 19).replace("T", " ");
-      await db.execute(
-        "UPDATE scheduled_posts SET status=?, approved_by=?, approved_at=?, updatedAt=? WHERE id=?",
-        [status, ctx.user.id, now, now, id]
-      );
+      await rawExecute("UPDATE scheduled_posts SET status=?, approved_by=?, approved_at=?, updatedAt=? WHERE id=?", [status, ctx.user.id, now, now, id]);
       return { success: true };
     }),
 
@@ -448,10 +446,7 @@ export const appRouter = router({
       const { title, content: postContent, day_of_week, scheduled_time, platforms, source_type } = input;
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      await db.execute(
-        "INSERT INTO scheduled_posts (title, content, day_of_week, scheduled_time, platforms, status, source_type) VALUES (?, ?, ?, ?, ?, 'draft', ?)",
-        [title, postContent, day_of_week, scheduled_time || "09:00:00", platforms || "facebook,instagram", source_type || "manual"]
-      );
+      await rawExecute("INSERT INTO scheduled_posts (title, content, day_of_week, scheduled_time, platforms, status, source_type) VALUES (?, ?, ?, ?, ?, 'draft', ?)", [title, postContent, day_of_week, scheduled_time || "09:00:00", platforms || "facebook,instagram", source_type || "manual"]);
       return { success: true };
     }),
 
@@ -461,7 +456,7 @@ export const appRouter = router({
     }).mutation(async ({ input }: any) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      await db.execute("DELETE FROM scheduled_posts WHERE id=?", [input.id]);
+      await rawExecute("DELETE FROM scheduled_posts WHERE id=?", [input.id]);
       return { success: true };
     }),
   }),
@@ -479,7 +474,7 @@ export const appRouter = router({
           [ctx.user.email]
         ) as any;
         await pool.end().catch(() => {});
-        return (rows as any[])[0] ?? null;
+        return (rows as unknown as any[])[0] ?? null;
       } catch {
         return null;
       }
@@ -571,11 +566,60 @@ export const appRouter = router({
     unreadCount: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) return { contacts: 0, memberships: 0, total: 0 };
-      const [cr] = await db.execute("SELECT COUNT(*) as count FROM contact_requests WHERE status = 'new'");
-      const [mr] = await db.execute("SELECT COUNT(*) as count FROM membership_requests WHERE status = 'pending'");
-      const c = Number((cr as any[])[0]?.count ?? 0);
-      const m = Number((mr as any[])[0]?.count ?? 0);
+      const cr = await rawQuery("SELECT COUNT(*) as count FROM contact_requests WHERE status = 'new'");
+      const mr = await rawQuery("SELECT COUNT(*) as count FROM membership_requests WHERE status = 'pending'");
+      const c = Number((cr as unknown as any[])[0]?.count ?? 0);
+      const m = Number((mr as unknown as any[])[0]?.count ?? 0);
       return { contacts: c, memberships: m, total: c + m };
+    }),
+  }),
+
+  // ── PENDING CHANGES (agent de vérification) ────────────────────────────
+  pendingChanges: router({
+    listPending: adminProcedure.query(async () => {
+      try {
+        const rows = await rawQuery("SELECT pc.*, r.title as resource_title FROM pending_changes pc LEFT JOIN resources r ON pc.resourceId = r.id WHERE pc.status = ? ORDER BY pc.createdAt DESC", ["pending"]);
+        return rows as any[];
+      } catch { return []; }
+    }),
+    approve: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val as { id: number };
+      throw new Error("Invalid input");
+    }).mutation(async ({ input, ctx }) => {
+      await rawExecute("UPDATE pending_changes SET status = ?, reviewedBy = NULL, reviewedAt = NOW() WHERE id = ?", ["approved", input.id]);
+      return { success: true };
+    }),
+    reject: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val as { id: number; note?: string };
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      await rawExecute("UPDATE pending_changes SET status = ?, reviewNote = ?, reviewedAt = NOW() WHERE id = ?", ["rejected", input.note || null, input.id]);
+      return { success: true };
+    }),
+  }),
+
+  // ── AGENT (vérification hebdomadaire) ──────────────────────────────────
+  agent: router({
+    runManual: adminProcedure.mutation(async () => {
+      try {
+        const { runWeeklyVerification } = await import("./agents/verificationAgent");
+        const result = await runWeeklyVerification();
+        return result;
+      } catch (e: any) {
+        throw new Error(e.message || "Erreur agent");
+      }
+    }),
+    stats: adminProcedure.query(async () => {
+      try {
+        const pending = await rawQuery("SELECT COUNT(*) as count FROM pending_changes WHERE status = ?", ["pending"]);
+        const approved = await rawQuery("SELECT COUNT(*) as count FROM pending_changes WHERE status = ?", ["approved"]);
+        const rejected = await rawQuery("SELECT COUNT(*) as count FROM pending_changes WHERE status = ?", ["rejected"]);
+        return {
+          pending: Number((pending as any[])[0]?.count ?? 0),
+          approved: Number((approved as any[])[0]?.count ?? 0),
+          rejected: Number((rejected as any[])[0]?.count ?? 0),
+        };
+      } catch { return { pending: 0, approved: 0, rejected: 0 }; }
     }),
   }),
 });

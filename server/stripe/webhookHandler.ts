@@ -23,7 +23,7 @@
 
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
-import { db } from "../db";
+import { getDb } from "../db";
 import { memberships, payments, membershipRequests } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { constructWebhookEvent } from "./stripeService";
@@ -87,6 +87,8 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
   eventId: string
 ): Promise<void> {
+  const db = await getDb();
+  if (!db) { console.error('DB not available'); return; }
   const membershipRequestId = session.metadata?.membershipRequestId;
   if (!membershipRequestId) {
     console.warn(`Session ${session.id} sans membershipRequestId — ignorée`);
@@ -165,10 +167,10 @@ async function handleInvoicePaymentSucceeded(
   invoice: Stripe.Invoice,
   eventId: string
 ): Promise<void> {
-  if (typeof invoice.subscription !== "string") return;
+  if (typeof (invoice as any).subscription !== "string") return;
 
   const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.stripeSubscriptionId, invoice.subscription),
+    where: eq(memberships.stripeSubscriptionId, (invoice as any).subscription),
   });
   if (!membership) return;
 
@@ -213,6 +215,8 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, eventId: stri
 /* ------------------------------------------------------------------------- */
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
+  const db = await getDb();
+  if (!db) { console.error('DB not available'); return; }
   const membership = await db.query.memberships.findFirst({
     where: eq(memberships.stripeSubscriptionId, subscription.id),
   });

@@ -168,6 +168,33 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("react-dom") || id.includes("react/") || id.includes("wouter")) {
+              return "vendor-react";
+            }
+            if (id.includes("@radix-ui") || id.includes("lucide-react") || id.includes("class-variance-authority") || id.includes("clsx") || id.includes("tailwind-merge")) {
+              return "vendor-ui";
+            }
+            if (id.includes("@tanstack") || id.includes("@trpc")) {
+              return "vendor-query";
+            }
+            if (id.includes("recharts")) {
+              return "vendor-charts";
+            }
+            if (id.includes("stripe")) {
+              return "vendor-stripe";
+            }
+            if (id.includes("date-fns") || id.includes("zod")) {
+              return "vendor-utils";
+            }
+            return "vendor";
+          }
+        },
+      },
+    },
   },
   server: {
     host: true,

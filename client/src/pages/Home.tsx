@@ -26,6 +26,12 @@ export default function Home() {
   const { data: news = [] } = trpc.news.list.useQuery();
   const { data: events = [] } = trpc.events.list.useQuery();
 
+  // Deduplicate resources: exclude resources shown in LiveFeedCarousel (first 3 resources)
+  const carouselResourceSlugs = new Set(RESOURCES.slice(0, 3).map((r) => r.slug));
+  const featuredResources = RESOURCES.filter(
+    (r) => !carouselResourceSlugs.has(r.slug)
+  ).slice(0, 3);
+
   return (
     <>
     <div className="min-h-screen bg-background">
@@ -240,7 +246,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {RESOURCES.slice(0, 3).map((resource) => (
+            {featuredResources.map((resource) => (
               <Card
                 key={resource.slug}
                 onClick={() => setLocation(`/resources/${resource.slug}`)}
@@ -363,4 +369,3 @@ function categoryLabel(category: string): string {
   };
   return labels[category] ?? category;
 }
-
