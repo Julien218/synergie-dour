@@ -104,8 +104,8 @@ export async function sendApplicationReceivedEmail(input: {
     </p>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
       Le bureau de l'ASBL Synergie Dour examine votre candidature. Vous recevrez un email
-      de confirmation sous 7 jours, accompagné du lien de paiement sécurisé pour finaliser
-      votre adhésion (50€ pour un an).
+      de confirmation sous 7 jours. L'adhésion est gratuite jusqu'au 31 décembre 2026 :
+      aucun paiement ne vous sera demandé pour l'activer.
     </p>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0;">
       À très bientôt,<br>
@@ -132,26 +132,25 @@ export async function sendApplicationApprovedEmail(input: {
   checkoutUrl: string;
   paymentMode: "one_time" | "subscription";
 }): Promise<void> {
-  const modeLabel = input.paymentMode === "subscription" ? "abonnement annuel" : "paiement annuel unique";
-
   const html = emailLayout(`
     <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bonne nouvelle ${input.contactName} !</h2>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
       Le bureau a validé votre demande d'adhésion pour <strong>${input.businessName}</strong>.
     </p>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Pour finaliser votre adhésion, il ne reste qu'à effectuer le paiement de
-      <strong>50€</strong> en mode <strong>${modeLabel}</strong> via Stripe (carte bancaire ou Bancontact).
+      Votre adhésion 2026 est confirmée et gratuite. Aucun paiement ni carte bancaire
+      ne sont requis.
     </p>
     <p style="color: #555; font-size: 14px; line-height: 1.6; margin: 0 0 16px; padding: 12px 16px; background-color: #f0f4fa; border-left: 3px solid #003d99; border-radius: 4px;">
-      Le paiement est sécurisé par Stripe. Le montant arrive directement sur le compte de l'ASBL.
+      Les éventuelles prestations optionnelles payantes feront toujours l'objet d'un
+      devis et d'une facture distincts, acceptés avant paiement.
     </p>
-  `, { label: "Procéder au paiement", url: input.checkoutUrl });
+  `, { label: "Découvrir Synergie Dour", url: `${APP_URL}/dashboard` });
 
   await getResend().emails.send({
     from: FROM_CONTACT,
     to: input.to,
-    subject: "Votre adhésion à Synergie Dour est validée — finalisez le paiement",
+    subject: "Votre adhésion 2026 à Synergie Dour est validée",
     html,
   });
 }
@@ -180,7 +179,7 @@ export async function sendMembershipActivatedEmail(input: {
   const html = emailLayout(`
     <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bienvenue dans Synergie Dour !</h2>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Bonjour ${input.contactName}, votre paiement a bien été reçu et votre adhésion pour
+      Bonjour ${input.contactName}, votre adhésion 2026 pour
       <strong>${input.businessName}</strong> est désormais <strong>active</strong>.
     </p>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
@@ -505,17 +504,16 @@ export async function sendContractEmail(input: {
   </ul>
 </div>
 
-<h2>Article 3 — Cotisation annuelle</h2>
-<div class="montant">50,00 € / an (TVAC)</div>
+<h2>Article 3 — Cotisation 2026</h2>
+<div class="montant">0,00 € — adhésion gratuite en 2026</div>
 <div class="article">
-  La cotisation annuelle est fixée à <strong>50 € par an</strong> pour l'année ${year}.
-  Elle est payable par virement bancaire ou via le lien de paiement sécurisé transmis par l'ASBL.
+  Conformément à la décision applicable pour l'année 2026, l'adhésion est
+  <strong>gratuite jusqu'au 31 décembre 2026</strong>. Aucun paiement n'est requis.
   <div class="important">
-    <strong>Coordonnées bancaires :</strong><br>
-    IBAN : BE XX XXXX XXXX XXXX (communiqué par email séparé)<br>
-    Communication : <em>Adhésion SD-${year} — ${input.businessName}</em>
+    Des prestations optionnelles payantes peuvent être proposées séparément.
+    Elles font l'objet d'un devis et d'une facture distincts, acceptés avant paiement.
   </div>
-  La cotisation est renouvelable chaque année civile. La résiliation doit être notifiée par écrit avant le <strong>30 novembre</strong>.
+  Les conditions applicables après 2026 seront communiquées avant tout renouvellement.
 </div>
 
 <h2>Article 4 — Engagements du membre</h2>
@@ -525,7 +523,7 @@ export async function sendContractEmail(input: {
     <li>Respecter les statuts et le règlement d'ordre intérieur de l'ASBL</li>
     <li>Agir dans l'intérêt collectif des commerçants de la commune</li>
     <li>Informer l'ASBL de tout changement d'adresse ou de cessation d'activité</li>
-    <li>S'acquitter de la cotisation annuelle dans les délais impartis</li>
+    <li>Respecter les engagements librement acceptés pour les prestations optionnelles</li>
   </ul>
 </div>
 
@@ -574,8 +572,8 @@ export async function sendContractEmail(input: {
       Veuillez le signer et le retourner par email à <a href="mailto:contact@synergiedour.be" style="color:#003d99;">contact@synergiedour.be</a>.
     </p>
     <div style="background:#f0f4fa;border-left:3px solid #003d99;padding:14px 18px;border-radius:0 6px 6px 0;margin:16px 0;">
-      <p style="margin:0;font-size:14px;color:#333;"><strong>Prochaine étape :</strong> règlement de la cotisation de <strong>50 €</strong><br>
-      Vous recevrez sous peu le lien de paiement sécurisé (carte bancaire ou Bancontact).</p>
+      <p style="margin:0;font-size:14px;color:#333;"><strong>Adhésion 2026 :</strong> gratuite jusqu'au 31 décembre 2026.<br>
+      Aucun paiement ni carte bancaire ne sont requis.</p>
     </div>
     <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 16px 0 0;">
       Bienvenue dans la famille Synergie Dour !<br>
@@ -641,7 +639,7 @@ export async function sendInstantAcknowledgement(input: {
       </tr>
       <tr>
         <td style="vertical-align:top;padding:6px 0;font-size:20px;">3️⃣</td>
-        <td style="padding:6px 0;font-size:14px;color:#333;">Règlement de la cotisation annuelle : <strong>50 €</strong> (lien sécurisé Stripe)</td>
+        <td style="padding:6px 0;font-size:14px;color:#333;">Confirmation de votre <strong>adhésion gratuite 2026</strong></td>
       </tr>
       <tr>
         <td style="vertical-align:top;padding:6px 0;font-size:20px;">4️⃣</td>

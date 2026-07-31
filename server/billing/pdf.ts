@@ -4,8 +4,11 @@
  * Conçu par Js-Innov.IA — www.jsinnovia.com
  */
 import { createHash } from "crypto";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import PDFDocument from "pdfkit";
 
-interface PdfLineItem {
+export interface PdfLineItem {
   description: string;
   quantity: string;
   unit: string;
@@ -14,7 +17,7 @@ interface PdfLineItem {
   lineTotalCents: number;
 }
 
-interface PdfData {
+export interface PdfData {
   documentType: "quote" | "invoice" | "credit_note";
   number: string;
   issueDate: string;
@@ -24,6 +27,7 @@ interface PdfData {
   emitter: {
     legalName: string;
     address: string;
+    bceNumber?: string;
     vatNumber?: string;
     vatExempt?: boolean;
     iban?: string;
@@ -54,6 +58,278 @@ interface PdfData {
   createdBy?: string;
 }
 
+const NAVY = "#001533";
+const GOLD = "#D4AF37";
+
+/** Génère le vrai fichier PDF joint aux emails et téléchargeable par le client. */
+export function generatePdfBuffer(data: PdfData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 48,
+      info: {
+        Title: `${data.documentType} ${data.number}`,
+        Author: "Synergie Dour ASBL",
+        Subject: "Document de facturation",
+      },
+    });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const fontDirectory = path.join(
+      process.cwd(),
+      "node_modules",
+      "katex",
+      "dist",
+      "fonts"
+    );
+    const regularFontPath = path.join(
+      fontDirectory,
+      "KaTeX_SansSerif-Regular.ttf"
+    );
+    const boldFontPath = path.join(fontDirectory, "KaTeX_SansSerif-Bold.ttf");
+    const regularFont = existsSync(regularFontPath)
+      ? "SynergieSans"
+      : "Helvetica";
+    const boldFont = existsSync(boldFontPath)
+      ? "SynergieSansBold"
+      : "Helvetica-Bold";
+    if (regularFont === "SynergieSans") {
+      doc.registerFont(regularFont, regularFontPath);
+    }
+    if (boldFont === "SynergieSansBold") {
+      doc.registerFont(boldFont, boldFontPath);
+    }
+
+    const title =
+      data.documentType === "quote"
+        ? "DEVIS"
+        : data.documentType === "credit_note"
+          ? "NOTE DE CRÉDIT"
+          : "FACTURE";
+    const euro = (cents: number) =>
+      new Intl.NumberFormat("fr-BE", {
+        style: "currency",
+        currency: data.currency || "EUR",
+      }).format(cents / 100);
+
+    const logoPath = path.join(
+      process.cwd(),
+      "client",
+      "public",
+      "logo-sd-transparent.png"
+    );
+    if (existsSync(logoPath)) {
+      doc.image(logoPath, 48, 40, { fit: [76, 76] });
+    }
+
+    doc
+      .fillColor(NAVY)
+      .font(boldFont)
+      .fontSize(18)
+      .text("SYNERGIE DOUR", 134, 49)
+      .font(regularFont)
+      .fontSize(9)
+      .fillColor("#555555")
+      .text(data.emitter.legalName, 134, 73)
+      .text(data.emitter.address, 134, 87)
+      .text(`N° d'entreprise : ${data.emitter.bceNumber || "1036.801.623"}`, 134, 101);
+
+    doc
+      .font(boldFont)
+      .fontSize(24)
+      .fillColor(NAVY)
+      .text(title, 360, 48, { width: 187, align: "right" })
+      .fontSize(11)
+      .fillColor(GOLD)
+      .text(data.number, 360, 78, { width: 187, align: "right" })
+      .font(regularFont)
+      .fillColor("#555555")
+      .fontSize(9)
+      .text(`Date : ${data.issueDate}`, 360, 98, {
+        width: 187,
+        align: "right",
+      });
+    const secondaryDate = data.dueDate
+      ? `Échéance : ${data.dueDate}`
+      : data.validUntil
+        ? `Valable jusqu'au : ${data.validUntil}`
+        : "";
+    if (secondaryDate) {
+      doc.text(secondaryDate, 360, 112, { width: 187, align: "right" });
+    }
+
+    doc
+      .moveTo(48, 128)
+      .lineTo(547, 128)
+      .lineWidth(2)
+      .strokeColor(NAVY)
+      .stroke();
+
+    doc
+      .font(boldFont)
+      .fontSize(9)
+      .fillColor("#777777")
+      .text("DESTINATAIRE", 48, 148)
+      .fontSize(12)
+      .fillColor(NAVY)
+      .text(data.client.name, 48, 164)
+      .font(regularFont)
+      .fontSize(9)
+      .fillColor("#333333")
+      .text(data.client.address, 48, 182, { width: 230 });
+    if (data.client.vatNumber) {
+      doc.text(`TVA : ${data.client.vatNumber}`, 48, 207);
+    }
+
+    const tableTop = 242;
+    const columns = {
+      description: 48,
+      quantity: 322,
+      unitPrice: 375,
+      vat: 451,
+      total: 492,
+    };
+    const drawTableHeader = (top: number) => {
+      doc
+        .rect(48, top, 499, 24)
+        .fill(NAVY)
+        .fillColor(GOLD)
+        .font(boldFont)
+        .fontSize(8)
+        .text("DESCRIPTION", columns.description + 6, top + 8)
+        .text("QTÉ", columns.quantity, top + 8, { width: 42, align: "center" })
+        .text("PRIX U.", columns.unitPrice, top + 8, {
+          width: 66,
+          align: "right",
+        })
+        .text("TVA", columns.vat, top + 8, { width: 34, align: "center" })
+        .text("TOTAL HT", columns.total, top + 8, {
+          width: 49,
+          align: "right",
+        });
+    };
+    drawTableHeader(tableTop);
+
+    let y = tableTop + 32;
+    for (const line of data.lines) {
+      if (y > 650) {
+        doc.addPage();
+        drawTableHeader(48);
+        y = 80;
+      }
+      doc
+        .font(regularFont)
+        .fontSize(8.5)
+        .fillColor("#333333")
+        .text(line.description, columns.description + 6, y, {
+          width: 258,
+          height: 30,
+          ellipsis: true,
+        })
+        .text(String(line.quantity), columns.quantity, y, {
+          width: 42,
+          align: "center",
+        })
+        .text(euro(line.unitPriceCents), columns.unitPrice, y, {
+          width: 66,
+          align: "right",
+        })
+        .text(`${line.vatRate}%`, columns.vat, y, {
+          width: 34,
+          align: "center",
+        })
+        .text(euro(line.lineTotalCents), columns.total, y, {
+          width: 49,
+          align: "right",
+        });
+      doc
+        .moveTo(48, y + 26)
+        .lineTo(547, y + 26)
+        .lineWidth(0.5)
+        .strokeColor("#DDDDDD")
+        .stroke();
+      y += 34;
+    }
+
+    if (y > 560) {
+      doc.addPage();
+      y = 58;
+    } else {
+      y = Math.max(y + 12, 370);
+    }
+    const totalsX = 350;
+    doc
+      .font(regularFont)
+      .fontSize(9)
+      .fillColor("#333333")
+      .text("Sous-total HT", totalsX, y, { width: 105 })
+      .text(euro(data.subtotalCents), 455, y, { width: 92, align: "right" })
+      .text("TVA", totalsX, y + 18, { width: 105 })
+      .text(euro(data.vatTotalCents), 455, y + 18, {
+        width: 92,
+        align: "right",
+      });
+    doc
+      .moveTo(totalsX, y + 39)
+      .lineTo(547, y + 39)
+      .lineWidth(1.5)
+      .strokeColor(NAVY)
+      .stroke()
+      .font(boldFont)
+      .fontSize(11)
+      .fillColor(NAVY)
+      .text("TOTAL", totalsX, y + 48, { width: 105 })
+      .text(euro(data.totalCents), 455, y + 48, {
+        width: 92,
+        align: "right",
+      });
+
+    const paymentY = y + 88;
+    if (data.structuredReference || data.emitter.iban) {
+      doc
+        .roundedRect(48, paymentY, 499, 58, 5)
+        .fill("#F4F6F9")
+        .fillColor(NAVY)
+        .font(boldFont)
+        .fontSize(9)
+        .text("INFORMATIONS DE PAIEMENT", 62, paymentY + 10)
+        .font(regularFont)
+        .fillColor("#333333")
+        .text(
+          [
+            data.emitter.iban ? `IBAN : ${data.emitter.iban}` : "",
+            data.emitter.bic ? `BIC : ${data.emitter.bic}` : "",
+            data.structuredReference
+              ? `Communication : ${data.structuredReference}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join("   ·   "),
+          62,
+          paymentY + 30,
+          { width: 470 }
+        );
+    }
+
+    const legalY = Math.min(paymentY + 82, 735);
+    doc
+      .font(regularFont)
+      .fontSize(7.5)
+      .fillColor("#666666")
+      .text(
+        data.emitter.legalMentions ||
+          "Synergie Dour ASBL — Grand'Place 9, 7370 Dour — N° d'entreprise 1036.801.623",
+        48,
+        legalY,
+        { width: 499, align: "center" }
+      );
+    doc.end();
+  });
+}
+
 /** Génère un PDF en HTML simple pour rendu via puppeteer ou similaire */
 export function generatePdfHtml(data: PdfData): string {
   const docTitle = data.documentType === "quote" 
@@ -76,8 +352,8 @@ export function generatePdfHtml(data: PdfData): string {
       <td style="text-align:right">${formatEuro(line.lineTotalCents)}</td>
     </tr>`).join("");
 
-  const vatMention = data.emitter.vatExempt 
-    ? "Non assujetti à la TVA (art. 44 §2 C.T.V.A.)" 
+  const vatMention = data.emitter.vatExempt
+    ? "TVA non applicable — régime à confirmer par le comptable"
     : data.emitter.vatNumber 
     ? `TVA: ${data.emitter.vatNumber}` 
     : "";

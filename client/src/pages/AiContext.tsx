@@ -75,7 +75,7 @@ export default function AiContext() {
               "Annuaire des membres commerçants et indépendants de Dour",
               "Actualités locales pour professionnels indépendants",
               "Événements professionnels et réunions membres",
-              "Adhésion ouverte : 50€/an",
+              "Adhésion gratuite jusqu'au 31 décembre 2026",
             ].map((item, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="text-[#D4AF37] font-bold mt-0.5">→</span>

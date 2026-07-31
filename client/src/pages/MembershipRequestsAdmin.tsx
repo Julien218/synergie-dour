@@ -14,20 +14,11 @@ import {
   Store,
   CheckCircle2,
   XCircle,
-  CreditCard,
   Clock,
   Gift,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
-
-type PaiementStatut = "en_attente" | "paye" | "gratuit";
-
-const PAIEMENT_OPTIONS: { value: PaiementStatut; label: string; color: string; icon: React.ElementType }[] = [
-  { value: "en_attente", label: "En attente", color: "bg-amber-100 text-amber-800 border-amber-300", icon: Clock },
-  { value: "paye",       label: "Payé",       color: "bg-emerald-100 text-emerald-800 border-emerald-300", icon: CreditCard },
-  { value: "gratuit",    label: "Gratuit",    color: "bg-blue-100 text-blue-800 border-blue-300", icon: Gift },
-];
 
 export default function MembershipRequestsAdmin() {
   const { user } = useAuth();
@@ -64,7 +55,7 @@ export default function MembershipRequestsAdmin() {
           </Button>
           <h1 className="text-3xl font-bold text-[#D4AF37]">Candidatures à l'adhésion</h1>
           <p className="text-[#F0E68C] mt-1">
-            Validez les demandes et gérez le statut de paiement de chaque membre.
+            Validez les demandes. L'adhésion est gratuite jusqu'au 31 décembre 2026.
           </p>
           <div className="flex gap-4 mt-3 text-sm">
             <span className="bg-white/10 px-3 py-1 rounded-full">
@@ -142,15 +133,6 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
     onError:   (e) => toast.error(e.message),
   });
 
-  const paiementOption = PAIEMENT_OPTIONS.find(
-    (p) => p.value === (request.paiementStatut || "en_attente")
-  ) ?? PAIEMENT_OPTIONS[0];
-  const PaiementIcon = paiementOption.icon;
-
-  const setPaiement = (val: PaiementStatut) => {
-    updateMutation.mutate({ id: request.id, paiementStatut: val });
-  };
-
   const approve = () => {
     updateMutation.mutate({ id: request.id, status: "approved" });
   };
@@ -220,30 +202,13 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
               </div>
             </div>
 
-            {/* Statut paiement */}
+            {/* Cotisation 2026 */}
             <div>
-              <p className="text-xs text-gray-500 mb-1 font-medium">Statut paiement</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {PAIEMENT_OPTIONS.map((opt) => {
-                  const Icon = opt.icon;
-                  const isActive = (request.paiementStatut || "en_attente") === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => setPaiement(opt.value)}
-                      disabled={updateMutation.isPending}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                        isActive
-                          ? opt.color + " shadow-sm scale-105"
-                          : "bg-gray-100 text-gray-400 border-gray-200 hover:border-gray-400"
-                      }`}
-                    >
-                      <Icon className="w-3 h-3" />
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <p className="text-xs text-gray-500 mb-1 font-medium">Cotisation 2026</p>
+              <span className="inline-flex items-center gap-1 rounded-full border border-blue-300 bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
+                <Gift className="w-3 h-3" />
+                Gratuite
+              </span>
             </div>
           </div>
         </div>

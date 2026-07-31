@@ -17,6 +17,9 @@ import { socialRouter } from "../social";
 import { autopublishRouter } from "../autopublish/router";
 import { billingRouter } from "../billing/router";
 import { billingPortalRouter } from "../billing/portal";
+import { runBillingMigrations } from "../billing/migrate";
+import { stripeWebhookHandler } from "../stripe/webhookHandler";
+import { getStripeMode } from "../stripe/stripeService";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -78,15 +81,16 @@ async function initDatabase() {
     });
     const db = drizzle(pool as any);
     // Création des tables si absentes (idempotent)
+    let setupConnection: mysql.PoolConnection | null = null;
     try {
-      const conn = await pool.getConnection();
+      setupConnection = await pool.getConnection();
       // Migrations de colonnes — robustes indépendamment de la version MySQL
       // (ADD COLUMN IF NOT EXISTS n'est supporté qu'à partir de MySQL 8.0.29 ;
       //  sur une version antérieure la requête lève une erreur de syntaxe qui était
       //  silencieusement avalée, laissant la colonne absente en production —
       //  cause racine du bug "membership.request" 500 constaté en recette du 08/07/2026)
       await ensureColumn(pool, "merchants", "googleBusinessUrl", "ALTER TABLE `merchants` ADD COLUMN `googleBusinessUrl` varchar(500)");
-      await ensureColumn(pool, "membership_requests", "paiementStatut", "ALTER TABLE `membership_requests` ADD COLUMN `paiementStatut` VARCHAR(20) NOT NULL DEFAULT 'en_attente'");
+      await ensureColumn(pool, "membership_requests", "paiementStatut", "ALTER TABLE `membership_requests` ADD COLUMN `paiementStatut` VARCHAR(20) NOT NULL DEFAULT 'gratuit'");
 
       const sqls = [
         `CREATE TABLE IF NOT EXISTS \`users\` (\`id\` int AUTO_INCREMENT NOT NULL, \`openId\` varchar(64) NOT NULL, \`name\` text, \`email\` varchar(320), \`loginMethod\` varchar(64), \`passwordHash\` varchar(255), \`emailVerifiedAt\` timestamp NULL, \`role\` enum('user','admin','super_admin') NOT NULL DEFAULT 'user', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, \`lastSignedIn\` timestamp NOT NULL DEFAULT (now()), CONSTRAINT \`users_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`users_openId_unique\` UNIQUE(\`openId\`))`,
@@ -97,18 +101,20 @@ async function initDatabase() {
         `CREATE TABLE IF NOT EXISTS \`news\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`content\` text NOT NULL, \`excerpt\` varchar(500), \`image\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`publishedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`events\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`description\` text NOT NULL, \`image\` varchar(255), \`startDate\` timestamp NOT NULL, \`endDate\` timestamp NULL, \`location\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`resources\` (\`id\` int AUTO_INCREMENT NOT NULL, \`slug\` varchar(200) NOT NULL, \`title\` varchar(255) NOT NULL, \`summary\` varchar(500) NOT NULL, \`category\` enum('starter','gestion','developpement','difficulte') NOT NULL, \`tags\` json NOT NULL, \`verifiedAt\` varchar(10) NOT NULL, \`content\` text NOT NULL, \`links\` json NOT NULL, \`localContacts\` json, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'published', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`), UNIQUE(\`slug\`))`,
-        `CREATE TABLE IF NOT EXISTS \`memberships\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`merchantId\` int, \`paymentMode\` enum('one_time','subscription') NOT NULL, \`status\` enum('pending_payment','active','expired','cancelled') NOT NULL DEFAULT 'pending_payment', \`stripeCustomerId\` varchar(100), \`stripeSubscriptionId\` varchar(100), \`stripePaymentIntentId\` varchar(100), \`startsAt\` timestamp NULL, \`expiresAt\` timestamp NULL, \`amountCents\` int NOT NULL DEFAULT 5000, \`currency\` varchar(3) NOT NULL DEFAULT 'EUR', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`memberships\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`merchantId\` int, \`paymentMode\` enum('one_time','subscription') NOT NULL DEFAULT 'one_time', \`status\` enum('pending_payment','active','expired','cancelled') NOT NULL DEFAULT 'active', \`stripeCustomerId\` varchar(100), \`stripeSubscriptionId\` varchar(100), \`stripePaymentIntentId\` varchar(100), \`startsAt\` timestamp NULL, \`expiresAt\` timestamp NULL, \`amountCents\` int NOT NULL DEFAULT 0, \`currency\` varchar(3) NOT NULL DEFAULT 'EUR', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`local_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`titre\` varchar(255) NOT NULL, \`adresse\` varchar(255) NOT NULL, \`village\` varchar(100) NOT NULL, \`surface\` varchar(50), \`loyer\` varchar(50), \`type_bien\` varchar(100) NOT NULL, \`description\` text, \`nom_proprietaire\` varchar(255) NOT NULL, \`telephone_proprietaire\` varchar(30) NOT NULL, \`email_proprietaire\` varchar(320) NOT NULL, \`status\` enum('pending','published','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`biens_commerciaux\` (\`id\` varchar(64) NOT NULL, \`titre\` varchar(255) NOT NULL, \`adresse\` varchar(255), \`village\` varchar(100), \`surface\` varchar(50), \`loyer\` varchar(50), \`type_bien\` varchar(100) NOT NULL DEFAULT 'Commerce', \`description\` text, \`source\` varchar(100) DEFAULT 'Immoweb', \`url_source\` text, \`agence\` varchar(255), \`statut\` varchar(100) DEFAULT 'disponible', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`social_posts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL DEFAULT '', \`content\` text NOT NULL, \`image_url\` text, \`platforms\` varchar(255) NOT NULL DEFAULT 'facebook', \`scheduled_at\` varchar(50), \`status\` enum('draft','scheduled','published','error') NOT NULL DEFAULT 'draft', \`post_type\` varchar(100) NOT NULL DEFAULT 'actualite', \`created_by\` varchar(100), \`published_at\` timestamp NULL, \`error_message\` text, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
       ];
       for (const sql of sqls) {
-        await conn.execute(sql);
+        await setupConnection.execute(sql);
       }
-      conn.release();
+      await runBillingMigrations(pool);
       console.log("[DB] Tables vérifiées/créées ✅");
     } catch (e: any) {
       console.warn("[DB] Setup tables:", e.message?.slice(0,150));
+    } finally {
+      setupConnection?.release();
     }
     // Seed super admin si absent — uniquement via variables d'environnement sécurisées
     try {
@@ -186,14 +192,34 @@ async function startServer() {
   // Important pour Railway/Proxies
   app.set("trust proxy", 1);
 
+  // Stripe exige le corps brut pour vérifier la signature. Cette route doit
+  // impérativement précéder express.json().
+  app.post(
+    "/api/stripe/webhook",
+    express.raw({ type: "application/json", limit: "1mb" }),
+    stripeWebhookHandler
+  );
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+  app.get("/api/health", (req, res) => res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    billing: {
+      stripeMode: getStripeMode(),
+      webhookConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
+      emailConfigured: Boolean(process.env.RESEND_API_KEY),
+    },
+  }));
 
   // Diagnostic
   app.use((req, res, next) => {
     if (req.url.startsWith('/api')) {
-      console.log(`[API Request] ${req.method} ${req.url}`);
+      const safeUrl = req.url.replace(
+        /^\/api\/documents\/[^/?]+/,
+        "/api/documents/[redacted]"
+      );
+      console.log(`[API Request] ${req.method} ${safeUrl}`);
     }
     next();
   });
@@ -213,15 +239,16 @@ async function startServer() {
     })
   );
 
+  // Routes métier disponibles en développement comme en production.
+  app.use("/api/social", socialRouter);
+  app.use("/api/autopublish", autopublishRouter);
+  app.use("/api/billing", billingRouter);
+  app.use("/api/documents", billingPortalRouter);
+  app.post("/api/cron/autopublish", cronAutopublishHandler);
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
-    app.use("/api/social", socialRouter);
-    app.use("/api/autopublish", autopublishRouter);
-    app.use("/api/billing", billingRouter);
-    app.use("/api/documents", billingPortalRouter);
-    app.post("/api/cron/autopublish", cronAutopublishHandler);
-
   // ─── Backup automatique quotidien à 2h00 ─────────────────────────────────
   (async () => {
     const { runDatabaseBackup } = await import("../cron/backup");

@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS billing_profiles (
   legalMentions TEXT,
   peppolId VARCHAR(50),
   createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_billing_profiles_legal_name (legalName)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Clients de facturation
@@ -98,6 +99,8 @@ CREATE TABLE IF NOT EXISTS quotes (
   rejectedAt TIMESTAMP NULL,
   accessTokenHash VARCHAR(64),
   tokenExpiresAt TIMESTAMP NULL,
+  fiscalYear INT NOT NULL,
+  sequenceNumber INT NOT NULL,
   createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (clientId) REFERENCES billing_clients(id),
@@ -106,6 +109,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   INDEX idx_quotes_status (status),
   INDEX idx_quotes_client (clientId),
   INDEX idx_quotes_number (number)
+  ,UNIQUE KEY uq_quotes_fiscal_sequence (fiscalYear, sequenceNumber)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Lignes de devis
@@ -216,9 +220,12 @@ CREATE TABLE IF NOT EXISTS credit_notes (
   ublContent TEXT,
   sendStatus ENUM('not_sent','sent','failed') NOT NULL DEFAULT 'not_sent',
   issueDate TIMESTAMP NOT NULL,
+  fiscalYear INT NOT NULL,
+  sequenceNumber INT NOT NULL,
   createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (originalInvoiceId) REFERENCES invoices(id),
-  INDEX idx_credit_notes_invoice (originalInvoiceId)
+  INDEX idx_credit_notes_invoice (originalInvoiceId),
+  UNIQUE KEY uq_credit_notes_fiscal_sequence (fiscalYear, sequenceNumber)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Logs d'email de facturation
@@ -248,12 +255,59 @@ CREATE TABLE IF NOT EXISTS payment_allocations (
   method ENUM('bank_transfer','stripe','cash','other') NOT NULL DEFAULT 'bank_transfer',
   paymentDate TIMESTAMP NOT NULL,
   reference VARCHAR(255),
+  stripeEventId VARCHAR(255),
+  stripeCheckoutSessionId VARCHAR(255),
+  stripePaymentIntentId VARCHAR(255),
+  receiptUrl TEXT,
   notes TEXT,
   recordedBy INT NULL,
   createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (invoiceId) REFERENCES invoices(id),
   FOREIGN KEY (recordedBy) REFERENCES users(id),
-  INDEX idx_payment_allocations_invoice (invoiceId)
+  INDEX idx_payment_allocations_invoice (invoiceId),
+  UNIQUE KEY uq_payment_allocations_stripe_event (stripeEventId),
+  UNIQUE KEY uq_payment_allocations_payment_intent (stripePaymentIntentId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Compteurs documentaires transactionnels
+CREATE TABLE IF NOT EXISTS billing_sequences (
+  documentType ENUM('invoice','quote','credit_note') NOT NULL,
+  fiscalYear INT NOT NULL,
+  nextValue INT NOT NULL DEFAULT 1,
+  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (documentType, fiscalYear)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sessions Stripe Checkout liées aux factures internes
+CREATE TABLE IF NOT EXISTS billing_checkout_sessions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  invoiceId INT NOT NULL,
+  stripeCheckoutSessionId VARCHAR(255) NOT NULL,
+  stripePaymentIntentId VARCHAR(255),
+  stripeCustomerId VARCHAR(255),
+  checkoutUrl TEXT,
+  amountCents INT NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'EUR',
+  status ENUM('open','processing','paid','expired','failed') NOT NULL DEFAULT 'open',
+  receiptUrl TEXT,
+  expiresAt TIMESTAMP NULL,
+  completedAt TIMESTAMP NULL,
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (invoiceId) REFERENCES invoices(id),
+  UNIQUE KEY uq_billing_checkout_session (stripeCheckoutSessionId),
+  INDEX idx_billing_checkout_invoice (invoiceId, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Journal d'événements Stripe pour garantir l'idempotence des webhooks
+CREATE TABLE IF NOT EXISTS billing_webhook_events (
+  eventId VARCHAR(255) PRIMARY KEY,
+  eventType VARCHAR(100) NOT NULL,
+  status ENUM('received','processing','processed','failed') NOT NULL DEFAULT 'received',
+  errorMessage TEXT,
+  processedAt TIMESTAMP NULL,
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Journal d'audit
@@ -272,18 +326,19 @@ CREATE TABLE IF NOT EXISTS billing_audit_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Seed: profil de facturation par défaut pour Synergie Dour ASBL
-INSERT INTO billing_profiles (legalName, address, vatNumber, vatExempt, email, iban, bic, signatoryName, signatoryRole, numberPrefix, defaultPaymentDelay, legalMentions)
-VALUES (
+INSERT INTO billing_profiles (legalName, address, bceNumber, vatNumber, vatExempt, email, signatoryName, signatoryRole, numberPrefix, defaultPaymentDelay, legalMentions)
+SELECT
   'Synergie Dour ASBL',
   'Grand''Place 9, 7370 Dour, Belgique',
-  'BE 1036.801.623',
+  '1036.801.623',
+  NULL,
   TRUE,
-  'facturation@synergiedour.be',
-  'BE56 3631 4810 0614',
-  'GEBABEBB',
+  'info@synergiedour.be',
   'Olivier Trévis',
   'Président',
   'SD',
   30,
-  'ASBL Synergie Dour — Grand''Place 9, 7370 Dour — BE 1036.801.623 — Non assujettie à la TVA (art. 44 §2 C.T.V.A.)'
-) ON DUPLICATE KEY UPDATE id = id;
+  'ASBL Synergie Dour — Grand''Place 9, 7370 Dour — N° d''entreprise 1036.801.623 — TVA non applicable'
+WHERE NOT EXISTS (
+  SELECT 1 FROM billing_profiles WHERE legalName = 'Synergie Dour ASBL'
+);

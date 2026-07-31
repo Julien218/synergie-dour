@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { XCircle, RotateCcw, ArrowLeft } from "lucide-react";
+import { Info, RotateCcw, ArrowLeft } from "lucide-react";
 
 export default function MembershipCancelled() {
   const [, setLocation] = useLocation();
@@ -11,19 +11,19 @@ export default function MembershipCancelled() {
       <Card className="max-w-2xl w-full border-amber-200 bg-white shadow-lg">
         <CardContent className="py-12 text-center">
           <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-6">
-            <XCircle className="w-12 h-12 text-amber-700" />
+            <Info className="w-12 h-12 text-amber-700" />
           </div>
 
           <h1 className="text-3xl font-bold text-[#001a3d] mb-3">
-            Paiement non finalisé
+            Aucun paiement requis
           </h1>
 
           <p className="text-lg text-gray-700 mb-2">
-            Vous avez annulé le paiement avant qu'il ne soit complété.
+            L'adhésion Synergie Dour est gratuite jusqu'au 31 décembre 2026.
           </p>
           <p className="text-gray-600 mb-8">
-            Aucun montant n'a été prélevé. Vous pouvez reprendre votre adhésion à tout
-            moment via le lien envoyé par email.
+            Cette ancienne page de paiement n'est plus utilisée. Vous pouvez déposer votre
+            candidature directement, sans carte bancaire.
           </p>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-left text-sm text-gray-700">
@@ -46,7 +46,7 @@ export default function MembershipCancelled() {
               className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a3d] font-semibold"
             >
               <RotateCcw className="mr-2 w-4 h-4" />
-              Réessayer l'adhésion
+              Reprendre l'adhésion
             </Button>
             <Button
               onClick={() => setLocation("/")}

@@ -62,7 +62,7 @@ export default function BillingDashboard() {
           <div className="bg-white rounded-xl border p-6">
             <h2 className="font-semibold text-[#001533] mb-4">Actions rapides</h2>
             <div className="space-y-2">
-              <a href="/dashboard/billing/quotes" className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+              <a href="/dashboard/billing/quotes/new" className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
                 📝 Créer un devis
               </a>
               <a href="/dashboard/billing/clients" className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
@@ -71,8 +71,8 @@ export default function BillingDashboard() {
               <a href="/dashboard/billing/catalogue" className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
                 📦 Ajouter au catalogue
               </a>
-              <a href="/dashboard/billing/payments" className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-                💰 Enregistrer un paiement
+              <a href="/dashboard/billing/invoices" className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+                💰 Consulter les paiements
               </a>
             </div>
           </div>
@@ -80,8 +80,8 @@ export default function BillingDashboard() {
           <div className="bg-white rounded-xl border p-6">
             <h2 className="font-semibold text-[#001533] mb-4">Liens utiles</h2>
             <div className="space-y-2">
-              <a href="/dashboard/billing/credit-notes" className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-                📋 Notes de crédit
+              <a href="/dashboard/billing/invoices" className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+                📋 Factures et notes de crédit
               </a>
               <a href="/dashboard/billing/settings" className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
                 ⚙️ Paramètres de facturation

@@ -25,7 +25,7 @@ export default function MembershipSuccess() {
           </h1>
 
           <p className="text-lg text-gray-700 mb-2">
-            Votre paiement a bien été reçu et votre adhésion est désormais active.
+            Votre adhésion 2026 est confirmée et aucun paiement n'est requis.
           </p>
           <p className="text-gray-600 mb-8">
             Un email de confirmation vous a été envoyé avec tous les détails et les

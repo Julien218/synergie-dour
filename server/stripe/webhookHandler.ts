@@ -3,11 +3,11 @@
  *
  * URL : https://www.synergiedour.be/api/stripe/webhook
  *
- * Événements gérés :
- *   - checkout.session.completed     → activer l'adhésion
- *   - invoice.payment_succeeded      → renouvellement annuel (abonnement)
- *   - invoice.payment_failed         → notifier l'admin
- *   - customer.subscription.deleted  → marquer adhésion comme annulée
+ * Événements principaux :
+ *   - checkout.session.completed / async_payment_succeeded → payer une facture
+ *   - checkout.session.async_payment_failed / expired      → clôturer la session
+ * Les anciens événements d'adhésion ne sont traités que si
+ * MEMBERSHIP_FEES_ENABLED=true (désactivé pour 2026).
  *
  * À monter dans Express AVANT le middleware JSON car Stripe envoie du raw body.
  *
@@ -28,8 +28,13 @@ import { memberships, payments, membershipRequests } from "../../drizzle/schema"
 import { eq } from "drizzle-orm";
 import { constructWebhookEvent } from "./stripeService";
 import { sendMembershipActivatedEmail, sendPaymentFailedEmail } from "../email/notifications";
+import {
+  markBillingCheckoutExpired,
+  markBillingCheckoutFailed,
+  processBillingCheckoutEvent,
+} from "../billing/stripeWebhook";
 
-const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "250", 10);
+const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "0", 10);
 
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
   const signature = req.headers["stripe-signature"];
@@ -59,7 +64,37 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
 async function processWebhookEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed":
-      await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session, event.id);
+      {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const billing = await processBillingCheckoutEvent(
+          session,
+          event.id,
+          event.type
+        );
+        if (!billing.handled) {
+          await handleCheckoutCompleted(session, event.id);
+        }
+      }
+      break;
+
+    case "checkout.session.async_payment_succeeded":
+      await processBillingCheckoutEvent(
+        event.data.object as Stripe.Checkout.Session,
+        event.id,
+        event.type
+      );
+      break;
+
+    case "checkout.session.async_payment_failed":
+      await markBillingCheckoutFailed(
+        event.data.object as Stripe.Checkout.Session
+      );
+      break;
+
+    case "checkout.session.expired":
+      await markBillingCheckoutExpired(
+        event.data.object as Stripe.Checkout.Session
+      );
       break;
 
     case "invoice.payment_succeeded":
@@ -87,7 +122,13 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
   eventId: string
 ): Promise<void> {
-  const db = await getDb();
+  if (process.env.MEMBERSHIP_FEES_ENABLED !== "true") {
+    console.warn(
+      `[Stripe] Événement d'adhésion payante ${eventId} ignoré : cotisation 2026 gratuite`
+    );
+    return;
+  }
+  const db: any = await getDb();
   if (!db) { console.error('DB not available'); return; }
   const membershipRequestId = session.metadata?.membershipRequestId;
   if (!membershipRequestId) {
@@ -167,8 +208,11 @@ async function handleInvoicePaymentSucceeded(
   invoice: Stripe.Invoice,
   eventId: string
 ): Promise<void> {
+  if (process.env.MEMBERSHIP_FEES_ENABLED !== "true") return;
   if (typeof (invoice as any).subscription !== "string") return;
 
+  const db: any = await getDb();
+  if (!db) { console.error("DB not available"); return; }
   const membership = await db.query.memberships.findFirst({
     where: eq(memberships.stripeSubscriptionId, (invoice as any).subscription),
   });
@@ -202,6 +246,7 @@ async function handleInvoicePaymentSucceeded(
 /* ------------------------------------------------------------------------- */
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, eventId: string): Promise<void> {
+  if (process.env.MEMBERSHIP_FEES_ENABLED !== "true") return;
   if (typeof invoice.customer_email !== "string") return;
   await sendPaymentFailedEmail({
     to: invoice.customer_email,
@@ -215,7 +260,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, eventId: stri
 /* ------------------------------------------------------------------------- */
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-  const db = await getDb();
+  const db: any = await getDb();
   if (!db) { console.error('DB not available'); return; }
   const membership = await db.query.memberships.findFirst({
     where: eq(memberships.stripeSubscriptionId, subscription.id),

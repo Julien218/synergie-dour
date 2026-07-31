@@ -114,6 +114,8 @@ export const quotes = mysqlTable("quotes", {
   rejectedAt: timestamp("rejectedAt"),
   accessTokenHash: varchar("accessTokenHash", { length: 64 }),
   tokenExpiresAt: timestamp("tokenExpiresAt"),
+  fiscalYear: int("fiscalYear").notNull(),
+  sequenceNumber: int("sequenceNumber").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -226,6 +228,8 @@ export const creditNotes = mysqlTable("credit_notes", {
   ublContent: text("ublContent"),
   sendStatus: mysqlEnum("sendStatus", ["not_sent","sent","failed"]).default("not_sent").notNull(),
   issueDate: timestamp("issueDate").notNull(),
+  fiscalYear: int("fiscalYear").notNull(),
+  sequenceNumber: int("sequenceNumber").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -260,6 +264,10 @@ export const paymentAllocations = mysqlTable("payment_allocations", {
   method: mysqlEnum("method", ["bank_transfer","stripe","cash","other"]).default("bank_transfer").notNull(),
   paymentDate: timestamp("paymentDate").notNull(),
   reference: varchar("reference", { length: 255 }),
+  stripeEventId: varchar("stripeEventId", { length: 255 }),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+  receiptUrl: text("receiptUrl"),
   notes: text("notes"),
   recordedBy: int("recordedBy").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -267,6 +275,43 @@ export const paymentAllocations = mysqlTable("payment_allocations", {
 
 export type PaymentAllocation = typeof paymentAllocations.$inferSelect;
 export type InsertPaymentAllocation = typeof paymentAllocations.$inferInsert;
+
+/* ===== SÉQUENCES DOCUMENTAIRES ===== */
+export const billingSequences = mysqlTable("billing_sequences", {
+  documentType: mysqlEnum("documentType", ["invoice","quote","credit_note"]).notNull(),
+  fiscalYear: int("fiscalYear").notNull(),
+  nextValue: int("nextValue").default(1).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/* ===== SESSIONS STRIPE CHECKOUT ===== */
+export const billingCheckoutSessions = mysqlTable("billing_checkout_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  invoiceId: int("invoiceId").notNull().references(() => invoices.id),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }).notNull(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  checkoutUrl: text("checkoutUrl"),
+  amountCents: int("amountCents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("EUR").notNull(),
+  status: mysqlEnum("status", ["open","processing","paid","expired","failed"]).default("open").notNull(),
+  receiptUrl: text("receiptUrl"),
+  expiresAt: timestamp("expiresAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/* ===== ÉVÉNEMENTS STRIPE IDEMPOTENTS ===== */
+export const billingWebhookEvents = mysqlTable("billing_webhook_events", {
+  eventId: varchar("eventId", { length: 255 }).primaryKey(),
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+  status: mysqlEnum("status", ["received","processing","processed","failed"]).default("received").notNull(),
+  errorMessage: text("errorMessage"),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
 
 /* ===== JOURNAL D'AUDIT ===== */
 export const billingAuditLog = mysqlTable("billing_audit_log", {

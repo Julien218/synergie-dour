@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PublicLayout } from "@/components/PublicLayout";
+import AdminBillingGuard from "@/components/AdminBillingGuard";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -56,7 +57,9 @@ const BillingDashboard = lazy(() => import("@/pages/billing/BillingDashboard"));
 const BillingClients = lazy(() => import("@/pages/billing/BillingClients"));
 const BillingCatalogue = lazy(() => import("@/pages/billing/BillingCatalogue"));
 const BillingQuotes = lazy(() => import("@/pages/billing/BillingQuotes"));
+const BillingQuoteEditor = lazy(() => import("@/pages/billing/BillingQuoteEditor"));
 const BillingInvoices = lazy(() => import("@/pages/billing/BillingInvoices"));
+const BillingInvoiceDetail = lazy(() => import("@/pages/billing/BillingInvoiceDetail"));
 const BillingSettings = lazy(() => import("@/pages/billing/BillingSettings"));
 const DocumentPortal = lazy(() => import("@/pages/billing/DocumentPortal"));
 const PostsPage = lazy(() => import("@/pages/PostsPage"));
@@ -205,23 +208,32 @@ function Router() {
         </Route>
 
         {/* Billing routes */}
+        <Route path="/dashboard/billing/quotes/new">
+          {() => <AdminBillingGuard><BillingQuoteEditor /></AdminBillingGuard>}
+        </Route>
+        <Route path="/dashboard/billing/quotes/:id">
+          {(params) => <AdminBillingGuard><BillingQuoteEditor id={params.id} /></AdminBillingGuard>}
+        </Route>
+        <Route path="/dashboard/billing/invoices/:id">
+          {(params) => <AdminBillingGuard><BillingInvoiceDetail id={params.id} /></AdminBillingGuard>}
+        </Route>
         <Route path="/dashboard/billing">
-          {() => <BillingDashboard />}
+          {() => <AdminBillingGuard><BillingDashboard /></AdminBillingGuard>}
         </Route>
         <Route path="/dashboard/billing/clients">
-          {() => <BillingClients />}
+          {() => <AdminBillingGuard><BillingClients /></AdminBillingGuard>}
         </Route>
         <Route path="/dashboard/billing/catalogue">
-          {() => <BillingCatalogue />}
+          {() => <AdminBillingGuard><BillingCatalogue /></AdminBillingGuard>}
         </Route>
         <Route path="/dashboard/billing/quotes">
-          {() => <BillingQuotes />}
+          {() => <AdminBillingGuard><BillingQuotes /></AdminBillingGuard>}
         </Route>
         <Route path="/dashboard/billing/invoices">
-          {() => <BillingInvoices />}
+          {() => <AdminBillingGuard><BillingInvoices /></AdminBillingGuard>}
         </Route>
         <Route path="/dashboard/billing/settings">
-          {() => <BillingSettings />}
+          {() => <AdminBillingGuard><BillingSettings /></AdminBillingGuard>}
         </Route>
         <Route path="/documents/:token">
           {(params) => <DocumentPortal token={params.token} />}

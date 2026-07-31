@@ -154,7 +154,7 @@ export const membershipRequests = mysqlTable("membership_requests", {
   rgpdConsent: int("rgpdConsent").default(1).notNull(),
   // Statut
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
-  paiementStatut: mysqlEnum("paiementStatut", ["en_attente", "paye", "gratuit"]).default("en_attente").notNull(),
+  paiementStatut: mysqlEnum("paiementStatut", ["en_attente", "paye", "gratuit"]).default("gratuit").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -238,21 +238,21 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 
 // =============================================================================
-//  MEMBERSHIPS (adhésions ASBL payantes)
+//  MEMBERSHIPS (adhésion gratuite en 2026 ; paiements optionnels séparés)
 // =============================================================================
 
 export const memberships = mysqlTable("memberships", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
   merchantId: int("merchantId").references(() => merchants.id),
-  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).notNull(),
-  status: mysqlEnum("status", ["pending_payment", "active", "expired", "cancelled"]).default("pending_payment").notNull(),
+  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).default("one_time").notNull(),
+  status: mysqlEnum("status", ["pending_payment", "active", "expired", "cancelled"]).default("active").notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 100 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 100 }),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 100 }),
   startsAt: timestamp("startsAt"),
   expiresAt: timestamp("expiresAt"),
-  amountCents: int("amountCents").notNull().default(5000),
+  amountCents: int("amountCents").notNull().default(0),
   currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

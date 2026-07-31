@@ -12,7 +12,6 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   Check,
-  Calendar,
   RefreshCw,
   Store,
   Users,
@@ -30,8 +29,6 @@ import {
   Wand2,
 } from "lucide-react";
 import { PublicLayout } from "@/components/PublicLayout";
-
-type PaymentMode = "one_time" | "subscription";
 
 const STRUCTURE_TYPES = [
   "Indépendant(e)",
@@ -115,7 +112,6 @@ const HOW_DID_YOU_HEAR = [
 
 export default function Membership() {
   const [, setLocation] = useLocation();
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>("one_time");
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     // Section 0 — Google Business
@@ -211,7 +207,6 @@ export default function Membership() {
     setSubmitting(true);
     requestMutation.mutate({
       ...form,
-      paymentMode,
       acceptsEmailContact: form.acceptsEmailContact ? 1 : 0,
       rgpdConsent: form.rgpdConsent ? 1 : 0,
     });
@@ -284,8 +279,8 @@ export default function Membership() {
             </Badge>
             <h1 className="text-4xl font-bold mb-3 text-[#D4AF37]">Rejoindre Synergie Dour</h1>
             <p className="text-[#F0E68C] text-lg max-w-2xl">
-              50€/an pour accéder à l'ensemble des services membres — annuaire, événements,
-              visibilité, outils digitaux.
+              L'adhésion est gratuite jusqu'au 31 décembre 2026 — annuaire, événements,
+              visibilité et mise en réseau locale.
             </p>
           </div>
         </div>
@@ -319,61 +314,25 @@ export default function Membership() {
           </div>
         </section>
 
-        {/* ── MODE DE PAIEMENT ── */}
+        {/* ── ADHÉSION 2026 ── */}
         <section className="py-12 px-4">
           <div className="container mx-auto max-w-4xl">
-            <h2 className="text-2xl font-bold text-[#001a3d] mb-2">Choisissez votre formule</h2>
-            <p className="text-gray-600 mb-6">Paiement unique ou renouvellement automatique — annulable à tout moment.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Paiement annuel */}
-              <button
-                type="button"
-                onClick={() => setPaymentMode("one_time")}
-                className={`text-left p-6 rounded-xl border-2 transition-all ${
-                  paymentMode === "one_time"
-                    ? "border-[#D4AF37] bg-amber-50/60 shadow-md"
-                    : "border-gray-200 bg-white hover:border-amber-200"
-                }`}
-                aria-pressed={paymentMode === "one_time"}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <Calendar className="w-6 h-6 text-[#001a3d]" />
-                  {paymentMode === "one_time" && (
-                    <Badge className="bg-[#D4AF37] text-[#001a3d]">Sélectionné</Badge>
-                  )}
+            <div className="rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-r from-amber-50 to-white p-6 md:p-8 shadow-sm">
+              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <Badge className="bg-[#D4AF37] text-[#001a3d] mb-3">Décision statutaire 2026</Badge>
+                  <h2 className="text-2xl font-bold text-[#001a3d]">Adhésion gratuite en 2026</h2>
+                  <p className="mt-2 max-w-2xl text-gray-700">
+                    Aucune cotisation ni carte bancaire n'est demandée pour rejoindre l'association cette année.
+                    Les prestations optionnelles payantes font l'objet d'un devis et d'une facture distincts,
+                    acceptés avant tout paiement.
+                  </p>
                 </div>
-                <h3 className="font-bold text-[#001a3d] text-lg mb-1">Paiement annuel</h3>
-                <p className="text-3xl font-bold text-[#001a3d] mb-2">50€</p>
-                <p className="text-sm text-gray-600">
-                  Vous payez une seule fois. Rappel envoyé avant expiration.
-                </p>
-              </button>
-
-              {/* Abonnement */}
-              <button
-                type="button"
-                onClick={() => setPaymentMode("subscription")}
-                className={`text-left p-6 rounded-xl border-2 transition-all ${
-                  paymentMode === "subscription"
-                    ? "border-[#D4AF37] bg-amber-50/60 shadow-md"
-                    : "border-gray-200 bg-white hover:border-amber-200"
-                }`}
-                aria-pressed={paymentMode === "subscription"}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <RefreshCw className="w-6 h-6 text-[#001a3d]" />
-                  {paymentMode === "subscription" && (
-                    <Badge className="bg-[#D4AF37] text-[#001a3d]">Sélectionné</Badge>
-                  )}
+                <div className="shrink-0 text-center md:text-right">
+                  <p className="text-4xl font-bold text-[#001a3d]">0 €</p>
+                  <p className="text-sm text-gray-600">jusqu'au 31/12/2026</p>
                 </div>
-                <h3 className="font-bold text-[#001a3d] text-lg mb-1">Renouvellement automatique</h3>
-                <p className="text-3xl font-bold text-[#001a3d] mb-2">
-                  50€<span className="text-base font-normal text-gray-600">/an</span>
-                </p>
-                <p className="text-sm text-gray-600">
-                  Renouvelé chaque année. Annulable depuis votre espace membre.
-                </p>
-              </button>
+              </div>
             </div>
           </div>
         </section>
@@ -710,8 +669,8 @@ export default function Membership() {
                       <ol className="list-decimal list-inside space-y-1 text-gray-700">
                         <li>Vous soumettez votre candidature</li>
                         <li>Le bureau de l'ASBL examine et valide</li>
-                        <li>Vous recevez un email avec le lien de paiement</li>
-                        <li>Après paiement, votre adhésion est active immédiatement</li>
+                        <li>Vous recevez un email de confirmation</li>
+                        <li>Votre adhésion 2026 est activée sans paiement</li>
                       </ol>
                     </div>
 

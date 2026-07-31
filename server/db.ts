@@ -35,7 +35,6 @@ export async function getDb() {
       waitForConnections: true,
       connectionLimit: 5,
       connectTimeout: 30000,
-      acquireTimeout: 30000,
     });
     _db = drizzle(_pool as any) as any;
   }
