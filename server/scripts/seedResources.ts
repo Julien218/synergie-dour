@@ -13,7 +13,6 @@
 import { getDb } from "../db";
 import { eq } from "drizzle-orm";
 import { resources } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
 import { RESOURCES } from "../../client/src/data/resources";
 
 async function seedResources() {

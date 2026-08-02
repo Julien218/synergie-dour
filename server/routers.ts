@@ -4,7 +4,6 @@ import { loginWithPassword, registerWithPassword, SESSION_COOKIE, SESSION_DURATI
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, adminProcedure, protectedProcedure } from "./_core/trpc";
 import { getDb, rawQuery, rawExecute } from "./db";
-import { rawQuery, rawExecute } from "./db";
 import {
   getMerchants,
   getMerchantById,
@@ -220,11 +219,23 @@ export const appRouter = router({
       if (!v.message || typeof v.message !== "string" || !v.message.trim()) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Le message est obligatoire." });
       }
+      if (v.rgpdConsent !== true) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Le consentement RGPD est obligatoire." });
+      }
       return v;
     }).mutation(async ({ input }: any) => {
       let result;
       try {
-        result = await createContactRequest(input as any);
+        result = await createContactRequest({
+          name: input.name.trim(),
+          email: input.email.trim().toLowerCase(),
+          phone: typeof input.phone === "string" && input.phone.trim() ? input.phone.trim() : null,
+          subject: input.subject.trim(),
+          message: input.message.trim(),
+          rgpdConsent: 1,
+          rgpdConsentAt: new Date(),
+          status: "new",
+        });
       } catch (e: any) {
         console.error("[contact.submit] Erreur base de données:", e.message);
         throw new TRPCError({
@@ -293,7 +304,9 @@ export const appRouter = router({
           message:             data.message             || null,
           howDidYouHear:       data.howDidYouHear       || null,
           acceptsEmailContact: data.acceptsEmailContact ? 1 : 0,
+          acceptsEmailContactAt: data.acceptsEmailContact ? new Date() : null,
           rgpdConsent:         data.rgpdConsent         ? 1 : 0,
+          rgpdConsentAt:       new Date(),
         });
       } catch (e: any) {
         console.error("[membership.request] Erreur base de données:", e.message);
@@ -522,7 +535,7 @@ export const appRouter = router({
     }),
 
     // Importer contacts LeadFinder → CRM commerçants Synergie
-    importToMerchants: adminProcedure.input((val: any) => val ?? {}).mutation(async ({ input }) => {
+    importToMerchants: adminProcedure.input((val: any) => val ?? {}).mutation(async ({ input, ctx }) => {
       const { getAllLeadFinderContacts } = await import("./leadfinder");
       const { createMerchant } = await import("./db");
       const contacts = await getAllLeadFinderContacts();
@@ -532,6 +545,7 @@ export const appRouter = router({
       for (const c of valid) {
         try {
           await createMerchant({
+            userId: ctx.user.id,
             businessName: c.full_name || c.company || "Sans nom",
             businessCategory: c.profession || "Professionnel",
             description: c.notes || "",
@@ -583,10 +597,15 @@ export const appRouter = router({
       } catch { return []; }
     }),
     approve: adminProcedure.input((val: unknown) => {
-      if (typeof val === "object" && val !== null) return val as { id: number };
+      if (typeof val === "object" && val !== null) {
+        return val as { id: number; note?: string };
+      }
       throw new Error("Invalid input");
     }).mutation(async ({ input, ctx }) => {
-      await rawExecute("UPDATE pending_changes SET status = ?, reviewedBy = NULL, reviewedAt = NOW() WHERE id = ?", ["approved", input.id]);
+      await rawExecute(
+        "UPDATE pending_changes SET status = ?, reviewedBy = ?, reviewNote = ?, reviewedAt = NOW() WHERE id = ?",
+        ["approved", ctx.user.id, input.note || null, input.id]
+      );
       return { success: true };
     }),
     reject: adminProcedure.input((val: unknown) => {

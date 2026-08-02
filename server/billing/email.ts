@@ -154,10 +154,10 @@ export async function sendDocumentEmail(params: SendDocumentEmailParams): Promis
   try {
     const templateFn = templates[params.template];
     if (!templateFn) throw new Error(`Template "${params.template}" not found`);
-    
+
     const { subject, html } = templateFn(params);
 
-    const attachments = params.pdfAttachmentBase64 
+    const attachments = params.pdfAttachmentBase64
       ? [{ filename: params.pdfFilename || `${params.documentNumber}.pdf`, content: params.pdfAttachmentBase64 }]
       : undefined;
 

@@ -21,16 +21,16 @@ export interface LineResult {
 export function calculateLineTotal(input: LineInput): LineResult {
   const qty = Math.round(input.quantity * 100); // quantité en centièmes
   const grossCents = Math.round((qty * input.unitPriceCents) / 100);
-  
+
   // Appliquer la remise
   const discountMultiplier = Math.round((100 - input.discountPercent) * 100);
   const netCents = Math.round((grossCents * discountMultiplier) / 10000);
-  
+
   // TVA
   const vatMultiplier = Math.round(input.vatRate * 100);
   const vatCents = Math.round((netCents * vatMultiplier) / 10000);
   const ttcCents = netCents + vatCents;
-  
+
   return {
     lineTotalCents: netCents,
     vatAmountCents: vatCents,
@@ -49,7 +49,7 @@ export function calculateDocumentTotals(lines: LineResult[]): DocumentTotals {
   const subtotalCents = lines.reduce((sum, l) => sum + l.lineTotalCents, 0);
   const vatTotalCents = lines.reduce((sum, l) => sum + l.vatAmountCents, 0);
   const totalCents = subtotalCents + vatTotalCents;
-  
+
   return { subtotalCents, vatTotalCents, totalCents };
 }
 

@@ -8,7 +8,7 @@ import { getPool } from "../db";
 export async function query(sql: string, params: any[] = []) {
   const pool = await getPool();
   if (!pool) throw new Error("Base de données indisponible");
-  const [rows] = await pool.query(sql, params);
+  const [rows] = await pool.query(sql, nullify(params));
   return rows;
 }
 
@@ -20,7 +20,7 @@ export async function queryOne(sql: string, params: any[] = []) {
 export async function execute(sql: string, params: any[] = []) {
   const pool = await getPool();
   if (!pool) throw new Error("Base de données indisponible");
-  const [result] = await pool.execute(sql, params);
+  const [result] = await pool.execute(sql, nullify(params));
   return result;
 }
 

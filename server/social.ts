@@ -4,7 +4,7 @@ import { syncAllPosts, generateMembrePost, generateLocalPost, saveGeneratedPost 
 import { generateImage } from "./_core/imageGeneration";
 import { ENV } from "./_core/env";
 import { verifySessionToken } from "./authService";
-import { getDb } from "./db";
+import { getDb, rawExecute } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -242,7 +242,7 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     let generationId: number | null = null;
     if (db) {
       try {
-        const [ins] = await db.execute(
+        const ins = await rawExecute(
           "INSERT INTO image_generations (user_id, user_name, user_email, template, title, content, prompt, image_url, format, quality, status, logo_present, signature_present, brand_compliant) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1)",
           [user?.id ?? null, user?.name ?? null, user?.email ?? null,
            post_type || template || "actualite", title || null, content || null,

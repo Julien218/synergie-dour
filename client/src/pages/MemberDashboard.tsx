@@ -155,7 +155,7 @@ function MembershipStatusCard({
     );
   }
 
-  const statusConfig = {
+  const statusConfig = ({
     pending_payment: {
       icon: AlertCircle,
       color: "amber",
@@ -180,15 +180,15 @@ function MembershipStatusCard({
       label: "Adhésion annulée",
       desc: "Votre adhésion est annulée. Vous pouvez en redemander une à tout moment.",
     },
-  }[membership.status];
+  } as const)[membership.status];
 
   const StatusIcon = statusConfig.icon;
-  const colorClasses = {
+  const colorClasses = ({
     green: { bg: "bg-green-50/70", border: "border-green-200", text: "text-green-900", iconBg: "bg-green-100", iconColor: "text-green-700" },
     amber: { bg: "bg-amber-50/70", border: "border-amber-200", text: "text-amber-900", iconBg: "bg-amber-100", iconColor: "text-amber-700" },
     red: { bg: "bg-red-50/70", border: "border-red-200", text: "text-red-900", iconBg: "bg-red-100", iconColor: "text-red-700" },
     gray: { bg: "bg-gray-50/70", border: "border-gray-200", text: "text-gray-900", iconBg: "bg-gray-100", iconColor: "text-gray-700" },
-  }[statusConfig.color];
+  } as const)[statusConfig.color];
 
   return (
     <Card className={`${colorClasses.border} ${colorClasses.bg} border-2`}>

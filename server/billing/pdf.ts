@@ -332,13 +332,13 @@ export function generatePdfBuffer(data: PdfData): Promise<Buffer> {
 
 /** Génère un PDF en HTML simple pour rendu via puppeteer ou similaire */
 export function generatePdfHtml(data: PdfData): string {
-  const docTitle = data.documentType === "quote" 
-    ? "DEVIS" 
-    : data.documentType === "credit_note" 
-    ? "NOTE DE CRÉDIT" 
+  const docTitle = data.documentType === "quote"
+    ? "DEVIS"
+    : data.documentType === "credit_note"
+    ? "NOTE DE CRÉDIT"
     : "FACTURE";
 
-  const formatEuro = (cents: number) => 
+  const formatEuro = (cents: number) =>
     new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(cents / 100);
 
   const linesHtml = data.lines.map((line, i) => `
@@ -354,8 +354,8 @@ export function generatePdfHtml(data: PdfData): string {
 
   const vatMention = data.emitter.vatExempt
     ? "TVA non applicable — régime à confirmer par le comptable"
-    : data.emitter.vatNumber 
-    ? `TVA: ${data.emitter.vatNumber}` 
+    : data.emitter.vatNumber
+    ? `TVA: ${data.emitter.vatNumber}`
     : "";
 
   return `<!DOCTYPE html>
@@ -472,8 +472,8 @@ export function generatePdfHtml(data: PdfData): string {
   ${data.emitter.legalMentions ? `<div class="legal-mentions">${escapeHtml(data.emitter.legalMentions)}</div>` : ""}
 
   <div class="doc-hash">
-    Hash: ${createHash("sha256").update(JSON.stringify(data)).digest("hex").substring(0, 16)}... | 
-    Généré par: ${data.createdBy || "Système"} | 
+    Hash: ${createHash("sha256").update(JSON.stringify(data)).digest("hex").substring(0, 16)}... |
+    Généré par: ${data.createdBy || "Système"} |
     ${new Date().toISOString()}
   </div>
 
@@ -487,8 +487,8 @@ export function generatePdfHtml(data: PdfData): string {
 
 /** Génère le XML UBL pour Peppol (EN 16931) */
 export function generateUblXml(data: PdfData): string {
-  const vatNote = data.emitter.vatExempt 
-    ? "Non assujetti à la TVA" 
+  const vatNote = data.emitter.vatExempt
+    ? "Non assujetti à la TVA"
     : "";
 
   const linesXml = data.lines.map((line, i) => `    <cac:InvoiceLine>

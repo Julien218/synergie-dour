@@ -374,10 +374,10 @@ billingRouter.post("/catalog", async (req, res) => {
          (reference, description, type, unitPriceCents, unit, vatRate,
           vatExemption, category)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
+      nullify([
         b.reference, b.description, b.type, b.unitPriceCents, b.unit,
         b.vatRate, b.vatExemption, b.category,
-      ]
+      ])
     );
     res.status(201).json({
       item: await queryOne(
@@ -806,10 +806,10 @@ billingRouter.post("/invoices/:id/payment", async (req, res) => {
       `INSERT INTO payment_allocations
          (invoiceId, amountCents, method, paymentDate, reference, notes, recordedBy)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
+      nullify([
         id, input.amountCents, input.method, input.paymentDate,
         input.reference, input.notes, (req as any).user.id,
-      ]
+      ])
     );
     const sum = await queryOne(
       "SELECT COALESCE(SUM(amountCents), 0) AS paid FROM payment_allocations WHERE invoiceId = ?",

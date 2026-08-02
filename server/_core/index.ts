@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import crypto from "node:crypto";
@@ -15,6 +17,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
 import { socialRouter } from "../social";
 import { autopublishRouter } from "../autopublish/router";
+import { requireAdmin as requireAutopublishAdmin } from "../autopublish/authMiddleware";
 import { billingRouter } from "../billing/router";
 import { billingPortalRouter } from "../billing/portal";
 import { runBillingMigrations } from "../billing/migrate";
@@ -84,19 +87,11 @@ async function initDatabase() {
     let setupConnection: mysql.PoolConnection | null = null;
     try {
       setupConnection = await pool.getConnection();
-      // Migrations de colonnes — robustes indépendamment de la version MySQL
-      // (ADD COLUMN IF NOT EXISTS n'est supporté qu'à partir de MySQL 8.0.29 ;
-      //  sur une version antérieure la requête lève une erreur de syntaxe qui était
-      //  silencieusement avalée, laissant la colonne absente en production —
-      //  cause racine du bug "membership.request" 500 constaté en recette du 08/07/2026)
-      await ensureColumn(pool, "merchants", "googleBusinessUrl", "ALTER TABLE `merchants` ADD COLUMN `googleBusinessUrl` varchar(500)");
-      await ensureColumn(pool, "membership_requests", "paiementStatut", "ALTER TABLE `membership_requests` ADD COLUMN `paiementStatut` VARCHAR(20) NOT NULL DEFAULT 'gratuit'");
-
       const sqls = [
         `CREATE TABLE IF NOT EXISTS \`users\` (\`id\` int AUTO_INCREMENT NOT NULL, \`openId\` varchar(64) NOT NULL, \`name\` text, \`email\` varchar(320), \`loginMethod\` varchar(64), \`passwordHash\` varchar(255), \`emailVerifiedAt\` timestamp NULL, \`role\` enum('user','admin','super_admin') NOT NULL DEFAULT 'user', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, \`lastSignedIn\` timestamp NOT NULL DEFAULT (now()), CONSTRAINT \`users_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`users_openId_unique\` UNIQUE(\`openId\`))`,
         `CREATE TABLE IF NOT EXISTS \`categories\` (\`id\` int AUTO_INCREMENT NOT NULL, \`name\` varchar(100) NOT NULL, \`description\` text, \`icon\` varchar(100), \`createdAt\` timestamp NOT NULL DEFAULT (now()), PRIMARY KEY(\`id\`), UNIQUE(\`name\`))`,
-        `CREATE TABLE IF NOT EXISTS \`contact_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`name\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20), \`subject\` varchar(255) NOT NULL, \`message\` text NOT NULL, \`status\` enum('new','read','replied','closed') NOT NULL DEFAULT 'new', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`membership_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`contactName\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20) NOT NULL, \`address\` varchar(255) NOT NULL, \`message\` text, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`contact_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`name\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20), \`subject\` varchar(255) NOT NULL, \`message\` text NOT NULL, \`rgpdConsent\` int NOT NULL DEFAULT 0, \`rgpdConsentAt\` timestamp NULL, \`status\` enum('new','read','replied','closed') NOT NULL DEFAULT 'new', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`membership_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`structureType\` varchar(50), \`vatNumber\` varchar(50), \`sector\` varchar(100), \`website\` varchar(255), \`socialMedia\` varchar(255), \`employeeCount\` varchar(20), \`contactName\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20) NOT NULL, \`address\` varchar(255) NOT NULL, \`message\` text, \`howDidYouHear\` varchar(100), \`acceptsEmailContact\` int NOT NULL DEFAULT 0, \`acceptsEmailContactAt\` timestamp NULL, \`rgpdConsent\` int NOT NULL DEFAULT 0, \`rgpdConsentAt\` timestamp NULL, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`paiementStatut\` enum('en_attente','paye','gratuit') NOT NULL DEFAULT 'gratuit', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`merchants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`description\` text, \`address\` varchar(255) NOT NULL, \`phone\` varchar(20), \`email\` varchar(320), \`website\` varchar(255), \`logo\` varchar(255), \`googleBusinessUrl\` varchar(500), \`isVerified\` int NOT NULL DEFAULT 0, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`news\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`content\` text NOT NULL, \`excerpt\` varchar(500), \`image\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`publishedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`events\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`description\` text NOT NULL, \`image\` varchar(255), \`startDate\` timestamp NOT NULL, \`endDate\` timestamp NULL, \`location\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
@@ -109,6 +104,25 @@ async function initDatabase() {
       for (const sql of sqls) {
         await setupConnection.execute(sql);
       }
+
+      // Migrations de colonnes — exécutées après CREATE TABLE pour que le
+      // démarrage fonctionne aussi sur une base totalement vierge.
+      await ensureColumn(pool, "merchants", "googleBusinessUrl", "ALTER TABLE `merchants` ADD COLUMN `googleBusinessUrl` varchar(500)");
+      await ensureColumn(pool, "membership_requests", "structureType", "ALTER TABLE `membership_requests` ADD COLUMN `structureType` varchar(50)");
+      await ensureColumn(pool, "membership_requests", "vatNumber", "ALTER TABLE `membership_requests` ADD COLUMN `vatNumber` varchar(50)");
+      await ensureColumn(pool, "membership_requests", "sector", "ALTER TABLE `membership_requests` ADD COLUMN `sector` varchar(100)");
+      await ensureColumn(pool, "membership_requests", "website", "ALTER TABLE `membership_requests` ADD COLUMN `website` varchar(255)");
+      await ensureColumn(pool, "membership_requests", "socialMedia", "ALTER TABLE `membership_requests` ADD COLUMN `socialMedia` varchar(255)");
+      await ensureColumn(pool, "membership_requests", "employeeCount", "ALTER TABLE `membership_requests` ADD COLUMN `employeeCount` varchar(20)");
+      await ensureColumn(pool, "membership_requests", "howDidYouHear", "ALTER TABLE `membership_requests` ADD COLUMN `howDidYouHear` varchar(100)");
+      await ensureColumn(pool, "membership_requests", "acceptsEmailContact", "ALTER TABLE `membership_requests` ADD COLUMN `acceptsEmailContact` int NOT NULL DEFAULT 0");
+      await ensureColumn(pool, "membership_requests", "paiementStatut", "ALTER TABLE `membership_requests` ADD COLUMN `paiementStatut` VARCHAR(20) NOT NULL DEFAULT 'gratuit'");
+      await ensureColumn(pool, "membership_requests", "acceptsEmailContactAt", "ALTER TABLE `membership_requests` ADD COLUMN `acceptsEmailContactAt` timestamp NULL");
+      await ensureColumn(pool, "membership_requests", "rgpdConsent", "ALTER TABLE `membership_requests` ADD COLUMN `rgpdConsent` int NOT NULL DEFAULT 0");
+      await ensureColumn(pool, "membership_requests", "rgpdConsentAt", "ALTER TABLE `membership_requests` ADD COLUMN `rgpdConsentAt` timestamp NULL");
+      await ensureColumn(pool, "contact_requests", "rgpdConsent", "ALTER TABLE `contact_requests` ADD COLUMN `rgpdConsent` int NOT NULL DEFAULT 0");
+      await ensureColumn(pool, "contact_requests", "rgpdConsentAt", "ALTER TABLE `contact_requests` ADD COLUMN `rgpdConsentAt` timestamp NULL");
+      await setupConnection.execute("ALTER TABLE `membership_requests` MODIFY COLUMN `rgpdConsent` int NOT NULL DEFAULT 0");
       await runBillingMigrations(pool);
       console.log("[DB] Tables vérifiées/créées ✅");
     } catch (e: any) {
@@ -192,6 +206,33 @@ async function startServer() {
   // Important pour Railway/Proxies
   app.set("trust proxy", 1);
 
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          ...(process.env.NODE_ENV === "development" ? ["'unsafe-eval'"] : []),
+          "https://accounts.google.com",
+          "https://www.gstatic.com",
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        connectSrc: ["'self'", "https:", "wss:"],
+        frameSrc: ["'self'", "https://www.google.com", "https://www.facebook.com"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    hsts: process.env.NODE_ENV === "production"
+      ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
+      : false,
+  }));
+
   // Stripe exige le corps brut pour vérifier la signature. Cette route doit
   // impérativement précéder express.json().
   app.post(
@@ -200,8 +241,52 @@ async function startServer() {
     stripeWebhookHandler
   );
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { message: "Trop de requêtes. Réessayez dans quelques minutes." },
+  });
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    message: { message: "Trop de tentatives de connexion. Réessayez plus tard." },
+  });
+  const publicFormLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 8,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { message: "Trop d'envois. Réessayez dans une heure." },
+  });
+  const mediaUploadLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 20,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { message: "Limite d'envoi de médias atteinte. Réessayez plus tard." },
+  });
+
+  // Le média est authentifié avant d'autoriser un corps volumineux. La limite
+  // 270 Mo couvre l'encodage base64 d'une vidéo de 200 Mo. Le reste de l'API
+  // conserve une limite stricte de 2 Mo.
+  app.use(
+    "/api/autopublish/media/upload",
+    mediaUploadLimiter,
+    requireAutopublishAdmin,
+    express.json({ limit: "270mb" }),
+    express.urlencoded({ limit: "270mb", extended: true })
+  );
+  app.use("/api/trpc/auth.login", authLimiter);
+  app.use("/api/trpc/contact.submit", publicFormLimiter);
+  app.use("/api/trpc/membership.request", publicFormLimiter);
+  app.use("/api", apiLimiter);
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ limit: "2mb", extended: true }));
   app.get("/api/health", (req, res) => res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
@@ -212,9 +297,9 @@ async function startServer() {
     },
   }));
 
-  // Diagnostic
+  // Diagnostic local uniquement : aucun chemin métier n'est journalisé en production.
   app.use((req, res, next) => {
-    if (req.url.startsWith('/api')) {
+    if (process.env.NODE_ENV !== "production" && req.url.startsWith('/api')) {
       const safeUrl = req.url.replace(
         /^\/api\/documents\/[^/?]+/,
         "/api/documents/[redacted]"

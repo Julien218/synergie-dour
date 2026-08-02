@@ -2,6 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PublicLayout } from "@/components/PublicLayout";
 import { useLocation } from "wouter";
@@ -16,13 +17,14 @@ export default function Contact() {
     phone: "",
     subject: "",
     message: "",
+    rgpdConsent: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitContact = trpc.contact.submit.useMutation({
     onSuccess: () => {
       toast.success("Votre message a été envoyé avec succès !");
-      setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+      setFormData({ name: "", email: "", phone: "", subject: "", message: "", rgpdConsent: false });
       setIsSubmitting(false);
     },
     onError: (error) => {
@@ -42,9 +44,7 @@ export default function Contact() {
         phone: formData.phone,
         subject: formData.subject,
         message: formData.message,
-        status: "new",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        rgpdConsent: formData.rgpdConsent,
       });
     } catch (error) {
       console.error(error);
@@ -211,9 +211,24 @@ export default function Contact() {
                         />
                       </div>
 
+                      <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50/40 p-4">
+                        <Checkbox
+                          id="rgpd-consent"
+                          checked={formData.rgpdConsent}
+                          onCheckedChange={(checked) => setFormData({ ...formData, rgpdConsent: checked === true })}
+                          required
+                        />
+                        <label htmlFor="rgpd-consent" className="text-sm leading-relaxed text-gray-700">
+                          J'accepte que Synergie Dour traite ces informations afin de répondre à ma demande. Consultez notre{" "}
+                          <a href="/privacy" className="font-medium text-blue-900 underline hover:text-amber-700">
+                            politique de confidentialité
+                          </a>.
+                        </label>
+                      </div>
+
                       <Button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !formData.rgpdConsent}
                         className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
                       >
                         <Send className="mr-2 w-4 h-4" />
@@ -230,4 +245,3 @@ export default function Contact() {
     </PublicLayout>
   );
 }
-

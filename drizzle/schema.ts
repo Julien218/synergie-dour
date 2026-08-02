@@ -116,6 +116,8 @@ export const contactRequests = mysqlTable("contact_requests", {
   phone: varchar("phone", { length: 20 }),
   subject: varchar("subject", { length: 255 }).notNull(),
   message: text("message").notNull(),
+  rgpdConsent: int("rgpdConsent").default(0).notNull(),
+  rgpdConsentAt: timestamp("rgpdConsentAt"),
   status: mysqlEnum("status", ["new", "read", "replied", "closed"]).default("new").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -151,7 +153,9 @@ export const membershipRequests = mysqlTable("membership_requests", {
   message: text("message"),
   howDidYouHear: varchar("howDidYouHear", { length: 100 }),        // Source de découverte
   acceptsEmailContact: int("acceptsEmailContact").default(0).notNull(),
-  rgpdConsent: int("rgpdConsent").default(1).notNull(),
+  acceptsEmailContactAt: timestamp("acceptsEmailContactAt"),
+  rgpdConsent: int("rgpdConsent").default(0).notNull(),
+  rgpdConsentAt: timestamp("rgpdConsentAt"),
   // Statut
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
   paiementStatut: mysqlEnum("paiementStatut", ["en_attente", "paye", "gratuit"]).default("gratuit").notNull(),

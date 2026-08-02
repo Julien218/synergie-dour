@@ -1,5 +1,6 @@
 import { sql, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
+import * as schema from "../drizzle/schema";
 import {
   InsertUser,
   users,
@@ -22,7 +23,7 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: MySql2Database<typeof schema> | null = null;
 let _pool: any = null;
 
 export async function getDb() {
@@ -36,7 +37,7 @@ export async function getDb() {
       connectionLimit: 5,
       connectTimeout: 30000,
     });
-    _db = drizzle(_pool as any) as any;
+    _db = drizzle(_pool as any, { schema, mode: "default" });
   }
   return _db;
 }

@@ -27,11 +27,11 @@ export function generateMembrePost(merchant: {
   telephone?: string | null;
   site_web?: string | null;
 }): GeneratedPost {
-  const titre = merchant.businessName.trim();
-  const cat = merchant.businessCategory || "Commerce local";
-  const adresse = merchant.address ? `📍 ${merchant.address}` : "";
-  const tel = merchant.phone ? `📞 ${merchant.phone}` : "";
-  const web = merchant.website ? `🌐 ${merchant.website}` : "";
+  const titre = merchant.nom.trim();
+  const cat = merchant.categorie || "Commerce local";
+  const adresse = merchant.adresse ? `📍 ${merchant.adresse}` : "";
+  const tel = merchant.telephone ? `📞 ${merchant.telephone}` : "";
+  const web = merchant.site_web ? `🌐 ${merchant.site_web}` : "";
   const infos = [adresse, tel, web].filter(Boolean).join("\n");
 
   const content = `🎉 Nouveau membre Synergie Dour !
@@ -74,7 +74,7 @@ export function generateLocalPost(bien: {
   description?: string | null;
 }): GeneratedPost {
   const titre = bien.titre || "Local commercial disponible";
-  const lieu = bien.village || bien.address || "Région de Dour";
+  const lieu = bien.village || bien.adresse || "Région de Dour";
   const surface = bien.surface ? `📐 Surface : ${bien.surface}` : "";
   const loyer = bien.loyer ? `💶 Loyer : ${bien.loyer}` : "";
   const contact = bien.contact || bien.agence || "";

@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PublicLayout } from "@/components/PublicLayout";
 import AdminBillingGuard from "@/components/AdminBillingGuard";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -38,7 +39,7 @@ const ManageEvents = lazy(() => import("@/pages/ManageEvents"));
 const ManageMerchants = lazy(() => import("@/pages/ManageMerchants"));
 const ManageRequests = lazy(() => import("@/pages/ManageRequests"));
 const MembershipRequestsAdmin = lazy(() => import("@/pages/MembershipRequestsAdmin"));
-const AgentModuleComingSoon = lazy(() => import("@/pages/AgentModuleComingSoon"));
+const AgentDashboard = lazy(() => import("@/pages/AgentDashboard"));
 const ManageLocaux = lazy(() => import("@/pages/ManageLocaux"));
 const ManagePosts = lazy(() => import("@/pages/ManagePosts"));
 const SocialMediaPage = lazy(() => import("@/pages/SocialMediaPage"));
@@ -70,6 +71,12 @@ function LoadingFallback() {
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-500" />
     </div>
   );
+}
+
+const adminRoles = ["admin", "super_admin"] as const;
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  return <ProtectedRoute roles={[...adminRoles]}>{children}</ProtectedRoute>;
 }
 
 function Router() {
@@ -142,58 +149,58 @@ function Router() {
 
         {/* Routes Dashboard */}
         <Route path="/dashboard">
-          {() => <Dashboard />}
+          {() => <ProtectedRoute><Dashboard /></ProtectedRoute>}
         </Route>
         <Route path="/dashboard/inbox">
-          {() => <InboxPage />}
+          {() => <AdminRoute><InboxPage /></AdminRoute>}
         </Route>
         <Route path="/dashboard/news">
-          {() => <ManageNews />}
+          {() => <AdminRoute><ManageNews /></AdminRoute>}
         </Route>
         <Route path="/dashboard/events">
-          {() => <ManageEvents />}
+          {() => <AdminRoute><ManageEvents /></AdminRoute>}
         </Route>
         <Route path="/dashboard/merchants">
-          {() => <ManageMerchants />}
+          {() => <AdminRoute><ManageMerchants /></AdminRoute>}
         </Route>
         <Route path="/dashboard/requests">
-          {() => <ManageRequests />}
+          {() => <AdminRoute><ManageRequests /></AdminRoute>}
         </Route>
         <Route path="/dashboard/membership-requests">
-          {() => <MembershipRequestsAdmin />}
+          {() => <AdminRoute><MembershipRequestsAdmin /></AdminRoute>}
         </Route>
         <Route path="/dashboard/agent">
-          {() => <AgentModuleComingSoon />}
+          {() => <AdminRoute><AgentDashboard /></AdminRoute>}
         </Route>
         <Route path="/dashboard/locaux">
-          {() => <ManageLocaux />}
+          {() => <AdminRoute><ManageLocaux /></AdminRoute>}
         </Route>
         <Route path="/dashboard/posts">
-          {() => <ManagePosts />}
+          {() => <AdminRoute><ManagePosts /></AdminRoute>}
         </Route>
         <Route path="/dashboard/social">
-          {() => <SocialMediaPage />}
+          {() => <AdminRoute><SocialMediaPage /></AdminRoute>}
         </Route>
         <Route path="/dashboard/autopublish">
-          {() => <AutopublishPage />}
+          {() => <AdminRoute><AutopublishPage /></AdminRoute>}
         </Route>
         <Route path="/dashboard/super-admin">
-          {() => <SuperAdminBrand />}
+          {() => <AdminRoute><SuperAdminBrand /></AdminRoute>}
         </Route>
         <Route path="/dashboard/members">
-          {() => <MemberDashboard />}
+          {() => <ProtectedRoute><MemberDashboard /></ProtectedRoute>}
         </Route>
         <Route path="/dashboard/gallery">
-          {() => <GalleryPage />}
+          {() => <AdminRoute><GalleryPage /></AdminRoute>}
         </Route>
         <Route path="/dashboard/leadfinder">
-          {() => <LeadFinderPage />}
+          {() => <AdminRoute><LeadFinderPage /></AdminRoute>}
         </Route>
         <Route path="/dashboard/clients">
-          {() => <ListeClients />}
+          {() => <AdminRoute><ListeClients /></AdminRoute>}
         </Route>
         <Route path="/dashboard/liste-clients">
-          {() => <ListeClients />}
+          {() => <AdminRoute><ListeClients /></AdminRoute>}
         </Route>
 
         {/* Page formulaire local commercial */}
