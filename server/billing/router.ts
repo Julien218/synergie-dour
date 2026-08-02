@@ -10,6 +10,7 @@ import {
   query,
   queryOne,
   reserveDocumentNumber,
+  nullify,
 } from "./db";
 import {
   calculateDocumentTotals,
@@ -301,13 +302,13 @@ billingRouter.post("/clients", async (req, res) => {
           phone, bceNumber, vatNumber, peppolId, language, paymentDelay,
           origin, merchantId, emailConsent, emailConsentAt, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
+      nullify([
         b.type, b.name, b.tradeName, b.address, b.postalCode, b.city,
         b.country.toUpperCase(), b.email.toLowerCase(), b.phone, b.bceNumber,
         b.vatNumber, b.peppolId, b.language, b.paymentDelay, b.origin,
         b.merchantId, b.emailConsent ? 1 : 0,
         b.emailConsent ? new Date() : null, b.notes,
-      ]
+      ])
     );
     const client = await queryOne(
       "SELECT * FROM billing_clients WHERE id = ?",
@@ -481,12 +482,12 @@ billingRouter.post("/quotes", async (req, res) => {
           subtotalCents, vatTotalCents, totalCents, currency, notes,
           conditions, createdBy, version, fiscalYear, sequenceNumber)
        VALUES (?, ?, ?, 'draft', NOW(), ?, ?, ?, ?, 'EUR', ?, ?, ?, 1, ?, ?)`,
-      [
+      nullify([
         reserved.number, input.clientId, profile.id, input.validUntil,
         totals.subtotalCents, totals.vatTotalCents, totals.totalCents,
         input.notes, input.conditions, (req as any).user.id,
         reserved.fiscalYear, reserved.sequenceNumber,
-      ]
+      ])
     );
     quoteId = Number((result as any).insertId);
     for (let index = 0; index < input.lines.length; index++) {

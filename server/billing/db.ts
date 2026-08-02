@@ -109,3 +109,13 @@ export async function hashToken(token: string): Promise<string> {
 export function generateSecureToken(): string {
   return randomBytes(32).toString("hex");
 }
+
+/**
+ * Convertit les valeurs `undefined` en `null` pour mysql2.
+ * Préserve les valeurs valides : 0, false, "", null, NaN, etc.
+ * Utilisée avant les appels execute() / query() quand le schéma Zod
+ * peut produire `undefined` sur des champs .optional().
+ */
+export function nullify<T extends unknown[]>(params: T): (T[number] | null)[] {
+  return params.map((v) => (v === undefined ? null : v)) as (T[number] | null)[];
+}

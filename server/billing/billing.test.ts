@@ -115,3 +115,149 @@ describe("PDF de facturation", () => {
     expect(pdf.byteLength).toBeGreaterThan(10_000);
   });
 });
+
+// ---- Tests: sanitization undefined → null pour mysql2 ----
+
+import { nullify } from "./db";
+import { z } from "zod";
+
+describe("nullify — sanitization pour mysql2", () => {
+  it("convertit undefined en null", () => {
+    expect(nullify([undefined, "test", undefined])).toEqual([null, "test", null]);
+  });
+
+  it("préserve les valeurs valides 0, false, chaîne vide", () => {
+    expect(nullify([0, false, "", null, NaN])).toEqual([0, false, "", null, NaN]);
+  });
+
+  it("ne modifie pas un tableau sans undefined", () => {
+    const input = [1, "a", true, null, { x: 1 }];
+    expect(nullify(input)).toEqual(input);
+  });
+
+  it("gère un tableau vide", () => {
+    expect(nullify([])).toEqual([]);
+  });
+});
+
+describe("POST /billing/clients — champs optionnels", () => {
+  // Reproduction du schéma côté serveur (sans DB)
+  const clientSchema = z.object({
+    type: z.enum(["individual", "company"]).default("company"),
+    name: z.string().trim().min(2).max(255),
+    tradeName: z.string().trim().max(5_000).nullable().optional(),
+    address: z.string().trim().min(3).max(2_000),
+    postalCode: z.string().trim().max(10).nullable().optional(),
+    city: z.string().trim().max(100).nullable().optional(),
+    country: z.string().trim().length(2).default("BE"),
+    email: z.string().trim().email().max(320),
+    phone: z.string().trim().max(30).nullable().optional(),
+    vatNumber: z.string().trim().max(30).nullable().optional(),
+    notes: z.string().trim().max(5_000).nullable().optional(),
+  });
+
+  it("accepte uniquement les champs obligatoires et produit undefined pour le reste", () => {
+    const parsed = clientSchema.parse({
+      name: "Test E2E",
+      address: "Grand Place 1",
+      email: "test@example.com",
+    });
+
+    // Les champs obligatoires sont définis
+    expect(parsed.name).toBe("Test E2E");
+    expect(parsed.address).toBe("Grand Place 1");
+    expect(parsed.email).toBe("test@example.com");
+    expect(parsed.country).toBe("BE"); // default
+
+    // Les champs optionnels sont undefined (pas null)
+    expect(parsed.tradeName).toBeUndefined();
+    expect(parsed.postalCode).toBeUndefined();
+    expect(parsed.city).toBeUndefined();
+    expect(parsed.phone).toBeUndefined();
+    expect(parsed.vatNumber).toBeUndefined();
+    expect(parsed.notes).toBeUndefined();
+  });
+
+  it("nullify convertit les undefined du schéma en null pour MySQL", () => {
+    const parsed = clientSchema.parse({
+      name: "Test E2E",
+      address: "Grand Place 1",
+      email: "test@example.com",
+    });
+
+    // Simule le tableau de paramètres envoyé à execute()
+    const params = nullify([
+      parsed.type, parsed.name, parsed.tradeName, parsed.address, parsed.postalCode,
+      parsed.city, parsed.country.toUpperCase(), parsed.email.toLowerCase(),
+      parsed.phone, parsed.vatNumber, parsed.notes,
+    ]);
+
+    // Tous les undefined sont devenus null
+    expect(params).toEqual([
+      "company", "Test E2E", null, "Grand Place 1", null,
+      null, "BE", "test@example.com",
+      null, null, null,
+    ]);
+    // Aucun undefined ne subsiste
+    expect(params.every((v) => v !== undefined)).toBe(true);
+  });
+});
+
+describe("POST /billing/quotes — champs optionnels", () => {
+  const nullableText = z.string().trim().max(5_000).nullable().optional();
+
+  it("accepte uniquement clientId + lines et produit undefined pour le reste", () => {
+    const inputSchema = z.object({
+      clientId: z.coerce.number().int().positive(),
+      validUntil: z.coerce.date().nullable().optional(),
+      notes: nullableText,
+      conditions: nullableText,
+      lines: z.array(z.object({
+        description: z.string().trim().min(2).max(2_000),
+        quantity: z.coerce.number().positive().max(1_000_000),
+        unit: z.string().trim().min(1).max(20).default("unité"),
+        unitPriceCents: z.coerce.number().int().min(0).max(100_000_000),
+        discountPercent: z.coerce.number().min(0).max(100).default(0),
+        vatRate: z.coerce.number().min(0).max(100).default(0),
+      })).min(1).max(100),
+    });
+
+    const parsed = inputSchema.parse({
+      clientId: 1,
+      lines: [{
+        description: "Adhésion annuelle",
+        quantity: 1,
+        unitPriceCents: 5000,
+      }],
+    });
+
+    // Les champs obligatoires sont définis
+    expect(parsed.clientId).toBe(1);
+    expect(parsed.lines).toHaveLength(1);
+    expect(parsed.lines[0].unit).toBe("unité"); // default
+    expect(parsed.lines[0].discountPercent).toBe(0); // default
+    expect(parsed.lines[0].vatRate).toBe(0); // default
+
+    // Les champs optionnels sont undefined
+    expect(parsed.validUntil).toBeUndefined();
+    expect(parsed.notes).toBeUndefined();
+    expect(parsed.conditions).toBeUndefined();
+  });
+
+  it("nullify convertit les undefined du devis en null pour MySQL", () => {
+    const params = nullify([
+      "DEV-SD-2026-0001", 1, 1, undefined,
+      5000, 0, 5000,
+      undefined, undefined, 1,
+      2026, 1,
+    ]);
+
+    expect(params).toEqual([
+      "DEV-SD-2026-0001", 1, 1, null,
+      5000, 0, 5000,
+      null, null, 1,
+      2026, 1,
+    ]);
+    expect(params.every((v) => v !== undefined)).toBe(true);
+  });
+});
