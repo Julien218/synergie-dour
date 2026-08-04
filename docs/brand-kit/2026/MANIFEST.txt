@@ -59,4 +59,8 @@
 07_BIBLE_VISUELLE/pages/page_18.png
 08_APERCUS/Synergie_Dour_Audit_Visuels_Sources.png
 08_APERCUS/Synergie_Dour_Planche_ADN_Express.png
+AGENT_INDEX.json
+AGENT_README.md
 README.md
+VERSION
+MANIFEST.txt
