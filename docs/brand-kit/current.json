@@ -1,0 +1,7 @@
+{
+  "currentVersion": "2026.08.05",
+  "brandRoot": "docs/brand-kit/2026",
+  "agentIndex": "docs/brand-kit/2026/AGENT_INDEX.json",
+  "sharedModule": "shared/brand/synergie-dour.ts",
+  "rules": "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/brand-rules.json"
+}
