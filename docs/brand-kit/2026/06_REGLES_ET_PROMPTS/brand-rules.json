@@ -1,0 +1,75 @@
+{
+  "brand": "Synergie Dour",
+  "version": "2026.08",
+  "status": "production",
+  "master_logo": "01_LOGO/SD_Embleme_Master_Transparent_1024.png",
+  "signature": "Commerçants & indépendants réunis",
+  "institutional_name": "ASBL Synergie Dour",
+  "palette": {
+    "navy": "#070A2A",
+    "deep_navy": "#020E61",
+    "royal_blue": "#0942B2",
+    "electric_blue": "#2685E8",
+    "cyan": "#70C7FB",
+    "gold": "#FED613",
+    "amber": "#DA8B01",
+    "cream": "#F7F5EC",
+    "white": "#FFFFFF",
+    "ink": "#101934"
+  },
+  "typography": {
+    "display": "Inter Display / Inter ExtraBold",
+    "body": "Inter Regular",
+    "emphasis": "Inter SemiBold"
+  },
+  "logo_rules": {
+    "clear_space": "15% de la largeur de l’emblème sur chaque côté",
+    "minimum_digital": "96 px pour l’emblème seul; 220 px pour une composition avec signature",
+    "allowed_backgrounds": [
+      "navy uni",
+      "blanc ou crème",
+      "photo avec voile navy renforçant le contraste"
+    ],
+    "forbidden": [
+      "déformation",
+      "rotation",
+      "recadrage",
+      "recolorisation",
+      "fusion avec JS-Innov.IA",
+      "damier simulant une transparence",
+      "réinterprétation IA du symbole"
+    ]
+  },
+  "composition": {
+    "grid": "12 colonnes",
+    "spacing_unit_px": 8,
+    "safe_margin_percent": 6,
+    "corner_radius_px": [18, 24, 34]
+  },
+  "icons": {
+    "style": "ligne arrondie, monocolore",
+    "stroke_ratio": "3% de la taille",
+    "colors": ["gold on navy", "navy on white"]
+  },
+  "photography": {
+    "rules": [
+      "photos locales authentiques et validées",
+      "lumière naturelle",
+      "activité humaine réelle",
+      "aucun monument ou commerce inventé",
+      "voile navy de 55 à 75% sous le texte"
+    ]
+  },
+  "co_branding": {
+    "JS-Innov.IA": "crédit optionnel en pied de page, séparé du logo Synergie Dour, largeur maximale 12% du support"
+  },
+  "quality_gate": [
+    "orthographe validée",
+    "logo master utilisé",
+    "ratio non déformé",
+    "contraste lisible",
+    "marges de sécurité respectées",
+    "export sans pixellisation",
+    "données factuelles confirmées"
+  ]
+}
