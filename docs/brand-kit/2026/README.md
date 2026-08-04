@@ -1,30 +1,45 @@
-# Kit ADN visuel — Synergie Dour
+# ADN visuel Synergie Dour - source de vérité
 
-Version 2026.08.
+Version **2026.08.05**.
 
-## Décision de référence
+Ce dossier est le point d'entrée officiel pour le branding, les agents IA, les automatisations et les développements du dépôt `Julien218/synergie-dour`.
 
-L’emblème transparent `SD_Embleme_Master_Transparent_1024.png` est la source maîtresse. Il doit être copié à l’identique. Les compositions avec le nom et la signature sont construites autour de cet emblème, sans modifier sa géométrie.
+## Accès agents IA
 
-## Signature normalisée
+Lire dans cet ordre :
 
-**Commerçants & indépendants réunis**
+1. `AGENT_README.md`
+2. `AGENT_INDEX.json`
+3. `06_REGLES_ET_PROMPTS/brand-rules.json`
+4. `06_REGLES_ET_PROMPTS/SYSTEM_PROMPT_AGENT_VISUEL.md`
+5. `06_REGLES_ET_PROMPTS/GUIDE_EDITORIAL.md`
+6. `06_REGLES_ET_PROMPTS/AUDIT_VISUELS_SOURCES.md`
 
-## Structure du kit
+Le module TypeScript partagé est disponible dans `shared/brand/synergie-dour.ts`.
 
-- `01_LOGO` : emblème maître et compositions de marque.
-- `02_RESEAUX_SOCIAUX` : couvertures et identités sociales.
-- `03_WEB_ET_COCKPIT` : hero web, bannière équipe et maquette cockpit.
-- `04_MODELES_DE_CONTENU` : modèles de publications.
-- `05_ICONES` : pictogrammes PNG et SVG.
-- `06_REGLES_ET_PROMPTS` : règles automatisables, audit, rédaction et prompt agent.
-- `07_BIBLE_VISUELLE` : bible PDF.
-- `08_APERCUS` : planche ADN et planche de contrôle.
+## Fichiers de production déjà présents dans le dépôt
 
-## Principe de production
+- Logo Synergie Dour utilisé par l'application : `public/logo-sd-officiel.png`
+- Logo transparent : `public/logo-transparent.png`
+- Crédit JS-Innov.IA : `public/logo-jsinnovia.png`
 
-Les scènes et photographies doivent être produites ou validées séparément. Le texte et le logo officiel sont ajoutés uniquement lors de la composition finale afin d’éviter toute altération, faute ou déformation.
+## Référence de marque
+
+- Nom : **Synergie Dour**
+- Dénomination : **ASBL Synergie Dour**
+- Signature : **Commerçants & indépendants réunis**
+- Emblème : ne jamais redessiner, recoloriser, recadrer, déformer ou régénérer avec une IA.
+
+## Processus obligatoire
+
+1. Valider le brief et les informations factuelles.
+2. Générer le fond sans texte et sans logo.
+3. Ajouter les fichiers officiels lors de la composition.
+4. Relire l'orthographe et contrôler le contraste.
+5. Exécuter le contrôle qualité de `brand-rules.json`.
+6. Bloquer la publication si une condition n'est pas satisfaite.
 
 ## Archive complète
 
-Fichier attendu dans ce dossier : `Synergie_Dour_Kit_ADN_Complet_2026.zip`.
+L'archive de production finalisée est nommée `Synergie_Dour_Kit_ADN_Complet_2026_FINAL.zip`.
+Ses métadonnées et son empreinte SHA-256 sont enregistrées dans `ARCHIVE_METADATA.json`.
