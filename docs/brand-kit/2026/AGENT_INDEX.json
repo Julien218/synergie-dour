@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "1.0",
+  "brand": "Synergie Dour",
+  "packageVersion": "2026.08.05",
+  "status": "production",
+  "locale": "fr-BE",
+  "identity": {
+    "publicName": "Synergie Dour",
+    "institutionalName": "ASBL Synergie Dour",
+    "signature": "Commerçants & indépendants réunis"
+  },
+  "repository": {
+    "fullName": "Julien218/synergie-dour",
+    "brandRoot": "docs/brand-kit/2026",
+    "sharedModule": "shared/brand/synergie-dour.ts"
+  },
+  "canonicalAssets": {
+    "applicationLogo": "public/logo-sd-officiel.png",
+    "transparentLogo": "public/logo-transparent.png",
+    "technologyCredit": "public/logo-jsinnovia.png"
+  },
+  "canonicalRules": {
+    "machineReadable": "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/brand-rules.json",
+    "visualSystemPrompt": "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/SYSTEM_PROMPT_AGENT_VISUEL.md",
+    "editorialGuide": "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/GUIDE_EDITORIAL.md",
+    "sourceAudit": "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/AUDIT_VISUELS_SOURCES.md"
+  },
+  "agentPolicy": {
+    "mode": "fail-closed",
+    "readOrder": [
+      "docs/brand-kit/2026/AGENT_README.md",
+      "docs/brand-kit/2026/AGENT_INDEX.json",
+      "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/brand-rules.json",
+      "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/SYSTEM_PROMPT_AGENT_VISUEL.md",
+      "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/GUIDE_EDITORIAL.md"
+    ],
+    "pipeline": [
+      "validate_brief",
+      "confirm_factual_data",
+      "generate_background_without_text_or_logo",
+      "compose_official_assets",
+      "proofread",
+      "run_quality_gate",
+      "export"
+    ],
+    "forbidden": [
+      "redraw_logo",
+      "generate_logo_with_ai",
+      "distort_logo",
+      "recolor_logo",
+      "crop_logo",
+      "merge_synergie_and_jsinnovia_logos",
+      "invent_local_facts",
+      "publish_unproofread_text"
+    ]
+  },
+  "archive": {
+    "metadata": "docs/brand-kit/2026/ARCHIVE_METADATA.json",
+    "manifest": "docs/brand-kit/2026/MANIFEST.txt"
+  }
+}
