@@ -16,6 +16,7 @@ import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
 import { socialRouter } from "../social";
 import { autopublishRouter } from "../autopublish/router";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
+import { cronBackupHandler, isProductionEnvironment } from "../cron/backup";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -84,6 +85,8 @@ async function initDatabase() {
       //  silencieusement avalée, laissant la colonne absente en production —
       //  cause racine du bug "membership.request" 500 constaté en recette du 08/07/2026)
       await ensureColumn(pool, "merchants", "googleBusinessUrl", "ALTER TABLE `merchants` ADD COLUMN `googleBusinessUrl` varchar(500)");
+      await ensureColumn(pool, "merchants", "photos", "ALTER TABLE `merchants` ADD COLUMN `photos` json");
+      await ensureColumn(pool, "merchants", "videos", "ALTER TABLE `merchants` ADD COLUMN `videos` json");
       await ensureColumn(pool, "membership_requests", "paiementStatut", "ALTER TABLE `membership_requests` ADD COLUMN `paiementStatut` VARCHAR(20) NOT NULL DEFAULT 'en_attente'");
 
       const sqls = [
@@ -216,9 +219,10 @@ async function startServer() {
     app.use("/api/social", socialRouter);
     app.use("/api/autopublish", autopublishRouter);
     app.post("/api/cron/autopublish", cronAutopublishHandler);
+    app.post("/api/cron/backup", cronBackupHandler);
 
   // ─── Backup automatique quotidien à 2h00 ─────────────────────────────────
-  (async () => {
+  if (isProductionEnvironment()) (async () => {
     const { runDatabaseBackup } = await import("../cron/backup");
     function scheduleDaily(hour: number, minute: number, fn: () => Promise<any>) {
       function msUntilNext(h: number, m: number): number {
@@ -237,6 +241,7 @@ async function startServer() {
     }
     scheduleDaily(2, 0, runDatabaseBackup);
   })();
+  else console.log(`[BACKUP CRON] Désactivé hors production (${process.env.RAILWAY_ENVIRONMENT_NAME || process.env.NODE_ENV || "unknown"})`);
   serveStatic(app);
   }
 
