@@ -204,7 +204,7 @@ billingRouter.get("/config", (_req, res) => {
     emailFrom:
       process.env.EMAIL_FROM_BILLING ||
       "Facturation Synergie Dour <facturation@synergiedour.be>",
-    membershipFeesEnabled: process.env.MEMBERSHIP_FEES_ENABLED === "true",
+    membershipFeesEnabled: process.env.MEMBERSHIP_FEES_ENABLED?.trim().toLowerCase() !== "false",
   });
 });
 

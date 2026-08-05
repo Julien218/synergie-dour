@@ -148,7 +148,7 @@ function MembershipStatusCard({
             onClick={onJoin}
             className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a3d] font-semibold"
           >
-            Devenir membre — gratuit en 2026
+            Devenir membre — cotisation 2026 : 50 €
           </Button>
         </CardContent>
       </Card>

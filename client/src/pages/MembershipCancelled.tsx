@@ -15,15 +15,15 @@ export default function MembershipCancelled() {
           </div>
 
           <h1 className="text-3xl font-bold text-[#001a3d] mb-3">
-            Aucun paiement requis
+            Paiement interrompu
           </h1>
 
           <p className="text-lg text-gray-700 mb-2">
-            L'adhésion Synergie Dour est gratuite jusqu'au 31 décembre 2026.
+            Aucun débit n'a été confirmé.
           </p>
           <p className="text-gray-600 mb-8">
-            Cette ancienne page de paiement n'est plus utilisée. Vous pouvez déposer votre
-            candidature directement, sans carte bancaire.
+            Votre demande et votre facture restent disponibles. Utilisez le lien sécurisé
+            reçu par email pour reprendre le paiement lorsque vous le souhaitez.
           </p>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-left text-sm text-gray-700">
@@ -46,7 +46,7 @@ export default function MembershipCancelled() {
               className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a3d] font-semibold"
             >
               <RotateCcw className="mr-2 w-4 h-4" />
-              Reprendre l'adhésion
+              Revoir la page d'adhésion
             </Button>
             <Button
               onClick={() => setLocation("/")}

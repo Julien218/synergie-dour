@@ -26,6 +26,15 @@ function getResend(): Resend {
   return _resend;
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const FROM_NOREPLY = process.env.EMAIL_FROM_NOREPLY ?? "Synergie Dour <noreply@synergiedour.be>";
 const FROM_CONTACT = process.env.EMAIL_FROM_CONTACT ?? "Synergie Dour <contact@synergiedour.be>";
 const ADMIN_NOTIF = (process.env.EMAIL_ADMIN_NOTIF ?? "").split(",").map((e) => e.trim()).filter(Boolean);
@@ -97,15 +106,17 @@ export async function sendApplicationReceivedEmail(input: {
   contactName: string;
   businessName: string;
 }): Promise<void> {
+  const contactName = escapeHtml(input.contactName);
+  const businessName = escapeHtml(input.businessName);
   const html = emailLayout(`
-    <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bonjour ${input.contactName},</h2>
+    <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bonjour ${contactName},</h2>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Nous avons bien reçu votre demande d'adhésion pour <strong>${input.businessName}</strong>.
+      Nous avons bien reçu votre demande d'adhésion pour <strong>${businessName}</strong>.
     </p>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
       Le bureau de l'ASBL Synergie Dour examine votre candidature. Vous recevrez un email
-      de confirmation sous 7 jours. L'adhésion est gratuite jusqu'au 31 décembre 2026 :
-      aucun paiement ne vous sera demandé pour l'activer.
+      de réponse sous 7 jours. Si elle est approuvée, une facture de cotisation et un lien
+      de paiement sécurisé vous seront envoyés. Aucun paiement n'est demandé à ce stade.
     </p>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0;">
       À très bientôt,<br>
@@ -132,20 +143,21 @@ export async function sendApplicationApprovedEmail(input: {
   checkoutUrl: string;
   paymentMode: "one_time" | "subscription";
 }): Promise<void> {
+  const contactName = escapeHtml(input.contactName);
+  const businessName = escapeHtml(input.businessName);
   const html = emailLayout(`
-    <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bonne nouvelle ${input.contactName} !</h2>
+    <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bonne nouvelle ${contactName} !</h2>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Le bureau a validé votre demande d'adhésion pour <strong>${input.businessName}</strong>.
+      Le bureau a validé votre demande d'adhésion pour <strong>${businessName}</strong>.
     </p>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Votre adhésion 2026 est confirmée et gratuite. Aucun paiement ni carte bancaire
-      ne sont requis.
+      Votre facture de cotisation annuelle est disponible. Utilisez le bouton ci-dessous
+      pour consulter la facture puis payer par carte sur la page Stripe sécurisée.
     </p>
     <p style="color: #555; font-size: 14px; line-height: 1.6; margin: 0 0 16px; padding: 12px 16px; background-color: #f0f4fa; border-left: 3px solid #003d99; border-radius: 4px;">
-      Les éventuelles prestations optionnelles payantes feront toujours l'objet d'un
-      devis et d'une facture distincts, acceptés avant paiement.
+      Votre adhésion sera activée automatiquement après confirmation du paiement.
     </p>
-  `, { label: "Découvrir Synergie Dour", url: `${APP_URL}/dashboard` });
+  `, { label: "Consulter et payer ma facture", url: input.checkoutUrl });
 
   await getResend().emails.send({
     from: FROM_CONTACT,
@@ -165,6 +177,8 @@ export async function sendMembershipActivatedEmail(input: {
   businessName: string;
   paymentMode: "one_time" | "subscription";
   expiresAt: Date;
+  onboardingUrl?: string;
+  invoiceNumber?: string;
 }): Promise<void> {
   const expiresLabel = input.expiresAt.toLocaleDateString("fr-BE", {
     day: "numeric",
@@ -176,23 +190,33 @@ export async function sendMembershipActivatedEmail(input: {
     ? "Votre adhésion se renouvellera automatiquement chaque année. Vous pouvez l'annuler à tout moment depuis votre espace membre."
     : `Votre adhésion est valable jusqu'au ${expiresLabel}. Nous vous enverrons un mail de rappel un mois avant la fin.`;
 
+  const contactName = escapeHtml(input.contactName);
+  const businessName = escapeHtml(input.businessName);
+  const invoiceLine = input.invoiceNumber
+    ? `<p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">Facture réglée : <strong>${escapeHtml(input.invoiceNumber)}</strong>.</p>`
+    : "";
   const html = emailLayout(`
     <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bienvenue dans Synergie Dour !</h2>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Bonjour ${input.contactName}, votre adhésion 2026 pour
-      <strong>${input.businessName}</strong> est désormais <strong>active</strong>.
+      Bonjour ${contactName}, le paiement de la cotisation pour
+      <strong>${businessName}</strong> a été confirmé. Votre adhésion est désormais <strong>active</strong>.
     </p>
+    ${invoiceLine}
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
       ${renewalNote}
     </p>
     <h3 style="color: #001a3d; font-size: 18px; margin: 24px 0 12px;">Prochaines étapes</h3>
     <ul style="color: #333; font-size: 15px; line-height: 1.8; padding-left: 20px; margin: 0 0 16px;">
-      <li>Votre commerce apparaît dans l'<strong>annuaire public</strong></li>
+      <li>Complétez la fiche de votre commerce et transmettez vos médias</li>
+      <li>L'administration vous indiquera comment contresigner le registre des membres conformément aux statuts</li>
+      <li>La mise en ligne dans l'<strong>annuaire public</strong> intervient après contrôle administratif</li>
       <li>Vous serez invité aux <strong>conférences et événements</strong> de l'association</li>
       <li>Nous vous contacterons pour la <strong>mini-vidéo promotionnelle</strong></li>
       <li>Accès à votre <strong>espace membre</strong> sur la plateforme</li>
     </ul>
-  `, { label: "Accéder à mon espace", url: `${APP_URL}/dashboard` });
+  `, input.onboardingUrl
+    ? { label: "Compléter la fiche de mon commerce", url: input.onboardingUrl }
+    : { label: "Accéder à mon espace", url: `${APP_URL}/dashboard` });
 
   await getResend().emails.send({
     from: FROM_CONTACT,
@@ -350,6 +374,13 @@ export async function sendAdminNewMessageNotification(input: {
 }): Promise<void> {
   if (ADMIN_NOTIF.length === 0) return; // Pas de destinataires configurés
 
+  const name = escapeHtml(input.name);
+  const email = escapeHtml(input.email);
+  const subject = escapeHtml(input.subject ?? "—");
+  const businessName = escapeHtml(input.businessName ?? "—");
+  const message = escapeHtml(input.message ?? "").replace(/\n/g, "<br>");
+  const safeSubjectName = input.name.replace(/[\r\n]/g, " ").slice(0, 120);
+
   const isContact = input.type === "contact";
   const typeLabel = isContact ? "Message de contact" : "Demande d'adhésion";
   const iconEmoji = isContact ? "📬" : "🤝";
@@ -358,26 +389,26 @@ export async function sendAdminNewMessageNotification(input: {
   const detailsHtml = isContact ? `
     <tr>
       <td style="padding: 6px 0; color: #666; font-size: 14px; width: 130px;">Sujet</td>
-      <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 600;">${input.subject ?? "—"}</td>
+      <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 600;">${subject}</td>
     </tr>
     ${input.message ? `
     <tr>
       <td colspan="2" style="padding: 12px 0 0;">
         <div style="background: #f5f7fa; border-left: 3px solid ${accentColor}; padding: 12px 16px; border-radius: 4px; color: #333; font-size: 14px; line-height: 1.6;">
-          ${input.message}
+          ${message}
         </div>
       </td>
     </tr>` : ""}
   ` : `
     <tr>
       <td style="padding: 6px 0; color: #666; font-size: 14px; width: 130px;">Entreprise</td>
-      <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 600;">${input.businessName ?? "—"}</td>
+      <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 600;">${businessName}</td>
     </tr>
     ${input.message ? `
     <tr>
       <td colspan="2" style="padding: 12px 0 0;">
         <div style="background: #f5f7fa; border-left: 3px solid ${accentColor}; padding: 12px 16px; border-radius: 4px; color: #333; font-size: 14px; line-height: 1.6;">
-          ${input.message}
+          ${message}
         </div>
       </td>
     </tr>` : ""}
@@ -396,20 +427,25 @@ export async function sendAdminNewMessageNotification(input: {
     <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
       <tr>
         <td style="padding: 6px 0; color: #666; font-size: 14px; width: 130px;">Nom</td>
-        <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 600;">${input.name}</td>
+        <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 600;">${name}</td>
       </tr>
       <tr>
         <td style="padding: 6px 0; color: #666; font-size: 14px;">Email</td>
-        <td style="padding: 6px 0;"><a href="mailto:${input.email}" style="color: #003d99; font-size: 14px;">${input.email}</a></td>
+        <td style="padding: 6px 0;"><a href="mailto:${email}" style="color: #003d99; font-size: 14px;">${email}</a></td>
       </tr>
       ${detailsHtml}
     </table>
-  `, { label: "Voir dans le dashboard", url: `${APP_URL}/dashboard/inbox` });
+  `, {
+    label: isContact ? "Voir dans la messagerie" : "Voir les demandes d'adhésion",
+    url: isContact
+      ? `${APP_URL}/dashboard/inbox`
+      : `${APP_URL}/dashboard/membership-requests`,
+  });
 
   await getResend().emails.send({
     from: FROM_NOREPLY,
     to: ADMIN_NOTIF,
-    subject: `${iconEmoji} [Synergie Dour] ${typeLabel} — ${input.name}`,
+    subject: `${iconEmoji} [Synergie Dour] ${typeLabel} — ${safeSubjectName}`,
     html,
   });
 }
@@ -462,7 +498,7 @@ export async function sendContractEmail(input: {
 <body>
 <div class="header">
   <div class="logo">SYNERGIE DOUR</div>
-  <div class="asbl">ASBL — Association des commerçants et indépendants<br>Grand'Place 9 · 7370 Dour · BE 1036.801.623</div>
+  <div class="asbl">ASBL — Association des commerçants et indépendants<br>Grand'Place 9 · 7370 Dour · N° d'entreprise 1036.801.623</div>
 </div>
 
 <h1>CONTRAT D'ADHÉSION ${year}</h1>
@@ -478,7 +514,7 @@ export async function sendContractEmail(input: {
   <tr><th colspan="2">L'ASBL (partie 1)</th></tr>
   <tr><td width="40%"><strong>Dénomination</strong></td><td>SYNERGIE DOUR ASBL</td></tr>
   <tr><td><strong>Siège social</strong></td><td>Grand'Place 9, 7370 Dour</td></tr>
-  <tr><td><strong>N° BCE</strong></td><td>BE 1036.801.623</td></tr>
+  <tr><td><strong>N° d'entreprise</strong></td><td>1036.801.623</td></tr>
   <tr><td><strong>Représentée par</strong></td><td>Olivier Trévis (Président)</td></tr>
 </table>
 <table class="parties" style="margin-top:8px;">
@@ -505,10 +541,10 @@ export async function sendContractEmail(input: {
 </div>
 
 <h2>Article 3 — Cotisation 2026</h2>
-<div class="montant">0,00 € — adhésion gratuite en 2026</div>
+<div class="montant">50,00 € — cotisation annuelle 2026</div>
 <div class="article">
-  Conformément à la décision applicable pour l'année 2026, l'adhésion est
-  <strong>gratuite jusqu'au 31 décembre 2026</strong>. Aucun paiement n'est requis.
+  La cotisation annuelle affichée pour l'année 2026 est de <strong>50,00 €</strong>.
+  Elle est facturée après validation de la demande par le Conseil d'administration.
   <div class="important">
     Des prestations optionnelles payantes peuvent être proposées séparément.
     Elles font l'objet d'un devis et d'une facture distincts, acceptés avant paiement.
@@ -556,7 +592,7 @@ export async function sendContractEmail(input: {
 </div>
 
 <div class="footer">
-  SYNERGIE DOUR ASBL · Grand'Place 9, 7370 Dour · BE 1036.801.623 · contact@synergiedour.be · www.synergiedour.be<br>
+  SYNERGIE DOUR ASBL · Grand'Place 9, 7370 Dour · N° d'entreprise 1036.801.623 · contact@synergiedour.be · www.synergiedour.be<br>
   Plateforme gérée par JS-Innov.IA — www.jsinnovia.com
 </div>
 </body>
@@ -572,8 +608,8 @@ export async function sendContractEmail(input: {
       Veuillez le signer et le retourner par email à <a href="mailto:contact@synergiedour.be" style="color:#003d99;">contact@synergiedour.be</a>.
     </p>
     <div style="background:#f0f4fa;border-left:3px solid #003d99;padding:14px 18px;border-radius:0 6px 6px 0;margin:16px 0;">
-      <p style="margin:0;font-size:14px;color:#333;"><strong>Adhésion 2026 :</strong> gratuite jusqu'au 31 décembre 2026.<br>
-      Aucun paiement ni carte bancaire ne sont requis.</p>
+      <p style="margin:0;font-size:14px;color:#333;"><strong>Cotisation 2026 :</strong> 50,00 €.<br>
+      La facture et le lien de paiement sécurisé sont envoyés séparément.</p>
     </div>
     <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 16px 0 0;">
       Bienvenue dans la famille Synergie Dour !<br>
@@ -610,20 +646,23 @@ export async function sendInstantAcknowledgement(input: {
   village?: string;
 }): Promise<void> {
   const today = new Date().toLocaleDateString("fr-BE", { day: "numeric", month: "long", year: "numeric" });
-  const locationLine = input.village ? `<br>📍 Localité : <strong>${input.village}</strong>` : "";
+  const contactName = escapeHtml(input.contactName);
+  const businessName = escapeHtml(input.businessName);
+  const village = escapeHtml(input.village);
+  const locationLine = village ? `<br>📍 Localité : <strong>${village}</strong>` : "";
 
   const html = emailLayout(`
-    <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bonjour ${input.contactName},</h2>
+    <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bonjour ${contactName},</h2>
     <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
       Nous avons bien reçu votre demande d'adhésion à <strong>Synergie Dour</strong> pour 
-      <strong>${input.businessName}</strong>${locationLine}.
+      <strong>${businessName}</strong>${locationLine}.
     </p>
     <div style="background:#f9f7f0;border:1.5px solid #D4AF37;border-radius:8px;padding:18px 22px;margin:16px 0;">
       <p style="margin:0;font-size:15px;color:#001a3d;"><strong>Récapitulatif de votre demande</strong></p>
       <p style="margin:8px 0 0;font-size:14px;color:#555;">
         📅 Reçue le : <strong>${today}</strong><br>
-        🏢 Commerce : <strong>${input.businessName}</strong><br>
-        👤 Contact : <strong>${input.contactName}</strong>
+        🏢 Commerce : <strong>${businessName}</strong><br>
+        👤 Contact : <strong>${contactName}</strong>
         ${locationLine}
       </p>
     </div>
@@ -635,15 +674,15 @@ export async function sendInstantAcknowledgement(input: {
       </tr>
       <tr>
         <td style="vertical-align:top;padding:6px 0;font-size:20px;">2️⃣</td>
-        <td style="padding:6px 0;font-size:14px;color:#333;">Vous recevez par email votre <strong>contrat d'adhésion</strong> à signer</td>
+        <td style="padding:6px 0;font-size:14px;color:#333;">Si la demande est approuvée, vous recevez votre <strong>facture de cotisation</strong> et un lien de paiement sécurisé</td>
       </tr>
       <tr>
         <td style="vertical-align:top;padding:6px 0;font-size:20px;">3️⃣</td>
-        <td style="padding:6px 0;font-size:14px;color:#333;">Confirmation de votre <strong>adhésion gratuite 2026</strong></td>
+        <td style="padding:6px 0;font-size:14px;color:#333;">Après confirmation du paiement, votre <strong>adhésion est activée</strong></td>
       </tr>
       <tr>
         <td style="vertical-align:top;padding:6px 0;font-size:20px;">4️⃣</td>
-        <td style="padding:6px 0;font-size:14px;color:#333;"><strong>Activation</strong> de votre profil dans l'annuaire Synergie Dour</td>
+        <td style="padding:6px 0;font-size:14px;color:#333;">Vous complétez votre fiche et vos médias avant leur <strong>validation et publication</strong></td>
       </tr>
     </table>
     <p style="color: #555; font-size: 14px; line-height: 1.6; margin: 20px 0 0;">

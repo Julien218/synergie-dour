@@ -75,7 +75,7 @@ export default function AiContext() {
               "Annuaire des membres commerçants et indépendants de Dour",
               "Actualités locales pour professionnels indépendants",
               "Événements professionnels et réunions membres",
-              "Adhésion gratuite jusqu'au 31 décembre 2026",
+              "Cotisation annuelle 2026 : 50 €, après validation du Conseil d'administration",
             ].map((item, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="text-[#D4AF37] font-bold mt-0.5">→</span>

@@ -112,10 +112,10 @@ export type InsertAuditLog = typeof auditLogs.$inferInsert;
  * Adhésion d'un commerçant/indépendant à l'ASBL Synergie Dour.
  *
  * Différence avec membershipRequests (table existante) :
- *   - membershipRequests = candidature à l'adhésion (gratuit)
- *   - memberships = adhésion effective (gratuite jusqu'au 31 décembre 2026)
+ *   - membershipRequests = candidature soumise à validation administrative
+ *   - memberships = adhésion effective après confirmation du paiement
  *
- * Une candidature approuvée peut créer une ligne active sans paiement en 2026.
+ * Une candidature approuvée devient active après confirmation du paiement.
  */
 export const memberships = mysqlTable("memberships", {
   id: int("id").autoincrement().primaryKey(),

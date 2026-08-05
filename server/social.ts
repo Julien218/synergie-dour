@@ -204,7 +204,9 @@ socialRouter.post("/generate-image", requireAdmin, async (req, res) => {
     try {
       const composed = await composeWithLogos(result.url, {
         logoSD: true,
-        logoJS: true,
+        // L'actif actuellement nommé logo-jsinnovia.png n'est pas une signature
+        // JS-Innov.IA vérifiée. Le crédit reste désactivé en mode fail-closed.
+        logoJS: false,
         outputWidth: targetW,
         outputHeight: targetH,
       });

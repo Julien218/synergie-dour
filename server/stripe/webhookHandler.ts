@@ -7,7 +7,7 @@
  *   - checkout.session.completed / async_payment_succeeded → payer une facture
  *   - checkout.session.async_payment_failed / expired      → clôturer la session
  * Les anciens événements d'adhésion ne sont traités que si
- * MEMBERSHIP_FEES_ENABLED=true (désactivé pour 2026).
+ * MEMBERSHIP_FEES_ENABLED=true (cotisation annuelle activée).
  *
  * À monter dans Express AVANT le middleware JSON car Stripe envoie du raw body.
  *
@@ -122,9 +122,9 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
   eventId: string
 ): Promise<void> {
-  if (process.env.MEMBERSHIP_FEES_ENABLED !== "true") {
+  if (process.env.MEMBERSHIP_FEES_ENABLED?.trim().toLowerCase() === "false") {
     console.warn(
-      `[Stripe] Événement d'adhésion payante ${eventId} ignoré : cotisation 2026 gratuite`
+      `[Stripe] Événement d'adhésion payante ${eventId} ignoré : cotisations désactivées`
     );
     return;
   }
@@ -208,7 +208,7 @@ async function handleInvoicePaymentSucceeded(
   invoice: Stripe.Invoice,
   eventId: string
 ): Promise<void> {
-  if (process.env.MEMBERSHIP_FEES_ENABLED !== "true") return;
+  if (process.env.MEMBERSHIP_FEES_ENABLED?.trim().toLowerCase() === "false") return;
   if (typeof (invoice as any).subscription !== "string") return;
 
   const db: any = await getDb();
@@ -246,7 +246,7 @@ async function handleInvoicePaymentSucceeded(
 /* ------------------------------------------------------------------------- */
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, eventId: string): Promise<void> {
-  if (process.env.MEMBERSHIP_FEES_ENABLED !== "true") return;
+  if (process.env.MEMBERSHIP_FEES_ENABLED?.trim().toLowerCase() === "false") return;
   if (typeof invoice.customer_email !== "string") return;
   await sendPaymentFailedEmail({
     to: invoice.customer_email,

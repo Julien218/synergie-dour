@@ -63,7 +63,7 @@ const routeMeta: Record<string, { title: string; description: string; image: str
   },
   "/adhesion": {
     title:       "Devenir membre — Synergie Dour ASBL",
-    description: "Rejoignez Synergie Dour — réseau des commerçants de Dour. Adhésion gratuite jusqu'au 31 décembre 2026.",
+    description: "Rejoignez Synergie Dour — réseau des commerçants de Dour. Cotisation annuelle 2026 : 50 €, après validation de la demande.",
     image:       `${BASE_URL}/og-image/default`,
     url:         `${BASE_URL}/adhesion`,
   },

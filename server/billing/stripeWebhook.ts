@@ -3,6 +3,8 @@ import { getPool } from "../db";
 import { formatEuro } from "./calculations";
 import { sendDocumentEmail } from "./email";
 import { getPaymentReceiptUrl } from "../stripe/stripeService";
+import { generateSecureToken, hashToken } from "./db";
+import { sendMembershipActivatedEmail } from "../email/notifications";
 
 export interface BillingWebhookResult {
   handled: boolean;
@@ -59,7 +61,7 @@ export async function processBillingCheckoutEvent(
   }
 
   const receiptUrl = await getPaymentReceiptUrl(paymentIntentId).catch(
-    (error) => {
+    error => {
       console.warn(
         `[Stripe] Reçu indisponible pour ${paymentIntentId}:`,
         error?.message || error
@@ -75,6 +77,17 @@ export async function processBillingCheckoutEvent(
         clientName: string;
         invoiceNumber: string;
         paidAmountCents: number;
+      }
+    | undefined;
+  let membershipEmailPayload:
+    | {
+        to: string;
+        contactName: string;
+        businessName: string;
+        paymentMode: "one_time" | "subscription";
+        expiresAt: Date;
+        onboardingToken: string;
+        invoiceNumber: string;
       }
     | undefined;
 
@@ -116,7 +129,9 @@ export async function processBillingCheckoutEvent(
     const invoice = (invoiceRows as any[])[0];
     if (!invoice) throw new Error(`Facture ${invoiceId} introuvable`);
     if (["void", "credited"].includes(invoice.status)) {
-      throw new Error(`Facture ${invoice.number} non payable (${invoice.status})`);
+      throw new Error(
+        `Facture ${invoice.number} non payable (${invoice.status})`
+      );
     }
     if (
       String(invoice.currency || "EUR").toLowerCase() !==
@@ -188,6 +203,71 @@ export async function processBillingCheckoutEvent(
       [eventId]
     );
 
+    if (newStatus === "paid") {
+      const [requestRows] = await conn.query(
+        `SELECT * FROM membership_requests
+         WHERE billingInvoiceId = ? FOR UPDATE`,
+        [invoiceId]
+      );
+      const membershipRequest = (requestRows as any[])[0];
+      if (membershipRequest) {
+        const onboardingToken = generateSecureToken();
+        const onboardingTokenHash = await hashToken(onboardingToken);
+        const startsAt = new Date();
+        const expiresAt = new Date(startsAt);
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+        const [userRows] = await conn.query(
+          `SELECT id FROM users WHERE LOWER(email) = LOWER(?) ORDER BY id ASC LIMIT 1`,
+          [membershipRequest.email]
+        );
+        const userId = (userRows as any[])[0]?.id ?? null;
+
+        await conn.execute(
+          `UPDATE membership_requests
+           SET paiementStatut='paye', onboardingTokenHash=?,
+               onboardingTokenExpiresAt=DATE_ADD(NOW(), INTERVAL 30 DAY),
+               updatedAt=NOW()
+           WHERE id=?`,
+          [onboardingTokenHash, membershipRequest.id]
+        );
+        await conn.execute(
+          `INSERT INTO memberships
+             (membershipRequestId, userId, paymentMode, status,
+              stripeCustomerId, stripePaymentIntentId, startsAt, expiresAt,
+              amountCents, currency, createdAt, updatedAt)
+           VALUES (?, ?, 'one_time', 'active', ?, ?, ?, ?, ?, ?, NOW(), NOW())
+           ON DUPLICATE KEY UPDATE
+             userId=VALUES(userId), status='active',
+             stripeCustomerId=VALUES(stripeCustomerId),
+             stripePaymentIntentId=VALUES(stripePaymentIntentId),
+             startsAt=VALUES(startsAt), expiresAt=VALUES(expiresAt),
+             amountCents=VALUES(amountCents), currency=VALUES(currency),
+             updatedAt=NOW()`,
+          [
+            membershipRequest.id,
+            userId,
+            stripeCustomerId,
+            paymentIntentId,
+            startsAt,
+            expiresAt,
+            amountCents,
+            String(session.currency || "eur").toUpperCase(),
+          ]
+        );
+
+        membershipEmailPayload = {
+          to: membershipRequest.email,
+          contactName: membershipRequest.contactName,
+          businessName: membershipRequest.businessName,
+          paymentMode: "one_time",
+          expiresAt,
+          onboardingToken,
+          invoiceNumber: invoice.number,
+        };
+      }
+    }
+
     await conn.commit();
     emailPayload = {
       to: invoice.clientEmail,
@@ -232,6 +312,28 @@ export async function processBillingCheckoutEvent(
         emailResult.error
       );
     }
+  }
+
+  if (membershipEmailPayload) {
+    const appUrl = (
+      process.env.APP_URL ||
+      process.env.PUBLIC_URL ||
+      "https://www.synergiedour.be"
+    ).replace(/\/$/, "");
+    await sendMembershipActivatedEmail({
+      to: membershipEmailPayload.to,
+      contactName: membershipEmailPayload.contactName,
+      businessName: membershipEmailPayload.businessName,
+      paymentMode: membershipEmailPayload.paymentMode,
+      expiresAt: membershipEmailPayload.expiresAt,
+      onboardingUrl: `${appUrl}/membership/onboarding/${membershipEmailPayload.onboardingToken}`,
+      invoiceNumber: membershipEmailPayload.invoiceNumber,
+    }).catch(error => {
+      console.error(
+        `[Membership] Paiement ${eventId} enregistré, email d'activation en échec:`,
+        error?.message || error
+      );
+    });
   }
 
   return { handled: true, invoiceId };

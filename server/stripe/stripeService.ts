@@ -121,9 +121,9 @@ export interface CreateCheckoutInput {
 export async function createMembershipCheckout(
   input: CreateCheckoutInput
 ): Promise<string> {
-  if (process.env.MEMBERSHIP_FEES_ENABLED !== "true") {
+  if (process.env.MEMBERSHIP_FEES_ENABLED?.trim().toLowerCase() === "false") {
     throw new Error(
-      "Les cotisations payantes sont désactivées : l'adhésion 2026 est gratuite."
+      "Les cotisations sont désactivées par la configuration de l'environnement."
     );
   }
 

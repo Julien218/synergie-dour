@@ -7,6 +7,7 @@ import { generateStructuredReference } from "./db";
 import { splitSqlStatements } from "./migrate";
 import { generatePdfBuffer, type PdfData } from "./pdf";
 import { isBillingCheckoutSession } from "./stripeWebhook";
+import { getMembershipPriceCents, membershipFeesEnabled } from "../membership/workflow";
 
 describe("calculs de facturation", () => {
   it("calcule les remises et la TVA uniquement en cents", () => {
@@ -71,6 +72,24 @@ describe("Stripe Checkout", () => {
         metadata: { kind: "membership" },
       } as any)
     ).toBe(false);
+  });
+});
+
+describe("cotisation d'adhésion", () => {
+  it("utilise 50 € par défaut et accepte un montant configurable en centimes", () => {
+    expect(getMembershipPriceCents({} as NodeJS.ProcessEnv)).toBe(5_000);
+    expect(getMembershipPriceCents({ MEMBERSHIP_PRICE_CENTS: "6500" } as NodeJS.ProcessEnv)).toBe(6_500);
+  });
+
+  it("refuse les montants invalides", () => {
+    expect(() => getMembershipPriceCents({ MEMBERSHIP_PRICE_CENTS: "0" } as NodeJS.ProcessEnv)).toThrow();
+    expect(() => getMembershipPriceCents({ MEMBERSHIP_PRICE_CENTS: "50.5" } as NodeJS.ProcessEnv)).toThrow();
+  });
+
+  it("active le parcours sauf désactivation explicite", () => {
+    expect(membershipFeesEnabled({} as NodeJS.ProcessEnv)).toBe(true);
+    expect(membershipFeesEnabled({ MEMBERSHIP_FEES_ENABLED: "false" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(membershipFeesEnabled({ MEMBERSHIP_FEES_ENABLED: "true" } as NodeJS.ProcessEnv)).toBe(true);
   });
 });
 

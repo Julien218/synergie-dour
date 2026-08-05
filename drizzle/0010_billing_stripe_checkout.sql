@@ -118,11 +118,7 @@ CREATE TABLE IF NOT EXISTS billing_webhook_events (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE membership_requests
-  MODIFY COLUMN paiementStatut ENUM('en_attente','paye','gratuit') NOT NULL DEFAULT 'gratuit';
-
-UPDATE membership_requests
-SET paiementStatut = 'gratuit'
-WHERE paiementStatut = 'en_attente';
+  MODIFY COLUMN paiementStatut ENUM('en_attente','paye','gratuit') NOT NULL DEFAULT 'en_attente';
 
 ALTER TABLE memberships
   MODIFY COLUMN paymentMode ENUM('one_time','subscription') NOT NULL DEFAULT 'one_time',

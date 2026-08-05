@@ -23,6 +23,7 @@ export async function downloadImage(url: string): Promise<Buffer> {
 // ── Chemins vers les logos officiels sur le serveur ──────────────────────────
 function getLogoPath(filename: string): { found: boolean; path: string; candidates: string[] } {
   const candidates = [
+    path.join(process.cwd(), "client", "public", filename),
     path.join(process.cwd(), "public", filename),
     path.join(process.cwd(), "dist", "public", filename),
     path.join("/app", "public", filename),
@@ -66,7 +67,7 @@ export async function composeWithLogos(
   const logosDetails: string[] = [];
 
   const sharp = (await import("sharp")).default;
-  const { logoSD = true, logoJS = true, outputWidth = 1080, outputHeight = 1080 } = options;
+  const { logoSD = true, logoJS = false, outputWidth = 1080, outputHeight = 1080 } = options;
 
   console.log(`${TAG} Démarrage — base: ${baseImageUrl.slice(0, 80)}... format: ${outputWidth}x${outputHeight}`);
 
@@ -100,13 +101,16 @@ export async function composeWithLogos(
 
   // ── Logo Synergie Dour — coin haut-droit ─────────────────────────────────
   if (logoSD) {
-    const sd = getLogoPath("logo-sd-officiel.png");
+    const sd = getLogoPath("logo-sd-transparent.png");
     if (sd.found) {
       try {
         const fileStat = fs.statSync(sd.path);
-        // Ratio logo SD : 739x790 ≈ 1:1.069
+        const metadata = await sharp(sd.path).metadata();
+        if (!metadata.width || !metadata.height || metadata.hasAlpha !== true) {
+          throw new Error("l'actif canonique doit posséder un canal alpha réel");
+        }
         const logoW = Math.round(outputWidth * 0.20);
-        const logoH = Math.round(logoW * (790 / 739));
+        const logoH = Math.round(logoW * (metadata.height / metadata.width));
         const top   = margin;
         const left  = outputWidth - logoW - margin;
 
@@ -136,7 +140,7 @@ export async function composeWithLogos(
 
   // ── Logo JS-Innov.IA — coin bas-droit, discret ───────────────────────────
   if (logoJS) {
-    const js = getLogoPath("logo-jsinnovia.png");
+    const js = getLogoPath("logo-jsinnovia-official-transparent.png");
     if (js.found) {
       try {
         const fileStat = fs.statSync(js.path);

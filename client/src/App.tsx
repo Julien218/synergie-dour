@@ -20,6 +20,7 @@ const Contact = lazy(() => import("@/pages/Contact"));
 const Membership = lazy(() => import("@/pages/Membership"));
 const MembershipSuccess = lazy(() => import("@/pages/MembershipSuccess"));
 const MembershipCancelled = lazy(() => import("@/pages/MembershipCancelled"));
+const MembershipOnboarding = lazy(() => import("@/pages/MembershipOnboarding"));
 const Resources = lazy(() => import("@/pages/Resources"));
 const Resource = lazy(() => import("@/pages/Resource"));
 const About = lazy(() => import("@/pages/About"));
@@ -125,6 +126,9 @@ function Router() {
         </Route>
         <Route path="/membership/cancelled">
           {() => <MembershipCancelled />}
+        </Route>
+        <Route path="/membership/onboarding/:token">
+          {() => <MembershipOnboarding />}
         </Route>
         <Route path="/resources/:slug">
           {() => <PublicLayout><Resource /></PublicLayout>}

@@ -160,7 +160,7 @@ export default function Membership() {
       const cid = url.match(/cid=(\d+)/);
 
       if (gpage) {
-        businessName = decodeURIComponent(gpage[1].replace(/-/g, " ")).replace(/\w/g, c => c.toUpperCase());
+        businessName = decodeURIComponent(gpage[1].replace(/-/g, " ")).replace(/\b\w/g, c => c.toUpperCase());
       } else if (qparam) {
         businessName = decodeURIComponent(qparam[1].replace(/\+/g, " "));
       }
@@ -181,7 +181,7 @@ export default function Membership() {
 
   const requestMutation = trpc.membership.request.useMutation({
     onSuccess: () => {
-      toast.success("Demande envoyée ! Vous recevrez un email de validation sous 7 jours.");
+      toast.success("Demande envoyée. Le Conseil d'administration vous répondra sous 7 jours.");
       setLocation("/");
     },
     onError: (err) => {
@@ -279,8 +279,8 @@ export default function Membership() {
             </Badge>
             <h1 className="text-4xl font-bold mb-3 text-[#D4AF37]">Rejoindre Synergie Dour</h1>
             <p className="text-[#F0E68C] text-lg max-w-2xl">
-              L'adhésion est gratuite jusqu'au 31 décembre 2026 — annuaire, événements,
-              visibilité et mise en réseau locale.
+              Cotisation annuelle 2026 : 50 € — annuaire, événements, visibilité,
+              mise en réseau locale et accompagnement promotionnel.
             </p>
           </div>
         </div>
@@ -293,7 +293,7 @@ export default function Membership() {
               {[
                 { icon: Store, title: "Apparition dans l'annuaire", desc: "Votre commerce visible sur l'annuaire public, avec coordonnées et description." },
                 { icon: Users, title: "Conférences et networking", desc: "Invitations aux événements de l'ASBL, rencontres entre indépendants." },
-                { icon: Video, title: "Mini-vidéo promotionnelle", desc: "Une vidéo de présentation de votre activité diffusée sur nos réseaux sociaux." },
+                { icon: Video, title: "Mini-vidéo promotionnelle", desc: "Après paiement, transmettez vos médias ou demandez un tournage. Toute publication reste soumise à validation administrative." },
                 { icon: Sparkles, title: "Espace personnel + week-end client", desc: "Tableau de bord dédié et participation aux week-ends commerciaux." },
               ].map((adv) => (
                 <Card key={adv.title} className="border-amber-200 bg-white/95 hover:shadow-md transition-shadow">
@@ -320,17 +320,17 @@ export default function Membership() {
             <div className="rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-r from-amber-50 to-white p-6 md:p-8 shadow-sm">
               <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <Badge className="bg-[#D4AF37] text-[#001a3d] mb-3">Décision statutaire 2026</Badge>
-                  <h2 className="text-2xl font-bold text-[#001a3d]">Adhésion gratuite en 2026</h2>
+                  <Badge className="bg-[#D4AF37] text-[#001a3d] mb-3">Cotisation annuelle 2026</Badge>
+                  <h2 className="text-2xl font-bold text-[#001a3d]">Une adhésion claire, sans paiement immédiat</h2>
                   <p className="mt-2 max-w-2xl text-gray-700">
-                    Aucune cotisation ni carte bancaire n'est demandée pour rejoindre l'association cette année.
-                    Les prestations optionnelles payantes font l'objet d'un devis et d'une facture distincts,
-                    acceptés avant tout paiement.
+                    Votre demande est d'abord examinée par le Conseil d'administration, conformément aux statuts.
+                    Si elle est approuvée, vous recevez une facture PDF de 50 € et un lien de paiement Stripe sécurisé.
+                    L'adhésion n'est activée qu'après confirmation du paiement.
                   </p>
                 </div>
                 <div className="shrink-0 text-center md:text-right">
-                  <p className="text-4xl font-bold text-[#001a3d]">0 €</p>
-                  <p className="text-sm text-gray-600">jusqu'au 31/12/2026</p>
+                  <p className="text-4xl font-bold text-[#001a3d]">50 €</p>
+                  <p className="text-sm text-gray-600">pour l'année 2026</p>
                 </div>
               </div>
             </div>
@@ -343,7 +343,7 @@ export default function Membership() {
             <div className="mb-6 text-center">
               <h2 className="text-2xl font-bold text-[#001a3d]">Votre candidature</h2>
               <p className="text-gray-600 mt-1 text-sm">
-                Le bureau examine chaque dossier — vous recevrez un email de validation sous 7 jours.
+                Le Conseil d'administration examine chaque dossier — vous recevrez une réponse sous 7 jours.
               </p>
             </div>
 
@@ -668,9 +668,10 @@ export default function Membership() {
                       </p>
                       <ol className="list-decimal list-inside space-y-1 text-gray-700">
                         <li>Vous soumettez votre candidature</li>
-                        <li>Le bureau de l'ASBL examine et valide</li>
-                        <li>Vous recevez un email de confirmation</li>
-                        <li>Votre adhésion 2026 est activée sans paiement</li>
+                        <li>Le Conseil d'administration examine votre demande</li>
+                        <li>Si elle est approuvée, vous recevez la facture de 50 € et le lien de paiement</li>
+                        <li>Après paiement, l'adhésion est activée et la signature au registre des membres est suivie par l'administration</li>
+                        <li>Vous complétez votre fiche et vos médias ; la publication intervient uniquement après validation administrative</li>
                       </ol>
                     </div>
 

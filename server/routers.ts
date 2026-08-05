@@ -30,7 +30,6 @@ import {
   updateContactRequest,
   deleteContactRequest,
   getMembershipRequests,
-  getMembershipRequestById,
   updateMembershipRequest,
   deleteMembershipRequest,
   getMerchantByUserId,
@@ -38,7 +37,8 @@ import {
   getLocalRequests,
   updateLocalRequest,
 } from "./db";
-import { sendAdminNewMessageNotification, sendInstantAcknowledgement, sendContractEmail } from "./email/notifications";
+import { sendAdminNewMessageNotification, sendInstantAcknowledgement } from "./email/notifications";
+import { approveMembershipAndSendInvoice } from "./membership/workflow";
 import { TRPCError } from "@trpc/server";
 
 export const appRouter = router({
@@ -297,16 +297,21 @@ export const appRouter = router({
           website:             data.website             || null,
           socialMedia:         data.socialMedia         || null,
           employeeCount:       data.employeeCount       || null,
+          googleBusinessUrl:   data.googleBusinessUrl   || null,
           contactName:         data.contactName,
-          email:               data.email,
+          email:               data.email.trim().toLowerCase(),
           phone:               data.phone,
           address:             data.address,
+          village:             data.village             || null,
           message:             data.message             || null,
           howDidYouHear:       data.howDidYouHear       || null,
           acceptsEmailContact: data.acceptsEmailContact ? 1 : 0,
           acceptsEmailContactAt: data.acceptsEmailContact ? new Date() : null,
           rgpdConsent:         data.rgpdConsent         ? 1 : 0,
           rgpdConsentAt:       new Date(),
+          paymentMode:         "one_time",
+          status:              "pending",
+          paiementStatut:      "en_attente",
         });
       } catch (e: any) {
         console.error("[membership.request] Erreur base de données:", e.message);
@@ -336,29 +341,56 @@ export const appRouter = router({
     listAll: adminProcedure.query(async () => {
       return getMembershipRequests();
     }),
-    update: adminProcedure.input((val: unknown) => {
-      if (typeof val === "object" && val !== null) return val;
-      throw new Error("Invalid input");
-    }).mutation(async ({ input }: any) => {
-      const { id, ...data } = input;
-      const result = await updateMembershipRequest(id, data);
-      // Si la demande vient d'être approuvée → envoyer le contrat automatiquement
-      if (data.status === "approved") {
-        getMembershipRequestById(id).then((req: any) => {
-          if (req && req.email) {
-            sendContractEmail({
-              to: req.email,
-              contactName: req.contactName ?? req.businessName,
-              businessName: req.businessName,
-              address: req.address ?? "",
-              village: req.village ?? undefined,
-              vatNumber: req.vatNumber ?? undefined,
-              structureType: req.structureType ?? undefined,
-            }).catch(() => {});
-          }
-        }).catch(() => {});
+    approveAndSendInvoice: adminProcedure.input((val: unknown) => {
+      const id = Number((val as { id?: unknown } | null)?.id);
+      if (Number.isInteger(id) && id > 0) return { id };
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Demande invalide." });
+    }).mutation(async ({ input, ctx }) => {
+      try {
+        return await approveMembershipAndSendInvoice({
+          requestId: input.id,
+          adminUserId: ctx.user.id,
+        });
+      } catch (error: any) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error?.message || "La facture de cotisation n'a pas pu être envoyée.",
+        });
       }
-      return result;
+    }),
+    update: adminProcedure.input((val: unknown) => {
+      const data = val as { id?: unknown; status?: unknown; reviewNote?: unknown } | null;
+      const id = Number(data?.id);
+      if (Number.isInteger(id) && id > 0 && data?.status === "rejected") {
+        return {
+          id,
+          status: "rejected" as const,
+          reviewNote: typeof data.reviewNote === "string" ? data.reviewNote.trim().slice(0, 2_000) : "",
+        };
+      }
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Seul le refus motivé est permis par cette action.",
+      });
+    }).mutation(async ({ input, ctx }) => {
+      return updateMembershipRequest(input.id, {
+        status: "rejected",
+        reviewNote: input.reviewNote || null,
+        reviewedBy: ctx.user.id,
+        reviewedAt: new Date(),
+      });
+    }),
+    markRegisterSigned: adminProcedure.input((val: unknown) => {
+      const id = Number((val as { id?: unknown } | null)?.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Demande invalide.",
+        });
+      }
+      return { id };
+    }).mutation(async ({ input }) => {
+      return updateMembershipRequest(input.id, { memberRegisterSignedAt: new Date() });
     }),
     delete: adminProcedure.input((val: unknown) => {
       if (typeof val === "number") return val;

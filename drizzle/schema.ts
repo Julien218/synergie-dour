@@ -144,11 +144,13 @@ export const membershipRequests = mysqlTable("membership_requests", {
   website: varchar("website", { length: 255 }),                    // Site web optionnel
   socialMedia: varchar("socialMedia", { length: 255 }),            // @handle ou URL réseaux
   employeeCount: varchar("employeeCount", { length: 20 }),         // 0, 1-5, 6-20...
+  googleBusinessUrl: varchar("googleBusinessUrl", { length: 500 }),
   // Coordonnées
   contactName: varchar("contactName", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
   address: varchar("address", { length: 255 }).notNull(),
+  village: varchar("village", { length: 100 }),
   // Finalisation
   message: text("message"),
   howDidYouHear: varchar("howDidYouHear", { length: 100 }),        // Source de découverte
@@ -156,9 +158,25 @@ export const membershipRequests = mysqlTable("membership_requests", {
   acceptsEmailContactAt: timestamp("acceptsEmailContactAt"),
   rgpdConsent: int("rgpdConsent").default(0).notNull(),
   rgpdConsentAt: timestamp("rgpdConsentAt"),
+  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).default("one_time").notNull(),
   // Statut
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
-  paiementStatut: mysqlEnum("paiementStatut", ["en_attente", "paye", "gratuit"]).default("gratuit").notNull(),
+  reviewNote: text("reviewNote"),
+  reviewedBy: int("reviewedBy"),
+  reviewedAt: timestamp("reviewedAt"),
+  memberRegisterSignedAt: timestamp("memberRegisterSignedAt"),
+  paiementStatut: mysqlEnum("paiementStatut", ["en_attente", "paye", "gratuit"]).default("en_attente").notNull(),
+  billingInvoiceId: int("billingInvoiceId"),
+  onboardingTokenHash: varchar("onboardingTokenHash", { length: 64 }),
+  onboardingTokenExpiresAt: timestamp("onboardingTokenExpiresAt"),
+  onboardingCompletedAt: timestamp("onboardingCompletedAt"),
+  mediaStatus: varchar("mediaStatus", { length: 32 }).default("awaiting").notNull(),
+  mediaUrls: json("mediaUrls").$type<string[]>(),
+  activityDescription: text("activityDescription"),
+  openingHours: text("openingHours"),
+  publicationConsent: int("publicationConsent").default(0).notNull(),
+  publicationConsentAt: timestamp("publicationConsentAt"),
+  appointmentRequested: int("appointmentRequested").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -242,12 +260,13 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 
 // =============================================================================
-//  MEMBERSHIPS (adhésion gratuite en 2026 ; paiements optionnels séparés)
+//  MEMBERSHIPS (activation après validation administrative et paiement)
 // =============================================================================
 
 export const memberships = mysqlTable("memberships", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id),
+  membershipRequestId: int("membershipRequestId").unique().references(() => membershipRequests.id),
+  userId: int("userId").references(() => users.id),
   merchantId: int("merchantId").references(() => merchants.id),
   paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).default("one_time").notNull(),
   status: mysqlEnum("status", ["pending_payment", "active", "expired", "cancelled"]).default("active").notNull(),

@@ -137,7 +137,9 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 RESEND_API_KEY=re_...
 EMAIL_FROM_BILLING=Facturation Synergie Dour <facturation@synergiedour.be>
 EMAIL_REPLY_TO=info@synergiedour.be
-MEMBERSHIP_FEES_ENABLED=false
+MEMBERSHIP_FEES_ENABLED=true
+MEMBERSHIP_PRICE_CENTS=5000
+MEMBERSHIP_APPOINTMENT_URL=https://...
 ```
 
 Créer le webhook Stripe vers
@@ -152,10 +154,11 @@ Activer aussi les emails de reçus dans les
 [paramètres Stripe](https://dashboard.stripe.com/settings/emails). La clé et le
 secret du webhook doivent provenir du même mode (`test` ou `live`).
 
-Les migrations `0009_billing_module.sql` et
-`0010_billing_stripe_checkout.sql` sont exécutées automatiquement au démarrage.
+Les migrations `0009_billing_module.sql`, `0010_billing_stripe_checkout.sql` et
+`0011_membership_paid_onboarding.sql` sont exécutées automatiquement au démarrage.
 Elles créent la numérotation annuelle, les sessions Checkout et le journal
-idempotent des événements Stripe.
+idempotent des événements Stripe, puis relient la cotisation au formulaire
+post-paiement pour les informations et médias du commerce.
 
 ### Validation avant passage en production
 
@@ -169,8 +172,10 @@ paiement → reçu. Après validation, remplacer ensemble la clé Stripe et le s
 webhook par leurs versions live, puis refaire un paiement réel de faible montant
 et le rembourser depuis Stripe.
 
-L'adhésion est gratuite jusqu'au 31 décembre 2026. Les prestations optionnelles
-payantes passent par le flux devis/facture ci-dessus. Le champ Peppol est préparé,
+La demande d'adhésion est examinée par le Conseil d'administration. Après approbation,
+une facture de cotisation annuelle (50 € en 2026, montant configurable) et un lien Stripe
+sécurisé sont envoyés. L'adhésion est activée uniquement après confirmation du webhook.
+Le champ Peppol est préparé,
 mais l'envoi électronique structuré nécessite encore un point d'accès certifié et
 la validation du comptable de l'ASBL.
 

@@ -4,6 +4,7 @@ import path from "node:path";
 const BILLING_MIGRATIONS = [
   "0009_billing_module.sql",
   "0010_billing_stripe_checkout.sql",
+  "0011_membership_paid_onboarding.sql",
 ];
 
 function splitSqlStatements(source: string): string[] {

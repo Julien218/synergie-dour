@@ -10,6 +10,7 @@ import {
   Mail, User, Phone, Building2, MapPin, Clock,
   CheckCheck, Reply, MessageSquare, Users, RefreshCw
 } from "lucide-react";
+import { toast } from "sonner";
 
 function formatDate(d: string | Date) {
   return new Date(d).toLocaleString("fr-BE", {
@@ -51,7 +52,13 @@ export default function InboxPage() {
   const { data: memberships = [], refetch: refetchMemberships } = trpc.membership.listAll.useQuery();
 
   const updateContact    = trpc.contact.update.useMutation({ onSuccess: () => refetchContacts() });
-  const updateMembership = trpc.membership.update.useMutation({ onSuccess: () => refetchMemberships() });
+  const approveMembership = trpc.membership.approveAndSendInvoice.useMutation({
+    onSuccess: (result) => {
+      toast.success(`${result.invoiceNumber} créée et envoyée`);
+      refetchMemberships();
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   const unreadContacts    = contacts.filter((c: any) => c.status === "new").length;
   const unreadMemberships = memberships.filter((m: any) => m.status === "pending").length;
@@ -217,9 +224,10 @@ export default function InboxPage() {
                     <div className="flex flex-col gap-2 shrink-0">
                       {m.status === "pending" && (
                         <Button size="sm" variant="outline"
-                          onClick={() => updateMembership.mutate({ id: m.id, status: "approved" })}
+                          disabled={approveMembership.isPending}
+                          onClick={() => approveMembership.mutate({ id: m.id })}
                           className="text-xs border-green-200 text-green-700 hover:bg-green-50">
-                          <CheckCheck className="w-3.5 h-3.5 mr-1" /> Valider
+                          <CheckCheck className="w-3.5 h-3.5 mr-1" /> Approuver et facturer
                         </Button>
                       )}
                       <Button size="sm"
