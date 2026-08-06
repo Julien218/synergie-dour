@@ -21,7 +21,7 @@ const XAI_API_ENDPOINT = 'https://api.x.ai/v1/images/generations';
 const DEFAULT_MODEL = 'grok-imagine-image-quality';
 const DEFAULT_ASPECT_RATIO = '1:1';
 const DEFAULT_RESOLUTION = '2k';
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 60000;
 
 function sanitizeMessage(message: string, apiKey?: string): string {
   if (!message) return '';
@@ -32,7 +32,6 @@ function sanitizeMessage(message: string, apiKey?: string): string {
 }
 
 export async function generateImage(options: ImagineOptions): Promise<ImagineResult> {
-  // Suppress unused import check for getDb if needed
   void getDb;
 
   const apiKey = process.env.XAI_API_KEY;
@@ -95,35 +94,54 @@ export async function generateImage(options: ImagineOptions): Promise<ImagineRes
     const imageUrl = data.data?.[0]?.url || data.url || data.images?.[0]?.url;
 
     if (!imageUrl) {
+      // Check for b64_json fallback
+      const b64 = data.data?.[0]?.b64_json;
+      if (b64) {
+        return {
+          media_url: `data:image/png;base64,${b64}`,
+          prompt,
+          model: DEFAULT_MODEL,
+        };
+      }
       throw new Error('No image URL returned from xAI API');
     }
 
-    // Immediately download the generated image URL (xAI URLs are temporary)
-    const imgResponse = await fetch(imageUrl, {
-      signal: controller.signal,
-    });
+    // Try to download and store the image locally
+    try {
+      const imgResponse = await fetch(imageUrl, {
+        signal: controller.signal,
+      });
 
-    if (!imgResponse.ok) {
-      throw new Error(`Failed to download image from temporary URL (${imgResponse.status})`);
+      if (!imgResponse.ok) {
+        throw new Error(`Failed to download image (${imgResponse.status})`);
+      }
+
+      const arrayBuffer = await imgResponse.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 10);
+      const storageKey = `autopublish/xai/${timestamp}_${random}.png`;
+
+      const stored = await storagePut(storageKey, buffer, 'image/png');
+
+      return {
+        media_url: stored.url,
+        prompt,
+        model: DEFAULT_MODEL,
+      };
+    } catch (storageErr) {
+      // If storage fails (e.g. no storage proxy configured), return the xAI temporary URL
+      console.warn('[xAI Imagine] Storage proxy unavailable, returning temporary xAI URL:', (storageErr as Error).message);
+      return {
+        media_url: imageUrl,
+        prompt,
+        model: DEFAULT_MODEL,
+      };
     }
-
-    const arrayBuffer = await imgResponse.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 10);
-    const storageKey = `autopublish/xai/${timestamp}_${random}.png`;
-
-    const stored = await storagePut(storageKey, buffer, 'image/png');
-
-    return {
-      media_url: stored.url,
-      prompt,
-      model: DEFAULT_MODEL,
-    };
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      throw new Error('xAI API request timed out after 30s');
+      throw new Error('xAI API request timed out after 60s');
     }
     const rawMessage = err instanceof Error ? err.message : String(err);
     throw new Error(sanitizeMessage(rawMessage, apiKey));
