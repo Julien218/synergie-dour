@@ -38,6 +38,7 @@ import SocialMediaPage from "@/pages/SocialMediaPage";
 import AutopublishPage from "@/pages/AutopublishPage";
 import SuperAdminBrand from "@/pages/SuperAdminBrand";
 import { PublicLayout } from "@/components/PublicLayout";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -112,60 +113,60 @@ function Router() {
         {() => <Login />}
       </Route>
 
-      {/* Routes Dashboard */}
+      {/* Routes Dashboard — protegees par ProtectedRoute */}
       <Route path="/dashboard">
-        {() => <Dashboard />}
+        {() => <ProtectedRoute><Dashboard /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/inbox">
-        {() => <InboxPage />}
+        {() => <ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/news">
-        {() => <ManageNews />}
+        {() => <ProtectedRoute requireAdmin><ManageNews /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/events">
-        {() => <ManageEvents />}
+        {() => <ProtectedRoute requireAdmin><ManageEvents /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/merchants">
-        {() => <ManageMerchants />}
+        {() => <ProtectedRoute requireAdmin><ManageMerchants /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/requests">
-        {() => <ManageRequests />}
+        {() => <ProtectedRoute requireAdmin><ManageRequests /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/membership-requests">
-        {() => <MembershipRequestsAdmin />}
+        {() => <ProtectedRoute requireAdmin><MembershipRequestsAdmin /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/agent">
-        {() => <AgentModuleComingSoon />}
+        {() => <ProtectedRoute requireAdmin><AgentModuleComingSoon /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/locaux">
-        {() => <ManageLocaux />}
+        {() => <ProtectedRoute requireAdmin><ManageLocaux /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/posts">
-        {() => <ManagePosts />}
+        {() => <ProtectedRoute requireAdmin><ManagePosts /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/social">
-        {() => <SocialMediaPage />}
+        {() => <ProtectedRoute requireAdmin><SocialMediaPage /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/autopublish">
-        {() => <AutopublishPage />}
+        {() => <ProtectedRoute requireAdmin><AutopublishPage /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/super-admin">
-        {() => <SuperAdminBrand />}
+        {() => <ProtectedRoute requireSuperAdmin><SuperAdminBrand /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/members">
-        {() => <MemberDashboard />}
+        {() => <ProtectedRoute><MemberDashboard /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/gallery">
-        {() => <GalleryPage />}
+        {() => <ProtectedRoute requireAdmin><GalleryPage /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/leadfinder">
-        {() => <LeadFinderPage />}
+        {() => <ProtectedRoute requireAdmin><LeadFinderPage /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/clients">
-        {() => <ListeClients />}
+        {() => <ProtectedRoute requireAdmin><ListeClients /></ProtectedRoute>}
       </Route>
       <Route path="/dashboard/liste-clients">
-        {() => <ListeClients />}
+        {() => <ProtectedRoute requireAdmin><ListeClients /></ProtectedRoute>}
       </Route>
 
       {/* Page formulaire local commercial */}

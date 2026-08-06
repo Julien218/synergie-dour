@@ -200,3 +200,94 @@ export async function composeWithLogos(
     errors,
   };
 }
+
+// ── Composer un visuel enrichi avec une bande de texte en bas ───────────────
+export type TextComposeOptions = {
+  logoSD?: boolean;
+  logoJS?: boolean;
+  outputWidth?: number;
+  outputHeight?: number;
+  text?: string;       // hashtags ou texte principal
+  subtext?: string;    // url ou texte secondaire
+};
+
+export async function composeVisualWithText(
+  baseImageUrl: string,
+  options: TextComposeOptions = {}
+): Promise<ComposeResult> {
+  const sharp = (await import("sharp")).default;
+  const { logoSD = true, logoJS = true, outputWidth = 1080, outputHeight = 1080, text, subtext } = options;
+
+  // Étape 1: Appliquer les logos officiels via composeWithLogos
+  const composedLogos = await composeWithLogos(baseImageUrl, {
+    logoSD,
+    logoJS,
+    outputWidth,
+    outputHeight
+  });
+
+  if (!text && !subtext) {
+    return composedLogos;
+  }
+
+  const errors = [...composedLogos.errors];
+  const logosDetails = [...composedLogos.logosDetails];
+
+  // Étape 2: Ajouter la bande de texte en bas
+  try {
+    const bannerHeight = Math.round(outputHeight * 0.12); // 12% de la hauteur
+    const bannerWidth = outputWidth;
+
+    // Échapper les caractères SVG spéciaux
+    const escapeSvg = (str: string) =>
+      str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+
+    const escapedText = text ? escapeSvg(text) : "";
+    const escapedSubtext = subtext ? escapeSvg(subtext) : "";
+
+    const textSvg = `
+      <svg width="${bannerWidth}" height="${bannerHeight}">
+        <!-- Fond navy #001533 avec 80% opacité -->
+        <rect width="100%" height="100%" fill="#001533" fill-opacity="0.8" />
+        
+        <!-- Texte principal blanc -->
+        ${text ? `<text x="50%" y="${subtext ? "40%" : "55%"}" font-family="sans-serif" font-size="${Math.round(bannerHeight * 0.3)}px" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">${escapedText}</text>` : ""}
+        
+        <!-- Sous-texte accent gold #E8C547 -->
+        ${subtext ? `<text x="50%" y="75%" font-family="sans-serif" font-size="${Math.round(bannerHeight * 0.22)}px" font-weight="bold" fill="#E8C547" text-anchor="middle" dominant-baseline="middle">${escapedSubtext}</text>` : ""}
+      </svg>
+    `;
+
+    const bannerBuffer = Buffer.from(textSvg);
+
+    const finalBuffer = await sharp(composedLogos.buffer)
+      .composite([{
+        input: bannerBuffer,
+        top: outputHeight - bannerHeight,
+        left: 0
+      }])
+      .png()
+      .toBuffer();
+
+    console.log("[compose-text] ✅ Bande de texte ajoutée en bas (" + bannerWidth + "x" + bannerHeight + ")");
+
+    return {
+      buffer: finalBuffer,
+      logosApplied: composedLogos.logosApplied,
+      logosCount: composedLogos.logosCount,
+      logosDetails,
+      errors
+    };
+
+  } catch (err: any) {
+    const msg = "Échec ajout bande de texte: " + err.message;
+    errors.push(msg);
+    console.error("[compose-text] ❌ " + msg, err.stack);
+    return composedLogos;
+  }
+}
