@@ -42,7 +42,7 @@ export async function getDb() {
   return _db;
 }
 
-async function getPool() {
+export async function getPool() {
   await getDb();
   return _pool;
 }
