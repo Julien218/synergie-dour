@@ -38,6 +38,9 @@ export const ENV = {
   tiktokClientKey: process.env.TIKTOK_CLIENT_KEY ?? "",
   tiktokClientSecret: process.env.TIKTOK_CLIENT_SECRET ?? "",
 
+  // xAI Grok Imagine — génération d'images (server-side only)
+  xaiApiKey: process.env.XAI_API_KEY ?? "",
+
   // Cron interne (Railway Cron Jobs)
   cronSecret: process.env.CRON_SECRET ?? "",
 };
