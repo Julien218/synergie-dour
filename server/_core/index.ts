@@ -16,6 +16,7 @@ import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
 import { socialRouter } from "../social";
 import { autopublishRouter } from "../autopublish/router";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
+import { cronBackupHandler, isProductionEnvironment } from "../cron/backup";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -84,14 +85,25 @@ async function initDatabase() {
       //  silencieusement avalée, laissant la colonne absente en production —
       //  cause racine du bug "membership.request" 500 constaté en recette du 08/07/2026)
       await ensureColumn(pool, "merchants", "googleBusinessUrl", "ALTER TABLE `merchants` ADD COLUMN `googleBusinessUrl` varchar(500)");
+      await ensureColumn(pool, "merchants", "photos", "ALTER TABLE `merchants` ADD COLUMN `photos` json");
+      await ensureColumn(pool, "merchants", "videos", "ALTER TABLE `merchants` ADD COLUMN `videos` json");
+      await ensureColumn(pool, "membership_requests", "structureType", "ALTER TABLE `membership_requests` ADD COLUMN `structureType` varchar(50)");
+      await ensureColumn(pool, "membership_requests", "vatNumber", "ALTER TABLE `membership_requests` ADD COLUMN `vatNumber` varchar(50)");
+      await ensureColumn(pool, "membership_requests", "sector", "ALTER TABLE `membership_requests` ADD COLUMN `sector` varchar(100)");
+      await ensureColumn(pool, "membership_requests", "website", "ALTER TABLE `membership_requests` ADD COLUMN `website` varchar(255)");
+      await ensureColumn(pool, "membership_requests", "socialMedia", "ALTER TABLE `membership_requests` ADD COLUMN `socialMedia` varchar(255)");
+      await ensureColumn(pool, "membership_requests", "employeeCount", "ALTER TABLE `membership_requests` ADD COLUMN `employeeCount` varchar(20)");
+      await ensureColumn(pool, "membership_requests", "howDidYouHear", "ALTER TABLE `membership_requests` ADD COLUMN `howDidYouHear` varchar(100)");
+      await ensureColumn(pool, "membership_requests", "acceptsEmailContact", "ALTER TABLE `membership_requests` ADD COLUMN `acceptsEmailContact` int NOT NULL DEFAULT 0");
+      await ensureColumn(pool, "membership_requests", "rgpdConsent", "ALTER TABLE `membership_requests` ADD COLUMN `rgpdConsent` int NOT NULL DEFAULT 1");
       await ensureColumn(pool, "membership_requests", "paiementStatut", "ALTER TABLE `membership_requests` ADD COLUMN `paiementStatut` VARCHAR(20) NOT NULL DEFAULT 'en_attente'");
 
       const sqls = [
         `CREATE TABLE IF NOT EXISTS \`users\` (\`id\` int AUTO_INCREMENT NOT NULL, \`openId\` varchar(64) NOT NULL, \`name\` text, \`email\` varchar(320), \`loginMethod\` varchar(64), \`passwordHash\` varchar(255), \`emailVerifiedAt\` timestamp NULL, \`role\` enum('user','admin','super_admin') NOT NULL DEFAULT 'user', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, \`lastSignedIn\` timestamp NOT NULL DEFAULT (now()), CONSTRAINT \`users_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`users_openId_unique\` UNIQUE(\`openId\`))`,
         `CREATE TABLE IF NOT EXISTS \`categories\` (\`id\` int AUTO_INCREMENT NOT NULL, \`name\` varchar(100) NOT NULL, \`description\` text, \`icon\` varchar(100), \`createdAt\` timestamp NOT NULL DEFAULT (now()), PRIMARY KEY(\`id\`), UNIQUE(\`name\`))`,
         `CREATE TABLE IF NOT EXISTS \`contact_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`name\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20), \`subject\` varchar(255) NOT NULL, \`message\` text NOT NULL, \`status\` enum('new','read','replied','closed') NOT NULL DEFAULT 'new', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`membership_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`contactName\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20) NOT NULL, \`address\` varchar(255) NOT NULL, \`message\` text, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`merchants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`description\` text, \`address\` varchar(255) NOT NULL, \`phone\` varchar(20), \`email\` varchar(320), \`website\` varchar(255), \`logo\` varchar(255), \`googleBusinessUrl\` varchar(500), \`isVerified\` int NOT NULL DEFAULT 0, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`membership_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`structureType\` varchar(50), \`vatNumber\` varchar(50), \`sector\` varchar(100), \`website\` varchar(255), \`socialMedia\` varchar(255), \`employeeCount\` varchar(20), \`contactName\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20) NOT NULL, \`address\` varchar(255) NOT NULL, \`message\` text, \`howDidYouHear\` varchar(100), \`acceptsEmailContact\` int NOT NULL DEFAULT 0, \`rgpdConsent\` int NOT NULL DEFAULT 1, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`paiementStatut\` varchar(20) NOT NULL DEFAULT 'en_attente', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`merchants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`description\` text, \`address\` varchar(255) NOT NULL, \`phone\` varchar(20), \`email\` varchar(320), \`website\` varchar(255), \`logo\` varchar(500), \`photos\` json, \`videos\` json, \`googleBusinessUrl\` varchar(500), \`isVerified\` int NOT NULL DEFAULT 0, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`news\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`content\` text NOT NULL, \`excerpt\` varchar(500), \`image\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`publishedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`events\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`description\` text NOT NULL, \`image\` varchar(255), \`startDate\` timestamp NOT NULL, \`endDate\` timestamp NULL, \`location\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
         `CREATE TABLE IF NOT EXISTS \`resources\` (\`id\` int AUTO_INCREMENT NOT NULL, \`slug\` varchar(200) NOT NULL, \`title\` varchar(255) NOT NULL, \`summary\` varchar(500) NOT NULL, \`category\` enum('starter','gestion','developpement','difficulte') NOT NULL, \`tags\` json NOT NULL, \`verifiedAt\` varchar(10) NOT NULL, \`content\` text NOT NULL, \`links\` json NOT NULL, \`localContacts\` json, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'published', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`), UNIQUE(\`slug\`))`,
@@ -216,9 +228,10 @@ async function startServer() {
     app.use("/api/social", socialRouter);
     app.use("/api/autopublish", autopublishRouter);
     app.post("/api/cron/autopublish", cronAutopublishHandler);
+    app.post("/api/cron/backup", cronBackupHandler);
 
   // ─── Backup automatique quotidien à 2h00 ─────────────────────────────────
-  (async () => {
+  if (isProductionEnvironment()) (async () => {
     const { runDatabaseBackup } = await import("../cron/backup");
     function scheduleDaily(hour: number, minute: number, fn: () => Promise<any>) {
       function msUntilNext(h: number, m: number): number {
@@ -237,6 +250,7 @@ async function startServer() {
     }
     scheduleDaily(2, 0, runDatabaseBackup);
   })();
+  else console.log(`[BACKUP CRON] Désactivé hors production (${process.env.RAILWAY_ENVIRONMENT_NAME || process.env.NODE_ENV || "unknown"})`);
   serveStatic(app);
   }
 
