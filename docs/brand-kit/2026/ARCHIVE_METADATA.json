@@ -1,0 +1,22 @@
+{
+  "filename": "Synergie_Dour_Kit_ADN_Complet_2026_FINAL.zip",
+  "packageRoot": "Synergie_Dour_Kit_ADN_2026",
+  "version": "2026.08.05",
+  "bytes": 38500645,
+  "fileCount": 67,
+  "sha256": "10b62cfa0c5c69a11a362594b97d3e22eaa670558a7e71ffb7ef238871c4f4f6",
+  "integrity": {
+    "zipTest": "passed",
+    "pdfPages": 18,
+    "pdfRenderTest": "passed",
+    "pngValidation": "passed",
+    "svgXmlValidation": "passed"
+  },
+  "agentFiles": [
+    "AGENT_README.md",
+    "AGENT_INDEX.json",
+    "CHECKSUMS.sha256",
+    "MANIFEST.txt",
+    "VERSION"
+  ]
+}
