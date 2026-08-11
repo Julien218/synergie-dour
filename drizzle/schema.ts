@@ -297,7 +297,7 @@ export const payments = mysqlTable("payments", {
   stripeInvoiceId: varchar("stripeInvoiceId", { length: 100 }),
   amountCents: int("amountCents").notNull(),
   currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
-  feeJsInnovCents: int("feeJsInnovCents").notNull().default(150),
+  feeJsInnovCents: int("feeJsInnovCents").notNull().default(0),
   netToAsblCents: int("netToAsblCents").notNull(),
   status: mysqlEnum("status", ["succeeded", "refunded", "failed"]).notNull(),
   paymentMethod: varchar("paymentMethod", { length: 50 }),

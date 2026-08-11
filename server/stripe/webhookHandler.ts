@@ -5,9 +5,9 @@
  *
  * Événements principaux :
  *   - checkout.session.completed / async_payment_succeeded → payer une facture
+ *     ou activer une adhésion uniquement lorsque le paiement est confirmé
  *   - checkout.session.async_payment_failed / expired      → clôturer la session
- * Les anciens événements d'adhésion ne sont traités que si
- * MEMBERSHIP_FEES_ENABLED=true (cotisation annuelle activée).
+ * Les événements d'adhésion ne sont traités que si MEMBERSHIP_FEES_ENABLED=true.
  *
  * À monter dans Express AVANT le middleware JSON car Stripe envoie du raw body.
  *
@@ -24,19 +24,24 @@
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
 import { getDb } from "../db";
-import { memberships, payments, membershipRequests } from "../../drizzle/schema";
+import {
+  memberships,
+  payments,
+  membershipRequests,
+} from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { constructWebhookEvent } from "./stripeService";
-import { sendMembershipActivatedEmail, sendPaymentFailedEmail } from "../email/notifications";
+import { sendMembershipActivatedEmail } from "../email/notifications";
 import {
   markBillingCheckoutExpired,
   markBillingCheckoutFailed,
   processBillingCheckoutEvent,
 } from "../billing/stripeWebhook";
 
-const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "0", 10);
-
-export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
+export async function stripeWebhookHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const signature = req.headers["stripe-signature"];
   if (!signature || typeof signature !== "string") {
     res.status(400).send("Missing stripe-signature header");
@@ -56,7 +61,10 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
     await processWebhookEvent(event);
     res.status(200).json({ received: true });
   } catch (err) {
-    console.error(`Erreur lors du traitement de l'événement ${event.id} :`, err);
+    console.error(
+      `Erreur lors du traitement de l'événement ${event.id} :`,
+      err
+    );
     res.status(500).send("Erreur de traitement interne");
   }
 }
@@ -71,19 +79,24 @@ async function processWebhookEvent(event: Stripe.Event): Promise<void> {
           event.id,
           event.type
         );
-        if (!billing.handled) {
-          await handleCheckoutCompleted(session, event.id);
+        if (!billing.handled && session.payment_status === "paid") {
+          await handleMembershipPaymentConfirmed(session, event.id);
         }
       }
       break;
 
-    case "checkout.session.async_payment_succeeded":
-      await processBillingCheckoutEvent(
-        event.data.object as Stripe.Checkout.Session,
+    case "checkout.session.async_payment_succeeded": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const billing = await processBillingCheckoutEvent(
+        session,
         event.id,
         event.type
       );
+      if (!billing.handled && session.payment_status === "paid") {
+        await handleMembershipPaymentConfirmed(session, event.id);
+      }
       break;
+    }
 
     case "checkout.session.async_payment_failed":
       await markBillingCheckoutFailed(
@@ -97,18 +110,6 @@ async function processWebhookEvent(event: Stripe.Event): Promise<void> {
       );
       break;
 
-    case "invoice.payment_succeeded":
-      await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice, event.id);
-      break;
-
-    case "invoice.payment_failed":
-      await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice, event.id);
-      break;
-
-    case "customer.subscription.deleted":
-      await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
-      break;
-
     default:
       console.log(`Événement Stripe ignoré : ${event.type}`);
   }
@@ -118,7 +119,7 @@ async function processWebhookEvent(event: Stripe.Event): Promise<void> {
 /* CHECKOUT TERMINÉ — premier paiement, activation de l'adhésion              */
 /* ------------------------------------------------------------------------- */
 
-async function handleCheckoutCompleted(
+async function handleMembershipPaymentConfirmed(
   session: Stripe.Checkout.Session,
   eventId: string
 ): Promise<void> {
@@ -128,8 +129,21 @@ async function handleCheckoutCompleted(
     );
     return;
   }
+  if (session.metadata?.kind !== "membership" || session.mode !== "payment") {
+    return;
+  }
+  if (session.payment_status !== "paid") {
+    console.warn(
+      `[Stripe] Session ${session.id} non payée — adhésion non activée`
+    );
+    return;
+  }
+
   const db: any = await getDb();
-  if (!db) { console.error('DB not available'); return; }
+  if (!db) {
+    console.error("DB not available");
+    return;
+  }
   const membershipRequestId = session.metadata?.membershipRequestId;
   if (!membershipRequestId) {
     console.warn(`Session ${session.id} sans membershipRequestId — ignorée`);
@@ -144,131 +158,110 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  const userId = session.metadata?.userId ? parseInt(session.metadata.userId, 10) : null;
-  const amountCents = session.amount_total ?? 0;
-  const isSubscription = session.mode === "subscription";
+  const existingPayment = await db.query.payments.findFirst({
+    where: eq(payments.stripeEventId, eventId),
+  });
+  if (existingPayment) {
+    console.log(`[Stripe] Événement ${eventId} déjà traité`);
+    return;
+  }
 
+  const requestId = parseInt(membershipRequestId, 10);
+  const existingMembership = await db.query.memberships.findFirst({
+    where: eq(memberships.membershipRequestId, requestId),
+  });
+  if (existingMembership?.status === "active") {
+    console.log(`[Stripe] Adhésion de la demande ${requestId} déjà active`);
+    return;
+  }
+
+  const userId = session.metadata?.userId
+    ? parseInt(session.metadata.userId, 10)
+    : null;
+  const amountCents = session.amount_total ?? 0;
   const startsAt = new Date();
   const expiresAt = new Date();
   expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
-  const [membership] = await db
-    .insert(memberships)
-    .values({
-      userId: userId ?? 0,
-      paymentMode: isSubscription ? "subscription" : "one_time",
-      status: "active",
-      stripeCustomerId: typeof session.customer === "string" ? session.customer : null,
-      stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : null,
+  let membershipId = existingMembership?.id;
+  await db.transaction(async (tx: any) => {
+    if (membershipId) {
+      await tx
+        .update(memberships)
+        .set({
+          status: "active",
+          stripeCustomerId:
+            typeof session.customer === "string" ? session.customer : null,
+          stripePaymentIntentId:
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : null,
+          startsAt,
+          expiresAt,
+          amountCents,
+          currency: (session.currency ?? "eur").toUpperCase(),
+          updatedAt: new Date(),
+        })
+        .where(eq(memberships.id, membershipId));
+    } else {
+      const [membership] = await tx
+        .insert(memberships)
+        .values({
+          membershipRequestId: requestId,
+          userId,
+          paymentMode: "one_time",
+          status: "active",
+          stripeCustomerId:
+            typeof session.customer === "string" ? session.customer : null,
+          stripeSubscriptionId: null,
+          stripePaymentIntentId:
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : null,
+          startsAt,
+          expiresAt,
+          amountCents,
+          currency: (session.currency ?? "eur").toUpperCase(),
+        })
+        .$returningId();
+      membershipId = membership.id;
+    }
+
+    await tx.insert(payments).values({
+      membershipId,
+      userId,
+      stripeEventId: eventId,
       stripePaymentIntentId:
-        typeof session.payment_intent === "string" ? session.payment_intent : null,
-      startsAt,
-      expiresAt,
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : null,
+      stripeInvoiceId:
+        typeof session.invoice === "string" ? session.invoice : null,
       amountCents,
       currency: (session.currency ?? "eur").toUpperCase(),
-    })
-    .$returningId();
+      feeJsInnovCents: 0,
+      netToAsblCents: amountCents,
+      status: "succeeded",
+      paymentMethod: session.payment_method_types?.[0] ?? null,
+    });
 
-  await db.insert(payments).values({
-    membershipId: membership.id,
-    userId: userId ?? null,
-    stripeEventId: eventId,
-    stripePaymentIntentId:
-      typeof session.payment_intent === "string" ? session.payment_intent : null,
-    stripeInvoiceId: typeof session.invoice === "string" ? session.invoice : null,
-    amountCents,
-    currency: (session.currency ?? "eur").toUpperCase(),
-    feeJsInnovCents: APPLICATION_FEE_CENTS,
-    netToAsblCents: amountCents - APPLICATION_FEE_CENTS,
-    status: "succeeded",
-    paymentMethod: session.payment_method_types?.[0] ?? null,
+    await tx
+      .update(membershipRequests)
+      .set({
+        status: "approved",
+        paiementStatut: "paye",
+        updatedAt: new Date(),
+      })
+      .where(eq(membershipRequests.id, request.id));
   });
-
-  await db
-    .update(membershipRequests)
-    .set({ status: "approved", updatedAt: new Date() })
-    .where(eq(membershipRequests.id, request.id));
 
   await sendMembershipActivatedEmail({
     to: request.email,
     contactName: request.contactName,
     businessName: request.businessName,
-    paymentMode: isSubscription ? "subscription" : "one_time",
+    paymentMode: "one_time",
     expiresAt,
   });
 
-  console.log(`Adhésion ${membership.id} activée pour ${request.businessName}`);
-}
-
-/* ------------------------------------------------------------------------- */
-/* RENOUVELLEMENT (abonnement) — invoice payée                                */
-/* ------------------------------------------------------------------------- */
-
-async function handleInvoicePaymentSucceeded(
-  invoice: Stripe.Invoice,
-  eventId: string
-): Promise<void> {
-  if (process.env.MEMBERSHIP_FEES_ENABLED?.trim().toLowerCase() === "false") return;
-  if (typeof (invoice as any).subscription !== "string") return;
-
-  const db: any = await getDb();
-  if (!db) { console.error("DB not available"); return; }
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.stripeSubscriptionId, (invoice as any).subscription),
-  });
-  if (!membership) return;
-
-  const newExpiresAt = new Date();
-  newExpiresAt.setFullYear(newExpiresAt.getFullYear() + 1);
-
-  await db
-    .update(memberships)
-    .set({ status: "active", expiresAt: newExpiresAt, updatedAt: new Date() })
-    .where(eq(memberships.id, membership.id));
-
-  const amountCents = invoice.amount_paid ?? 0;
-  await db.insert(payments).values({
-    membershipId: membership.id,
-    userId: membership.userId,
-    stripeEventId: eventId,
-    stripeInvoiceId: invoice.id,
-    amountCents,
-    currency: (invoice.currency ?? "eur").toUpperCase(),
-    feeJsInnovCents: APPLICATION_FEE_CENTS,
-    netToAsblCents: amountCents - APPLICATION_FEE_CENTS,
-    status: "succeeded",
-    paymentMethod: "card",
-  });
-}
-
-/* ------------------------------------------------------------------------- */
-/* PAIEMENT ÉCHOUÉ                                                             */
-/* ------------------------------------------------------------------------- */
-
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, eventId: string): Promise<void> {
-  if (process.env.MEMBERSHIP_FEES_ENABLED?.trim().toLowerCase() === "false") return;
-  if (typeof invoice.customer_email !== "string") return;
-  await sendPaymentFailedEmail({
-    to: invoice.customer_email,
-    invoiceUrl: invoice.hosted_invoice_url ?? null,
-  });
-  console.warn(`Paiement échoué — invoice ${invoice.id}`);
-}
-
-/* ------------------------------------------------------------------------- */
-/* ABONNEMENT ANNULÉ                                                           */
-/* ------------------------------------------------------------------------- */
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-  const db: any = await getDb();
-  if (!db) { console.error('DB not available'); return; }
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.stripeSubscriptionId, subscription.id),
-  });
-  if (!membership) return;
-
-  await db
-    .update(memberships)
-    .set({ status: "cancelled", updatedAt: new Date() })
-    .where(eq(memberships.id, membership.id));
+  console.log(`Adhésion ${membershipId} activée pour ${request.businessName}`);
 }

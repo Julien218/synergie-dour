@@ -171,7 +171,7 @@ export const payments = mysqlTable("payments", {
   currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
 
   /** Frais de gestion JS-Innov.IA (en centimes, désactivés par défaut) */
-  feeJsInnovCents: int("feeJsInnovCents").notNull().default(150),
+  feeJsInnovCents: int("feeJsInnovCents").notNull().default(0),
 
   /** Net reversé à l'ASBL (en centimes) */
   netToAsblCents: int("netToAsblCents").notNull(),

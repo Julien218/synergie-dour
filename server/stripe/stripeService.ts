@@ -12,7 +12,8 @@ export function getStripe(): Stripe {
   if (!key) throw new Error("STRIPE_SECRET_KEY non configurée");
   if (!stripeClient) {
     stripeClient = new Stripe(key, {
-      apiVersion: "2025-08-27.basil",
+      // Version épinglée sur celle validée par l'intégration et les webhooks.
+      apiVersion: "2026-06-24.dahlia" as Stripe.LatestApiVersion,
       typescript: true,
     });
   }
@@ -22,7 +23,9 @@ export function getStripe(): Stripe {
 export function getStripeMode(): "test" | "live" | "unconfigured" {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key) return "unconfigured";
-  return key.startsWith("sk_live_") ? "live" : "test";
+  return key.startsWith("sk_live_") || key.startsWith("rk_live_")
+    ? "live"
+    : "test";
 }
 
 export interface BillingCheckoutInput {
@@ -57,6 +60,7 @@ export async function createBillingCheckout(
   return getStripe().checkout.sessions.create(
     {
       mode: "payment",
+      integration_identifier: "synergie_billing_xqjmtvka",
       locale: "fr",
       client_reference_id: `invoice:${input.invoiceId}`,
       customer_email: input.customerEmail,
@@ -75,7 +79,6 @@ export async function createBillingCheckout(
           quantity: 1,
         },
       ],
-      payment_method_types: ["card", "bancontact"],
       metadata,
       payment_intent_data: {
         metadata,
@@ -101,21 +104,14 @@ export async function getPaymentReceiptUrl(
     : null;
 }
 
-/* ------------------------------------------------------------------------- */
-/* Ancien flux d'adhésion payante, désactivé en 2026 par décision statutaire. */
-/* ------------------------------------------------------------------------- */
-
-export type CheckoutMode = "one_time" | "subscription";
-
 export interface CreateCheckoutInput {
-  mode: CheckoutMode;
+  mode: "one_time";
   customerEmail: string;
   metadata: {
     membershipRequestId: string;
     userId?: string;
     businessName: string;
   };
-  asblConnectAccountId: string;
 }
 
 export async function createMembershipCheckout(
@@ -128,11 +124,12 @@ export async function createMembershipCheckout(
   }
 
   const membershipPriceCents = Number(process.env.MEMBERSHIP_PRICE_CENTS);
-  const applicationFeeCents = Number(
-    process.env.STRIPE_APPLICATION_FEE_CENTS || 0
-  );
+  const membershipPriceId = process.env.STRIPE_MEMBERSHIP_PRICE_ID?.trim();
   if (!Number.isInteger(membershipPriceCents) || membershipPriceCents <= 0) {
     throw new Error("MEMBERSHIP_PRICE_CENTS invalide");
+  }
+  if (!membershipPriceId?.startsWith("price_")) {
+    throw new Error("STRIPE_MEMBERSHIP_PRICE_ID invalide");
   }
 
   const base: Stripe.Checkout.SessionCreateParams = {
@@ -140,87 +137,29 @@ export async function createMembershipCheckout(
     success_url: `${APP_URL}/membership/success?session={CHECKOUT_SESSION_ID}`,
     cancel_url: `${APP_URL}/membership/cancelled`,
     metadata: { ...input.metadata, kind: "membership" },
+    integration_identifier: "synergie_membership_bvclnqze",
     locale: "fr",
-    payment_method_types: ["card", "bancontact"],
   };
 
   const stripe = getStripe();
-  const session =
-    input.mode === "one_time"
-      ? await stripe.checkout.sessions.create({
-          ...base,
-          mode: "payment",
-          line_items: [
-            {
-              price_data: {
-                currency: "eur",
-                product_data: { name: "Cotisation annuelle Synergie Dour" },
-                unit_amount: membershipPriceCents,
-              },
-              quantity: 1,
-            },
-          ],
-          payment_intent_data: {
-            application_fee_amount: applicationFeeCents,
-            transfer_data: { destination: input.asblConnectAccountId },
-          },
-        })
-      : await stripe.checkout.sessions.create({
-          ...base,
-          mode: "subscription",
-          line_items: [
-            {
-              price: process.env.STRIPE_PRICE_ID_SUBSCRIPTION ||
-                (() => {
-                  throw new Error("STRIPE_PRICE_ID_SUBSCRIPTION non configuré");
-                })(),
-              quantity: 1,
-            },
-          ],
-          subscription_data: {
-            application_fee_percent:
-              (applicationFeeCents / membershipPriceCents) * 100,
-            transfer_data: { destination: input.asblConnectAccountId },
-          },
-        });
+  const session = await stripe.checkout.sessions.create(
+    {
+      ...base,
+      mode: "payment",
+      line_items: [{ price: membershipPriceId, quantity: 1 }],
+      payment_intent_data: {
+        metadata: { ...input.metadata, kind: "membership" },
+        receipt_email: input.customerEmail,
+        description: `Cotisation Synergie Dour — ${input.metadata.businessName}`,
+      },
+    },
+    {
+      idempotencyKey: `membership-checkout-${input.metadata.membershipRequestId}`,
+    }
+  );
 
   if (!session.url) throw new Error("Stripe n'a pas retourné d'URL Checkout");
   return session.url;
-}
-
-export async function createAsblOnboardingLink(
-  connectAccountId: string
-): Promise<string> {
-  const accountLink = await getStripe().accountLinks.create({
-    account: connectAccountId,
-    refresh_url: `${APP_URL}/admin/stripe/refresh`,
-    return_url: `${APP_URL}/admin/stripe/return`,
-    type: "account_onboarding",
-  });
-  return accountLink.url;
-}
-
-export async function createAsblConnectAccount(asblData: {
-  email: string;
-  bceNumber: string;
-  legalName: string;
-}): Promise<string> {
-  const account = await getStripe().accounts.create({
-    type: "express",
-    country: "BE",
-    email: asblData.email,
-    business_type: "non_profit",
-    company: {
-      name: asblData.legalName,
-      tax_id: asblData.bceNumber,
-    },
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
-    },
-    metadata: { type: "asbl_synergie_dour" },
-  });
-  return account.id;
 }
 
 export function constructWebhookEvent(
@@ -229,11 +168,7 @@ export function constructWebhookEvent(
 ): Stripe.Event {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) throw new Error("STRIPE_WEBHOOK_SECRET non configuré");
-  return getStripe().webhooks.constructEvent(
-    rawBody,
-    signature,
-    webhookSecret
-  );
+  return getStripe().webhooks.constructEvent(rawBody, signature, webhookSecret);
 }
 
 /** Compatibilité avec les imports existants. */
