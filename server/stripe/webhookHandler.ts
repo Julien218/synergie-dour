@@ -150,27 +150,40 @@ async function handleMembershipPaymentConfirmed(
     return;
   }
 
+  const requestId = parseInt(membershipRequestId, 10);
+  if (!Number.isInteger(requestId) || requestId <= 0) {
+    throw new Error(
+      `membershipRequestId invalide sur la session ${session.id}`
+    );
+  }
+
   const request = await db.query.membershipRequests.findFirst({
-    where: eq(membershipRequests.id, parseInt(membershipRequestId, 10)),
+    where: eq(membershipRequests.id, requestId),
   });
   if (!request) {
     console.warn(`Membership request ${membershipRequestId} introuvable`);
     return;
   }
 
+  const existingMembership = await db.query.memberships.findFirst({
+    where: eq(memberships.membershipRequestId, requestId),
+  });
+
   const existingPayment = await db.query.payments.findFirst({
     where: eq(payments.stripeEventId, eventId),
   });
   if (existingPayment) {
+    if (existingMembership?.expiresAt) {
+      await sendActivationEmailOnce(db, request, existingMembership.expiresAt);
+    }
     console.log(`[Stripe] Événement ${eventId} déjà traité`);
     return;
   }
 
-  const requestId = parseInt(membershipRequestId, 10);
-  const existingMembership = await db.query.memberships.findFirst({
-    where: eq(memberships.membershipRequestId, requestId),
-  });
   if (existingMembership?.status === "active") {
+    if (existingMembership.expiresAt) {
+      await sendActivationEmailOnce(db, request, existingMembership.expiresAt);
+    }
     console.log(`[Stripe] Adhésion de la demande ${requestId} déjà active`);
     return;
   }
@@ -179,6 +192,13 @@ async function handleMembershipPaymentConfirmed(
     ? parseInt(session.metadata.userId, 10)
     : null;
   const amountCents = session.amount_total ?? 0;
+  const expectedAmountCents = Number(process.env.MEMBERSHIP_PRICE_CENTS);
+  const currency = (session.currency ?? "").toLowerCase();
+  if (amountCents !== expectedAmountCents || currency !== "eur") {
+    throw new Error(
+      `Montant inattendu pour la session ${session.id}: ${amountCents} ${currency}`
+    );
+  }
   const startsAt = new Date();
   const expiresAt = new Date();
   expiresAt.setFullYear(expiresAt.getFullYear() + 1);
@@ -255,6 +275,18 @@ async function handleMembershipPaymentConfirmed(
       .where(eq(membershipRequests.id, request.id));
   });
 
+  await sendActivationEmailOnce(db, request, expiresAt);
+
+  console.log(`Adhésion ${membershipId} activée pour ${request.businessName}`);
+}
+
+async function sendActivationEmailOnce(
+  db: any,
+  request: typeof membershipRequests.$inferSelect,
+  expiresAt: Date
+): Promise<void> {
+  if (request.activationEmailSentAt) return;
+
   await sendMembershipActivatedEmail({
     to: request.email,
     contactName: request.contactName,
@@ -263,5 +295,8 @@ async function handleMembershipPaymentConfirmed(
     expiresAt,
   });
 
-  console.log(`Adhésion ${membershipId} activée pour ${request.businessName}`);
+  await db
+    .update(membershipRequests)
+    .set({ activationEmailSentAt: new Date(), updatedAt: new Date() })
+    .where(eq(membershipRequests.id, request.id));
 }

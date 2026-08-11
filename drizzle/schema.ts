@@ -166,6 +166,7 @@ export const membershipRequests = mysqlTable("membership_requests", {
   reviewedAt: timestamp("reviewedAt"),
   memberRegisterSignedAt: timestamp("memberRegisterSignedAt"),
   paiementStatut: mysqlEnum("paiementStatut", ["en_attente", "paye", "gratuit"]).default("en_attente").notNull(),
+  activationEmailSentAt: timestamp("activationEmailSentAt"),
   billingInvoiceId: int("billingInvoiceId"),
   onboardingTokenHash: varchar("onboardingTokenHash", { length: 64 }),
   onboardingTokenExpiresAt: timestamp("onboardingTokenExpiresAt"),
