@@ -40,9 +40,60 @@ import {
 } from "./db";
 import { sendAdminNewMessageNotification, sendInstantAcknowledgement, sendContractEmail } from "./email/notifications";
 import { TRPCError } from "@trpc/server";
+import { invokeLLM } from "./_core/llm";
+import { getChatbotSystemPrompt } from "./chatbotPrompt";
 
 export const appRouter = router({
   system: systemRouter,
+  chatbot: router({
+    ask: publicProcedure.input((value: unknown) => {
+      if (!value || typeof value !== "object") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Question invalide" });
+      }
+      const input = value as Record<string, unknown>;
+      const question = typeof input.question === "string" ? input.question.trim() : "";
+      if (!question || question.length > 2_000) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "La question doit contenir entre 1 et 2 000 caractères" });
+      }
+      const rawHistory = Array.isArray(input.history) ? input.history.slice(-10) : [];
+      const history = rawHistory.map((item, index) => {
+        if (!item || typeof item !== "object") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Message ${index + 1} invalide` });
+        }
+        const message = item as Record<string, unknown>;
+        const role = message.role;
+        const content = typeof message.content === "string" ? message.content.trim() : "";
+        if ((role !== "user" && role !== "assistant") || !content || content.length > 4_000) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Message ${index + 1} invalide` });
+        }
+        return { role, content } as const;
+      });
+      return { question, history };
+    }).mutation(async ({ input }) => {
+      try {
+        const systemPrompt = await getChatbotSystemPrompt();
+        const result = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...input.history,
+            { role: "user", content: input.question },
+          ],
+        });
+        const content = result.choices?.[0]?.message?.content;
+        const answer = typeof content === "string"
+          ? content.trim()
+          : content?.filter(part => part.type === "text").map(part => part.text).join("\n").trim();
+        if (!answer) throw new Error("Réponse vide du modèle");
+        return { answer };
+      } catch (error) {
+        console.error("[chatbot.ask]", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "L’assistant est momentanément indisponible. Veuillez réessayer dans quelques instants.",
+        });
+      }
+    }),
+  }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     register: publicProcedure.input((val: any) => val).mutation(async ({ input, ctx }) => {
