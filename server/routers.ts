@@ -40,8 +40,8 @@ import {
 } from "./db";
 import { sendAdminNewMessageNotification, sendInstantAcknowledgement, sendContractEmail } from "./email/notifications";
 import { TRPCError } from "@trpc/server";
-import { invokeLLM } from "./_core/llm";
 import { getChatbotSystemPrompt } from "./chatbotPrompt";
+import { askOpenAI } from "./chatbotClient";
 
 export const appRouter = router({
   system: systemRouter,
@@ -72,18 +72,11 @@ export const appRouter = router({
     }).mutation(async ({ input }) => {
       try {
         const systemPrompt = await getChatbotSystemPrompt();
-        const result = await invokeLLM({
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...input.history,
-            { role: "user", content: input.question },
-          ],
-        });
-        const content = result.choices?.[0]?.message?.content;
-        const answer = typeof content === "string"
-          ? content.trim()
-          : content?.filter(part => part.type === "text").map(part => part.text).join("\n").trim();
-        if (!answer) throw new Error("Réponse vide du modèle");
+        const answer = await askOpenAI([
+          { role: "system", content: systemPrompt },
+          ...input.history,
+          { role: "user", content: input.question },
+        ]);
         return { answer };
       } catch (error) {
         console.error("[chatbot.ask]", error);
