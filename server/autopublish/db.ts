@@ -11,7 +11,7 @@
  * `social_publication_logs` et `social_accounts` qui n'existent pas encore
  * dans le projet.
  */
-import { getDb } from "../db";
+import { getDb, getPool } from "../db";
 import { encryptToken, decryptToken } from "./crypto";
 import type {
   AutopublishPost,
@@ -142,9 +142,9 @@ export async function listPosts(filter: ListPostsFilter = {}): Promise<Autopubli
 
 export async function getPost(id: number): Promise<AutopublishPost | null> {
   await ensureAutopublishTables();
-  const db = await getDb();
-  if (!db) return null;
-  const [rows] = (await (db as any).execute("SELECT * FROM autopublish_posts WHERE id = ? LIMIT 1", [id])) as any;
+  const pool = await getPool();
+  if (!pool) return null;
+  const [rows] = await pool.execute("SELECT * FROM autopublish_posts WHERE id = ? LIMIT 1", [id]);
   const row = (rows as any[])[0];
   return row ? mapPost(row) : null;
 }
@@ -206,8 +206,6 @@ export interface UpdatePostInput extends Partial<CreatePostInput> {
 
 export async function updatePost(id: number, input: UpdatePostInput): Promise<AutopublishPost | null> {
   await ensureAutopublishTables();
-  const db = await getDb();
-  if (!db) return null;
 
   const fields: string[] = [];
   const params: any[] = [];
@@ -236,7 +234,8 @@ export async function updatePost(id: number, input: UpdatePostInput): Promise<Au
   if (fields.length === 0) return getPost(id);
 
   params.push(id);
-  await (db as any).execute(`UPDATE autopublish_posts SET ${fields.join(", ")} WHERE id = ?`, params);
+  const pool = await getPool();
+  await pool.execute(`UPDATE autopublish_posts SET ${fields.join(", ")} WHERE id = ?`, params);
   return getPost(id);
 }
 

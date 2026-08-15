@@ -16,6 +16,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
 import { socialRouter } from "../social";
+import { seoRouter } from "../seo/router";
 import { autopublishRouter } from "../autopublish/router";
 import { requireAdmin as requireAutopublishAdmin } from "../autopublish/authMiddleware";
 import { billingRouter } from "../billing/router";
@@ -25,6 +26,7 @@ import { runBillingMigrations } from "../billing/migrate";
 import { stripeWebhookHandler } from "../stripe/webhookHandler";
 import { getStripeMode } from "../stripe/stripeService";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
+import { cronBackupHandler, isProductionEnvironment } from "../cron/backup";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -241,6 +243,9 @@ async function startServer() {
     express.raw({ type: "application/json", limit: "1mb" }),
     stripeWebhookHandler
   );
+  app.get("/api/stripe/webhook", (_req, res) => {
+    res.status(405).json({ error: "Method not allowed" });
+  });
 
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -335,17 +340,19 @@ async function startServer() {
 
   // Routes métier disponibles en développement comme en production.
   app.use("/api/social", socialRouter);
+  app.use("/api/seo", seoRouter);
   app.use("/api/autopublish", autopublishRouter);
   app.use("/api/billing", billingRouter);
   app.use("/api/documents", billingPortalRouter);
   app.use("/api/membership/onboarding", membershipOnboardingRouter);
   app.post("/api/cron/autopublish", cronAutopublishHandler);
+  app.post("/api/cron/backup", cronBackupHandler);
 
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
   // ─── Backup automatique quotidien à 2h00 ─────────────────────────────────
-  (async () => {
+  if (isProductionEnvironment()) (async () => {
     const { runDatabaseBackup } = await import("../cron/backup");
     function scheduleDaily(hour: number, minute: number, fn: () => Promise<any>) {
       function msUntilNext(h: number, m: number): number {

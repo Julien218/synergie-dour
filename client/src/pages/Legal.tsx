@@ -17,6 +17,7 @@ export default function Legal() {
             </p>
             <address className="not-italic">
               Siège social : Grand&apos;Place 9, 7370 Dour, Belgique<br />
+              Numéro d&apos;entreprise (BCE) : 1036.801.623<br />
               Courriel : <a href="mailto:info@synergiedour.be">info@synergiedour.be</a>
             </address>
             <p>La responsabilité éditoriale est exercée par l&apos;organe d&apos;administration de l&apos;ASBL.</p>

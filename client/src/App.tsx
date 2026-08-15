@@ -189,7 +189,7 @@ function Router() {
           {() => <AdminRoute><AutopublishPage /></AdminRoute>}
         </Route>
         <Route path="/dashboard/super-admin">
-          {() => <AdminRoute><SuperAdminBrand /></AdminRoute>}
+          {() => <ProtectedRoute roles={["super_admin"]}><SuperAdminBrand /></ProtectedRoute>}
         </Route>
         <Route path="/dashboard/members">
           {() => <ProtectedRoute><MemberDashboard /></ProtectedRoute>}

@@ -18,6 +18,7 @@ import {
 import { RESOURCES } from "@/data/resources";
 import { LocalFlottant } from "@/components/LocalFlottant";
 import { LiveFeedCarousel } from "@/components/LiveFeedCarousel";
+import { BusinessChatbot } from "@/components/BusinessChatbot";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
@@ -169,6 +170,23 @@ export default function Home() {
 
       {/* Live Feed Carousel — Actualités + Locaux + Ressources */}
       <LiveFeedCarousel />
+
+      <section className="py-16 px-4 bg-amber-50/50" aria-labelledby="assistant-title">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center mb-8">
+            <Badge className="mb-3 bg-[#D4AF37] text-[#001a3d] hover:bg-[#D4AF37]">Assistant IA</Badge>
+            <h2 id="assistant-title" className="text-3xl font-bold text-[#001a3d] mb-3">
+              Une question pour votre activité à Dour ?
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Interrogez notre assistant en français sur les démarches, aides et organismes officiels utiles aux indépendants.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-white shadow-lg overflow-hidden">
+            <BusinessChatbot />
+          </div>
+        </div>
+      </section>
 
       {/* Section Vidéo Facebook — Reel officiel Synergie Dour */}
       <section className="py-14 px-4 bg-gradient-to-b from-[#001533] to-[#001a3d]">

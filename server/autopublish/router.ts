@@ -258,3 +258,44 @@ autopublishRouter.post("/media/upload", async (req, res) => {
     res.status(500).json({ message: err.message || "Erreur upload média" });
   }
 });
+
+// ─── Génération de visuels via xAI Grok Imagine ───────────────────────────────
+// Route server-side uniquement : la clé XAI_API_KEY n'est jamais exposée au
+// client. Le visuel généré est téléchargé immédiatement puis stocké via le
+// stockage média existant du projet.
+
+autopublishRouter.post("/generate-visual", async (req, res) => {
+  try {
+    const { prompt, aspect_ratio, post_id } = req.body as {
+      prompt?: string;
+      aspect_ratio?: string;
+      post_id?: number;
+    };
+
+    if (!prompt) return res.status(400).json({ message: "Le prompt est requis" });
+
+    // Import dynamique pour éviter de charger le module si la clé n'est pas configurée
+    const { generateImage } = await import("../xai/imagine");
+
+    const result = await generateImage({
+      prompt,
+      aspect_ratio: aspect_ratio || "1:1",
+    });
+
+    // Si un post_id est fourni, attacher le visuel au brouillon
+    if (post_id) {
+      const existing = await getPost(post_id);
+      if (existing && existing.status === "draft") {
+        await updatePost(post_id, { media_url: result.media_url, media_type: "image" });
+      }
+    }
+
+    res.json(result);
+  } catch (err: any) {
+    // Ne JAMAIS exposer la clé API dans le message d'erreur
+    const safeMessage = err.message?.includes("XAI_API_KEY")
+      ? "Clé API xAI non configurée — ajoutez XAI_API_KEY dans Railway"
+      : err.message || "Erreur génération visuel";
+    res.status(500).json({ message: safeMessage });
+  }
+});

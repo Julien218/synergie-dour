@@ -35,6 +35,10 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.rgpdConsent) {
+      toast.error("Vous devez accepter la politique de confidentialité pour envoyer votre message.");
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -84,8 +88,8 @@ export default function Contact() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <a href="mailto:olivier.trevis@outlook.be" className="text-blue-900 hover:text-amber-600">
-                      olivier.trevis@outlook.be
+                    <a href="mailto:info@synergiedour.be" className="text-blue-900 hover:text-amber-600">
+                      info@synergiedour.be
                     </a>
                   </CardContent>
                 </Card>
@@ -113,8 +117,8 @@ export default function Contact() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-gray-600">
-                      Dour<br />
-                      Belgique
+                      Grand&apos;Place 9<br />
+                      7370 Dour, Belgique
                     </p>
                   </CardContent>
                 </Card>

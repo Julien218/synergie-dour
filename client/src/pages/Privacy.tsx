@@ -12,7 +12,7 @@ export default function Privacy() {
           <section>
             <h2 className="text-xl font-semibold text-blue-800">1. Responsable du traitement</h2>
             <p>
-              Synergie Dour ASBL, Grand&apos;Place 9, 7370 Dour, Belgique, est responsable des traitements
+              Synergie Dour ASBL (BCE 1036.801.623), Grand&apos;Place 9, 7370 Dour, Belgique, est responsable des traitements
               décrits ci-dessous. Pour toute question relative à vos données :{" "}
               <a href="mailto:info@synergiedour.be">info@synergiedour.be</a>.
             </p>
