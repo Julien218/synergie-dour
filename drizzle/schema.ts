@@ -116,6 +116,8 @@ export const contactRequests = mysqlTable("contact_requests", {
   phone: varchar("phone", { length: 20 }),
   subject: varchar("subject", { length: 255 }).notNull(),
   message: text("message").notNull(),
+  rgpdConsent: int("rgpdConsent").default(0).notNull(),
+  rgpdConsentAt: timestamp("rgpdConsentAt"),
   status: mysqlEnum("status", ["new", "read", "replied", "closed"]).default("new").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -142,19 +144,40 @@ export const membershipRequests = mysqlTable("membership_requests", {
   website: varchar("website", { length: 255 }),                    // Site web optionnel
   socialMedia: varchar("socialMedia", { length: 255 }),            // @handle ou URL réseaux
   employeeCount: varchar("employeeCount", { length: 20 }),         // 0, 1-5, 6-20...
+  googleBusinessUrl: varchar("googleBusinessUrl", { length: 500 }),
   // Coordonnées
   contactName: varchar("contactName", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
   address: varchar("address", { length: 255 }).notNull(),
+  village: varchar("village", { length: 100 }),
   // Finalisation
   message: text("message"),
   howDidYouHear: varchar("howDidYouHear", { length: 100 }),        // Source de découverte
   acceptsEmailContact: int("acceptsEmailContact").default(0).notNull(),
-  rgpdConsent: int("rgpdConsent").default(1).notNull(),
+  acceptsEmailContactAt: timestamp("acceptsEmailContactAt"),
+  rgpdConsent: int("rgpdConsent").default(0).notNull(),
+  rgpdConsentAt: timestamp("rgpdConsentAt"),
+  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).default("one_time").notNull(),
   // Statut
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  reviewNote: text("reviewNote"),
+  reviewedBy: int("reviewedBy"),
+  reviewedAt: timestamp("reviewedAt"),
+  memberRegisterSignedAt: timestamp("memberRegisterSignedAt"),
   paiementStatut: mysqlEnum("paiementStatut", ["en_attente", "paye", "gratuit"]).default("en_attente").notNull(),
+  activationEmailSentAt: timestamp("activationEmailSentAt"),
+  billingInvoiceId: int("billingInvoiceId"),
+  onboardingTokenHash: varchar("onboardingTokenHash", { length: 64 }),
+  onboardingTokenExpiresAt: timestamp("onboardingTokenExpiresAt"),
+  onboardingCompletedAt: timestamp("onboardingCompletedAt"),
+  mediaStatus: varchar("mediaStatus", { length: 32 }).default("awaiting").notNull(),
+  mediaUrls: json("mediaUrls").$type<string[]>(),
+  activityDescription: text("activityDescription"),
+  openingHours: text("openingHours"),
+  publicationConsent: int("publicationConsent").default(0).notNull(),
+  publicationConsentAt: timestamp("publicationConsentAt"),
+  appointmentRequested: int("appointmentRequested").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -238,21 +261,22 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 
 // =============================================================================
-//  MEMBERSHIPS (adhésions ASBL payantes)
+//  MEMBERSHIPS (activation après validation administrative et paiement)
 // =============================================================================
 
 export const memberships = mysqlTable("memberships", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id),
+  membershipRequestId: int("membershipRequestId").unique().references(() => membershipRequests.id),
+  userId: int("userId").references(() => users.id),
   merchantId: int("merchantId").references(() => merchants.id),
-  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).notNull(),
-  status: mysqlEnum("status", ["pending_payment", "active", "expired", "cancelled"]).default("pending_payment").notNull(),
+  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).default("one_time").notNull(),
+  status: mysqlEnum("status", ["pending_payment", "active", "expired", "cancelled"]).default("active").notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 100 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 100 }),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 100 }),
   startsAt: timestamp("startsAt"),
   expiresAt: timestamp("expiresAt"),
-  amountCents: int("amountCents").notNull().default(5000),
+  amountCents: int("amountCents").notNull().default(0),
   currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -274,7 +298,7 @@ export const payments = mysqlTable("payments", {
   stripeInvoiceId: varchar("stripeInvoiceId", { length: 100 }),
   amountCents: int("amountCents").notNull(),
   currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
-  feeJsInnovCents: int("feeJsInnovCents").notNull().default(150),
+  feeJsInnovCents: int("feeJsInnovCents").notNull().default(0),
   netToAsblCents: int("netToAsblCents").notNull(),
   status: mysqlEnum("status", ["succeeded", "refunded", "failed"]).notNull(),
   paymentMethod: varchar("paymentMethod", { length: 50 }),

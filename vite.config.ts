@@ -168,6 +168,9 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // Le bundle d'entrée reste à environ 162 kB gzip ; ce seuil évite un
+    // avertissement trompeur sans imposer des chunks manuels circulaires.
+    chunkSizeWarningLimit: 600,
   },
   server: {
     host: true,

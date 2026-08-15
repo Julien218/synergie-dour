@@ -12,9 +12,10 @@ export const SYNERGIE_DOUR_BRAND = {
     signature: "Commerçants & indépendants réunis",
   },
   assets: {
-    applicationLogo: "/logo-sd-officiel.png",
-    transparentLogo: "/logo-transparent.png",
-    technologyCredit: "/logo-jsinnovia.png",
+    applicationLogo: "/logo-sd-transparent.png",
+    transparentLogo: "/logo-sd-transparent.png",
+    technologyCredit: null,
+    technologyCreditStatus: "missing-official-transparent-asset",
   },
   docs: {
     root: "docs/brand-kit/2026",

@@ -1,7 +1,23 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
+
+vi.mock('./db', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./db')>();
+  return {
+    ...actual,
+    createNews: vi.fn(async (data) => data),
+    createEvent: vi.fn(async (data) => data),
+    createContactRequest: vi.fn(async (data) => data),
+  };
+});
+
+vi.mock('./email/notifications', () => ({
+  sendAdminNewMessageNotification: vi.fn(async () => undefined),
+  sendInstantAcknowledgement: vi.fn(async () => undefined),
+  sendContractEmail: vi.fn(async () => undefined),
+}));
+
 import { appRouter } from './routers';
 import type { TrpcContext } from './_core/context';
-import { getDb } from './db';
 
 describe('Admin Routes', () => {
   let adminContext: TrpcContext;
@@ -129,6 +145,40 @@ describe('Admin Routes', () => {
     it('should deny regular user from listing contact requests', async () => {
       const caller = appRouter.createCaller(userContext);
       await expect(caller.contact.listAll()).rejects.toThrow();
+    });
+
+    it('should reject a public contact request without explicit RGPD consent', async () => {
+      const caller = appRouter.createCaller({ user: null });
+      await expect(caller.contact.submit({
+        name: 'Test Contact',
+        email: 'contact@example.com',
+        subject: 'Question',
+        message: 'Bonjour',
+        rgpdConsent: false,
+      })).rejects.toThrow('consentement RGPD');
+    });
+
+    it('should record explicit RGPD consent for a valid public contact request', async () => {
+      const caller = appRouter.createCaller({ user: null });
+      const result = await caller.contact.submit({
+        name: ' Test Contact ',
+        email: 'CONTACT@example.com',
+        phone: '',
+        subject: ' Question ',
+        message: ' Bonjour ',
+        rgpdConsent: true,
+      });
+
+      expect(result).toMatchObject({
+        name: 'Test Contact',
+        email: 'contact@example.com',
+        phone: null,
+        subject: 'Question',
+        message: 'Bonjour',
+        rgpdConsent: 1,
+        status: 'new',
+      });
+      expect(result.rgpdConsentAt).toBeInstanceOf(Date);
     });
   });
 });

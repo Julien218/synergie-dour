@@ -16,9 +16,10 @@
     "sharedModule": "shared/brand/synergie-dour.ts"
   },
   "canonicalAssets": {
-    "applicationLogo": "public/logo-sd-officiel.png",
-    "transparentLogo": "public/logo-transparent.png",
-    "technologyCredit": "public/logo-jsinnovia.png"
+    "applicationLogo": "client/public/logo-sd-transparent.png",
+    "transparentLogo": "client/public/logo-sd-transparent.png",
+    "technologyCredit": null,
+    "technologyCreditStatus": "missing_official_transparent_asset"
   },
   "canonicalRules": {
     "machineReadable": "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/brand-rules.json",

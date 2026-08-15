@@ -1,5 +1,6 @@
 import { sql, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
+import * as schema from "../drizzle/schema";
 import {
   InsertUser,
   users,
@@ -22,7 +23,7 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: MySql2Database<typeof schema> | null = null;
 let _pool: any = null;
 
 export async function getDb() {
@@ -35,9 +36,8 @@ export async function getDb() {
       waitForConnections: true,
       connectionLimit: 5,
       connectTimeout: 30000,
-      acquireTimeout: 30000,
     });
-    _db = drizzle(_pool as any);
+    _db = drizzle(_pool as any, { schema, mode: "default" });
   }
   return _db;
 }
@@ -327,7 +327,7 @@ export async function getCategories() {
       if (c.categorie) cats.add(c.categorie);
       if (Array.isArray(c.categories)) c.categories.forEach((cat: string) => cats.add(cat));
     }
-    return [...cats].filter(Boolean).sort().map((name, id) => ({ id, name }));
+    return Array.from(cats).filter(Boolean).sort().map((name, id) => ({ id, name }));
   } catch { return []; }
 }
 
@@ -601,4 +601,20 @@ export async function getPublishedResources() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(resources).where(eq(resources.status, "published" as any));
+}
+
+/** Execute raw SQL with parameters via the pool (bypasses drizzle type issues) */
+export async function rawQuery(sqlText: string, params: unknown[] = []) {
+  const pool = await getPool();
+  if (!pool) throw new Error("Database not available");
+  const [rows] = await pool.query(sqlText, params as any[]);
+  return rows as any[];
+}
+
+/** Execute raw SQL (INSERT/UPDATE/DELETE) via the pool */
+export async function rawExecute(sqlText: string, params: unknown[] = []) {
+  const pool = await getPool();
+  if (!pool) throw new Error("Database not available");
+  const [result] = await pool.execute(sqlText, params as any[]);
+  return result;
 }

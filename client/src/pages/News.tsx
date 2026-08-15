@@ -185,7 +185,7 @@ export default function News() {
                         <ShareButtons
                           articleId={article.id}
                           title={article.title}
-                          excerpt={article.excerpt}
+                          excerpt={article.excerpt ?? undefined}
                         />
                       </CardContent>
                     </div>

@@ -148,19 +148,19 @@ function MembershipStatusCard({
             onClick={onJoin}
             className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a3d] font-semibold"
           >
-            Devenir membre — 50€/an
+            Devenir membre — cotisation 2026 : 50 €
           </Button>
         </CardContent>
       </Card>
     );
   }
 
-  const statusConfig = {
+  const statusConfig = ({
     pending_payment: {
       icon: AlertCircle,
       color: "amber",
       label: "Paiement en attente",
-      desc: "Votre candidature est validée. Finalisez le paiement via le mail reçu.",
+      desc: "Votre candidature est validée. Aucun paiement n'est requis en 2026.",
     },
     active: {
       icon: CheckCircle2,
@@ -180,15 +180,15 @@ function MembershipStatusCard({
       label: "Adhésion annulée",
       desc: "Votre adhésion est annulée. Vous pouvez en redemander une à tout moment.",
     },
-  }[membership.status];
+  } as const)[membership.status];
 
   const StatusIcon = statusConfig.icon;
-  const colorClasses = {
+  const colorClasses = ({
     green: { bg: "bg-green-50/70", border: "border-green-200", text: "text-green-900", iconBg: "bg-green-100", iconColor: "text-green-700" },
     amber: { bg: "bg-amber-50/70", border: "border-amber-200", text: "text-amber-900", iconBg: "bg-amber-100", iconColor: "text-amber-700" },
     red: { bg: "bg-red-50/70", border: "border-red-200", text: "text-red-900", iconBg: "bg-red-100", iconColor: "text-red-700" },
     gray: { bg: "bg-gray-50/70", border: "border-gray-200", text: "text-gray-900", iconBg: "bg-gray-100", iconColor: "text-gray-700" },
-  }[statusConfig.color];
+  } as const)[statusConfig.color];
 
   return (
     <Card className={`${colorClasses.border} ${colorClasses.bg} border-2`}>
@@ -214,7 +214,7 @@ function MembershipStatusCard({
               <div>
                 <p className="text-xs text-gray-500">Mode</p>
                 <p className="text-sm font-medium text-[#001a3d]">
-                  {membership.paymentMode === "subscription" ? "Renouvellement automatique" : "Paiement annuel"}
+                  Adhésion 2026
                 </p>
               </div>
             </div>
@@ -222,7 +222,7 @@ function MembershipStatusCard({
               <Calendar className="w-4 h-4 text-gray-500 mt-1" />
               <div>
                 <p className="text-xs text-gray-500">
-                  {membership.paymentMode === "subscription" ? "Prochain renouvellement" : "Valable jusqu'au"}
+                  Valable jusqu'au
                 </p>
                 <p className="text-sm font-medium text-[#001a3d]">
                   {membership.expiresAt
@@ -238,9 +238,9 @@ function MembershipStatusCard({
             <div className="flex items-start gap-2">
               <Receipt className="w-4 h-4 text-gray-500 mt-1" />
               <div>
-                <p className="text-xs text-gray-500">Montant</p>
+                <p className="text-xs text-gray-500">Cotisation 2026</p>
                 <p className="text-sm font-medium text-[#001a3d]">
-                  {(membership.amountCents / 100).toFixed(2)} €/an
+                  Gratuite
                 </p>
               </div>
             </div>

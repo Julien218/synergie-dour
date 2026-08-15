@@ -20,12 +20,31 @@ export function LiveFeedCarousel() {
   const [, setLocation] = useLocation();
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: news = [] } = trpc.news.list.useQuery();
   const { data: locaux = [] } = (trpc as any).locaux?.listPublished?.useQuery?.() ?? { data: [] };
 
-  // Construire la liste mixée
+  // Detect prefers-reduced-motion preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const onChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", onChange);
+      return () => mediaQuery.removeEventListener("change", onChange);
+    } else {
+      mediaQuery.addListener(onChange);
+      return () => mediaQuery.removeListener(onChange);
+    }
+  }, []);
+
+  // Build unique mixed items list
   const items: FeedItem[] = [
     // News
     ...news.slice(0, 4).map((n: any) => ({
@@ -72,34 +91,40 @@ export function LiveFeedCarousel() {
   ].slice(0, 10);
 
   const total = items.length;
+  const visibleCount = Math.min(3, total);
+  const maxIndex = Math.max(0, total - visibleCount);
 
-  // Auto-scroll
-  const startInterval = () => {
-    intervalRef.current = setInterval(() => {
-      setCurrent((c) => (c + 1) % total);
-    }, 4000);
-  };
-
+  // Auto-scroll (linear, respects reduced motion & pause)
   useEffect(() => {
-    if (!paused && total > 0) startInterval();
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [paused, total]);
+    if (!paused && !prefersReducedMotion && maxIndex > 0) {
+      intervalRef.current = setInterval(() => {
+        setCurrent((c) => (c >= maxIndex ? 0 : c + 1));
+      }, 4000);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [paused, prefersReducedMotion, maxIndex]);
 
   const prev = () => {
-    setCurrent((c) => (c - 1 + total) % total);
+    setCurrent((c) => Math.max(0, c - 1));
   };
   const next = () => {
-    setCurrent((c) => (c + 1) % total);
+    setCurrent((c) => Math.min(maxIndex, c + 1));
   };
 
   if (total === 0) return null;
 
-  // Calculer les indices visibles (sliding window de 3 cards)
-  const visibleCount = Math.min(3, total);
-  const visibleIndices = Array.from({ length: visibleCount }, (_, i) => (current + i) % total);
+  // Linear calculation: cards from current to current + visibleCount - 1
+  const visibleIndices = Array.from({ length: visibleCount }, (_, i) => Math.min(total - 1, current + i));
 
   return (
-    <section className="py-12 px-4 bg-gradient-to-b from-[#001a3d]/5 to-white/80 overflow-hidden">
+    <section
+      className="py-12 px-4 bg-gradient-to-b from-[#001a3d]/5 to-white/80 overflow-hidden"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="En ce moment à Dour"
+    >
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
@@ -116,26 +141,39 @@ export function LiveFeedCarousel() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => { prev(); setPaused(true); }}
-              className="w-9 h-9 rounded-full border border-[#001a3d]/20 flex items-center justify-center hover:bg-[#001a3d] hover:text-white transition-all text-[#001a3d]"
+              disabled={current === 0}
+              aria-label="Diapositive précédente"
+              aria-controls="live-feed-carousel-items"
+              className="w-9 h-9 rounded-full border border-[#001a3d]/20 flex items-center justify-center hover:bg-[#001a3d] hover:text-white transition-all text-[#001a3d] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#001a3d]"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
             </button>
-            <span className="text-xs text-gray-400 tabular-nums">{current + 1} / {total}</span>
+            <span className="text-xs text-gray-400 tabular-nums" aria-live="polite">
+              {current + 1} / {maxIndex + 1}
+            </span>
             <button
+              type="button"
               onClick={() => { next(); setPaused(true); }}
-              className="w-9 h-9 rounded-full border border-[#001a3d]/20 flex items-center justify-center hover:bg-[#001a3d] hover:text-white transition-all text-[#001a3d]"
+              disabled={current >= maxIndex}
+              aria-label="Diapositive suivante"
+              aria-controls="live-feed-carousel-items"
+              className="w-9 h-9 rounded-full border border-[#001a3d]/20 flex items-center justify-center hover:bg-[#001a3d] hover:text-white transition-all text-[#001a3d] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#001a3d]"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>
 
         {/* Cards */}
         <div
+          id="live-feed-carousel-items"
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
+          onFocus={() => setPaused(true)}
+          onBlur={() => setPaused(false)}
         >
           {visibleIndices.map((idx, pos) => {
             const item = items[idx];
@@ -150,10 +188,8 @@ export function LiveFeedCarousel() {
                   ${pos === 0 ? "opacity-100" : pos === 1 ? "opacity-100" : "opacity-70 hidden md:block"}
                 `}
               >
-                {/* Barre couleur top */}
-                <div
-                  className={`h-1 w-full ${item.badgeColor}`}
-                />
+                {/* Top color bar */}
+                <div className={`h-1 w-full ${item.badgeColor}`} />
                 <div className="p-5">
                   {/* Badge + date */}
                   <div className="flex items-center justify-between mb-3">
@@ -168,7 +204,7 @@ export function LiveFeedCarousel() {
                     )}
                   </div>
 
-                  {/* Titre */}
+                  {/* Title */}
                   <h3
                     className="font-bold text-[#001a3d] text-base leading-snug line-clamp-2 mb-2 group-hover:text-[#003d99] transition-colors"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -176,17 +212,17 @@ export function LiveFeedCarousel() {
                     {item.title}
                   </h3>
 
-                  {/* Sous-titre */}
+                  {/* Subtitle */}
                   <p className="text-sm text-gray-500 line-clamp-2 mb-4">
                     {item.subtitle}
                   </p>
 
-                  {/* Lien */}
+                  {/* Link */}
                   <div className="flex items-center gap-1 text-xs font-semibold text-[#003d99] group-hover:gap-2 transition-all">
                     <span>
                       {item.type === "news" ? "Lire l'article" : item.type === "local" ? "Voir le local" : "Consulter la fiche"}
                     </span>
-                    <ExternalLink className="w-3 h-3" />
+                    <ExternalLink className="w-3 h-3" aria-hidden="true" />
                   </div>
                 </div>
               </div>
@@ -195,19 +231,25 @@ export function LiveFeedCarousel() {
         </div>
 
         {/* Dots */}
-        <div className="flex justify-center gap-1.5 mt-6">
-          {items.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => { setCurrent(idx); setPaused(true); }}
-              className={`rounded-full transition-all ${
-                idx === current
-                  ? "w-6 h-2 bg-[#001a3d]"
-                  : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
-              }`}
-            />
-          ))}
-        </div>
+        {maxIndex > 0 && (
+          <div className="flex justify-center gap-1.5 mt-6">
+            {Array.from({ length: maxIndex + 1 }).map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => { setCurrent(idx); setPaused(true); }}
+                aria-label={`Aller à la diapositive ${idx + 1}`}
+                aria-controls="live-feed-carousel-items"
+                aria-current={idx === current ? "true" : undefined}
+                className={`rounded-full transition-all ${
+                  idx === current
+                    ? "w-6 h-2 bg-[#001a3d]"
+                    : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

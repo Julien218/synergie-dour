@@ -23,9 +23,8 @@ Ce dossier constitue la source de vérité visuelle et éditoriale de Synergie D
 
 ## Ressources canoniques du dépôt
 
-- `/public/logo-sd-officiel.png`
-- `/public/logo-transparent.png`
-- `/public/logo-jsinnovia.png`
+- `/client/public/logo-sd-transparent.png`
+- Le crédit JS-Innov.IA est bloqué jusqu'à la fourniture d'un actif transparent officiel distinct.
 - `/docs/brand-kit/2026/06_REGLES_ET_PROMPTS/brand-rules.json`
 - `/docs/brand-kit/2026/06_REGLES_ET_PROMPTS/SYSTEM_PROMPT_AGENT_VISUEL.md`
 - `/shared/brand/synergie-dour.ts`

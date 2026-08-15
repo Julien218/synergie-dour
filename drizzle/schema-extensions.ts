@@ -112,21 +112,21 @@ export type InsertAuditLog = typeof auditLogs.$inferInsert;
  * Adhésion d'un commerçant/indépendant à l'ASBL Synergie Dour.
  *
  * Différence avec membershipRequests (table existante) :
- *   - membershipRequests = candidature à l'adhésion (gratuit)
- *   - memberships = adhésion EFFECTIVE après paiement (50€/an)
+ *   - membershipRequests = candidature soumise à validation administrative
+ *   - memberships = adhésion effective après confirmation du paiement
  *
- * Une candidature approuvée + paiement = création d'une ligne ici.
+ * Une candidature approuvée devient active après confirmation du paiement.
  */
 export const memberships = mysqlTable("memberships", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
   merchantId: int("merchantId").references(() => merchants.id),
 
-  /** Type de paiement choisi par l'adhérent */
-  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).notNull(),
+  /** Valeur historique, sans paiement requis pour l'adhésion 2026 */
+  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).default("one_time").notNull(),
 
   /** Statut de l'adhésion */
-  status: mysqlEnum("status", ["pending_payment", "active", "expired", "cancelled"]).default("pending_payment").notNull(),
+  status: mysqlEnum("status", ["pending_payment", "active", "expired", "cancelled"]).default("active").notNull(),
 
   /** Identifiants Stripe pour suivi */
   stripeCustomerId: varchar("stripeCustomerId", { length: 100 }),
@@ -138,7 +138,7 @@ export const memberships = mysqlTable("memberships", {
   expiresAt: timestamp("expiresAt"),
 
   /** Montant total payé (pour comptabilité — en centimes pour éviter flottants) */
-  amountCents: int("amountCents").notNull().default(5000),
+  amountCents: int("amountCents").notNull().default(0),
   currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
 
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -170,8 +170,8 @@ export const payments = mysqlTable("payments", {
   amountCents: int("amountCents").notNull(),
   currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
 
-  /** Frais de gestion JS-Innov.IA (en centimes, par défaut 150 = 1,50€) */
-  feeJsInnovCents: int("feeJsInnovCents").notNull().default(150),
+  /** Frais de gestion JS-Innov.IA (en centimes, désactivés par défaut) */
+  feeJsInnovCents: int("feeJsInnovCents").notNull().default(0),
 
   /** Net reversé à l'ASBL (en centimes) */
   netToAsblCents: int("netToAsblCents").notNull(),

@@ -1,52 +1,48 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useLocation } from "wouter";
-import { useEffect } from "react";
+import { getLoginUrl } from "@/const";
 
-type ProtectedRouteProps = {
+type UserRole = "user" | "admin" | "super_admin";
+
+export default function ProtectedRoute({
+  children,
+  roles,
+}: {
   children: React.ReactNode;
-  requireAdmin?: boolean;
-  requireSuperAdmin?: boolean;
-};
-
-/**
- * Guard de route frontend.
- * - Redirige vers /login si non authentifie.
- * - Redirige vers /dashboard si authentifie mais sans le role requis.
- */
-export function ProtectedRoute({ children, requireAdmin, requireSuperAdmin }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      setLocation("/login");
-      return;
-    }
-    if (requireSuperAdmin && user.role !== "super_admin") {
-      setLocation("/dashboard");
-      return;
-    }
-    if (requireAdmin && user.role !== "admin" && user.role !== "super_admin") {
-      setLocation("/dashboard");
-      return;
-    }
-  }, [user, loading, requireAdmin, requireSuperAdmin, setLocation]);
+  roles?: UserRole[];
+}) {
+  const { loading, user } = useAuth();
 
   if (loading) {
+    return <div className="min-h-screen grid place-items-center">Vérification de l'accès…</div>;
+  }
+
+  if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-blue-50">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <img src="/logo.png" alt="Synergie Dour" className="h-16 w-16 object-contain" />
-          <p className="text-blue-900 text-sm">Chargement...</p>
+      <div className="min-h-screen grid place-items-center bg-gray-50 p-6">
+        <div className="max-w-md rounded-xl border bg-white p-8 text-center shadow-sm">
+          <h1 className="text-xl font-bold text-[#001533]">Connexion requise</h1>
+          <p className="mt-2 text-gray-600">Connectez-vous pour accéder à cet espace.</p>
+          <a href={getLoginUrl()} className="mt-5 inline-block rounded-lg bg-[#001533] px-5 py-2 text-[#E8C547]">
+            Se connecter
+          </a>
         </div>
       </div>
     );
   }
 
-  if (!user) return null;
-  if (requireSuperAdmin && user.role !== "super_admin") return null;
-  if (requireAdmin && user.role !== "admin" && user.role !== "super_admin") return null;
+  if (roles && !roles.includes(user.role as UserRole)) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-gray-50 p-6">
+        <div className="max-w-md rounded-xl border bg-white p-8 text-center shadow-sm">
+          <h1 className="text-xl font-bold text-red-700">Accès refusé</h1>
+          <p className="mt-2 text-gray-600">Votre rôle ne permet pas d'accéder à cette page.</p>
+          <a href="/dashboard" className="mt-5 inline-block rounded-lg bg-[#001533] px-5 py-2 text-[#E8C547]">
+            Retour au tableau de bord
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }

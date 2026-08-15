@@ -19,9 +19,12 @@ Le module TypeScript partagé est disponible dans `shared/brand/synergie-dour.ts
 
 ## Fichiers de production déjà présents dans le dépôt
 
-- Logo Synergie Dour utilisé par l'application : `public/logo-sd-officiel.png`
-- Logo transparent : `public/logo-transparent.png`
-- Crédit JS-Innov.IA : `public/logo-jsinnovia.png`
+- Logo Synergie Dour canonique et réellement transparent : `client/public/logo-sd-transparent.png`
+- Crédit JS-Innov.IA : actif transparent officiel non fourni ; toute composition qui l'exige doit rester bloquée.
+
+Les fichiers `public/logo-sd-officiel.png` et `public/logo-jsinnovia.png` ne sont pas
+des actifs transparents canoniques : le premier contient un damier visuel et le second
+ne représente pas une signature JS-Innov.IA vérifiable.
 
 ## Référence de marque
 
@@ -43,3 +46,6 @@ Le module TypeScript partagé est disponible dans `shared/brand/synergie-dour.ts
 
 L'archive de production finalisée est nommée `Synergie_Dour_Kit_ADN_Complet_2026_FINAL.zip`.
 Ses métadonnées et son empreinte SHA-256 sont enregistrées dans `ARCHIVE_METADATA.json`.
+
+Les empreintes des fichiers réellement versionnés se vérifient depuis la racine du dépôt :
+`sha256sum -c docs/brand-kit/2026/CHECKSUMS.sha256`.

@@ -27,6 +27,8 @@
 - 🔐 **Authentification sécurisée** — Inscription, connexion, gestion des rôles (JWT local)
 - 🤖 **Génération IA** — Visuels et contenus réseaux sociaux via OpenAI
 - 👑 **Interface admin** — Modération et gestion complète
+- 🧾 **Facturation** — Clients, catalogue, devis, factures PDF et suivi des paiements
+- 💳 **Paiement client Stripe** — Carte/Bancontact, webhook idempotent et reçu automatique
 
 ---
 
@@ -82,6 +84,7 @@ NODE_ENV=production
 
 # Optionnel
 STRIPE_SECRET_KEY=your-stripe-key
+STRIPE_WEBHOOK_SECRET=whsec_...
 RESEND_API_KEY=your-resend-key
 CLE_API_OPENAI=your-openai-key
 GOOGLE_PLACES_API_KEY=your-google-places-key
@@ -97,6 +100,84 @@ LINKEDIN_ORGANIZATION_ID=your-linkedin-organization-id
 TIKTOK_CLIENT_KEY=your-tiktok-client-key
 TIKTOK_CLIENT_SECRET=your-tiktok-client-secret
 ```
+
+---
+
+## 🧾 Facturation et paiements Stripe
+
+Le module admin est accessible sur `/dashboard/billing` aux rôles `admin` et
+`super_admin`.
+
+### Parcours opérationnel
+
+1. Créer le profil de facturation, un client et les prestations du catalogue.
+2. Créer puis finaliser un devis.
+3. Envoyer le devis : le client reçoit le PDF et un lien personnel lui permettant
+   de l'accepter ou de le refuser.
+4. Convertir le devis accepté en facture.
+5. Envoyer la facture : le client reçoit le PDF et son portail de paiement.
+6. Le client paie le solde par carte ou Bancontact via Stripe Checkout.
+7. Le webhook Stripe enregistre le règlement une seule fois, met à jour le solde
+   et envoie une confirmation contenant le lien du reçu Stripe.
+
+Les montants sont recalculés côté serveur en centimes. La page de succès n'est
+jamais utilisée comme preuve de paiement : seul le webhook signé déclenche
+l'encaissement comptable.
+
+### Configuration Railway et Stripe
+
+Variables Railway obligatoires :
+
+```env
+DATABASE_URL=mysql://...
+APP_URL=https://www.synergiedour.be
+PUBLIC_URL=https://www.synergiedour.be
+STRIPE_SECRET_KEY=sk_test_... # puis sk_live_... après recette
+STRIPE_WEBHOOK_SECRET=whsec_...
+RESEND_API_KEY=re_...
+EMAIL_FROM_BILLING=Facturation Synergie Dour <facturation@synergiedour.be>
+EMAIL_REPLY_TO=info@synergiedour.be
+MEMBERSHIP_FEES_ENABLED=true
+MEMBERSHIP_PRICE_CENTS=5000
+MEMBERSHIP_APPOINTMENT_URL=https://...
+```
+
+Créer le webhook Stripe vers
+`https://www.synergiedour.be/api/stripe/webhook` avec ces événements :
+
+- `checkout.session.completed`
+- `checkout.session.async_payment_succeeded`
+- `checkout.session.async_payment_failed`
+- `checkout.session.expired`
+
+Activer aussi les emails de reçus dans les
+[paramètres Stripe](https://dashboard.stripe.com/settings/emails). La clé et le
+secret du webhook doivent provenir du même mode (`test` ou `live`).
+
+Les migrations `0009_billing_module.sql`, `0010_billing_stripe_checkout.sql` et
+`0011_membership_paid_onboarding.sql` sont exécutées automatiquement au démarrage.
+Elles créent la numérotation annuelle, les sessions Checkout et le journal
+idempotent des événements Stripe, puis relient la cotisation au formulaire
+post-paiement pour les informations et médias du commerce.
+
+### Validation avant passage en production
+
+```bash
+pnpm exec vitest run server/billing/billing.test.ts
+pnpm run build
+```
+
+Effectuer ensuite une recette en mode test : devis → acceptation → facture →
+paiement → reçu. Après validation, remplacer ensemble la clé Stripe et le secret
+webhook par leurs versions live, puis refaire un paiement réel de faible montant
+et le rembourser depuis Stripe.
+
+La demande d'adhésion est examinée par le Conseil d'administration. Après approbation,
+une facture de cotisation annuelle (50 € en 2026, montant configurable) et un lien Stripe
+sécurisé sont envoyés. L'adhésion est activée uniquement après confirmation du webhook.
+Le champ Peppol est préparé,
+mais l'envoi électronique structuré nécessite encore un point d'accès certifié et
+la validation du comptable de l'ASBL.
 
 ---
 

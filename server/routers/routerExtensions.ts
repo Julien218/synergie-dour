@@ -166,7 +166,7 @@ export const membershipsRouterDefinition = `
         phone: z.string().min(8),
         address: z.string().min(5),
         message: z.string().optional(),
-        paymentMode: z.enum(["one_time", "subscription"]),
+        paymentMode: z.literal("one_time"),
       }))
       .mutation(async ({ input }) => {
         const [request] = await db.insert(membershipRequests).values({
@@ -197,11 +197,6 @@ export const membershipsRouterDefinition = `
         });
         if (!request) throw new Error("Demande introuvable");
 
-        const asblConnectAccountId = process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID;
-        if (!asblConnectAccountId) {
-          throw new Error("Compte Stripe Connect ASBL non configuré");
-        }
-
         const checkoutUrl = await createMembershipCheckout({
           mode: "one_time",
           customerEmail: request.email,
@@ -209,7 +204,6 @@ export const membershipsRouterDefinition = `
             membershipRequestId: String(request.id),
             businessName: request.businessName,
           },
-          asblConnectAccountId,
         });
 
         await sendApplicationApprovedEmail({

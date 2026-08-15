@@ -163,11 +163,11 @@ export async function syncAllPosts(): Promise<{ created: number; skipped: number
   for (const m of allMerchants) {
     const post = generateMembrePost({
       id: m.id,
-      nom: m.nom,
-      categorie: m.categorie,
-      adresse: m.adresse,
-      telephone: m.telephone,
-      site_web: m.site_web,
+      nom: m.businessName,
+      categorie: m.businessCategory,
+      adresse: m.address,
+      telephone: m.phone,
+      site_web: m.website,
     });
     const id = await saveGeneratedPost(post);
     if (id) created++;

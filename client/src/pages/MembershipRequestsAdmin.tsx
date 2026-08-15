@@ -14,20 +14,12 @@ import {
   Store,
   CheckCircle2,
   XCircle,
-  CreditCard,
   Clock,
-  Gift,
+  CreditCard,
+  FileSignature,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
-
-type PaiementStatut = "en_attente" | "paye" | "gratuit";
-
-const PAIEMENT_OPTIONS: { value: PaiementStatut; label: string; color: string; icon: React.ElementType }[] = [
-  { value: "en_attente", label: "En attente", color: "bg-amber-100 text-amber-800 border-amber-300", icon: Clock },
-  { value: "paye",       label: "Payé",       color: "bg-emerald-100 text-emerald-800 border-emerald-300", icon: CreditCard },
-  { value: "gratuit",    label: "Gratuit",    color: "bg-blue-100 text-blue-800 border-blue-300", icon: Gift },
-];
 
 export default function MembershipRequestsAdmin() {
   const { user } = useAuth();
@@ -64,7 +56,7 @@ export default function MembershipRequestsAdmin() {
           </Button>
           <h1 className="text-3xl font-bold text-[#D4AF37]">Candidatures à l'adhésion</h1>
           <p className="text-[#F0E68C] mt-1">
-            Validez les demandes et gérez le statut de paiement de chaque membre.
+            Validez les demandes du Conseil d'administration, puis envoyez la facture annuelle de 50 €.
           </p>
           <div className="flex gap-4 mt-3 text-sm">
             <span className="bg-white/10 px-3 py-1 rounded-full">
@@ -141,22 +133,27 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
     onSuccess: () => { toast.success("Mise à jour effectuée"); onAction(); },
     onError:   (e) => toast.error(e.message),
   });
-
-  const paiementOption = PAIEMENT_OPTIONS.find(
-    (p) => p.value === (request.paiementStatut || "en_attente")
-  ) ?? PAIEMENT_OPTIONS[0];
-  const PaiementIcon = paiementOption.icon;
-
-  const setPaiement = (val: PaiementStatut) => {
-    updateMutation.mutate({ id: request.id, paiementStatut: val });
-  };
+  const approveMutation = trpc.membership.approveAndSendInvoice.useMutation({
+    onSuccess: (result) => {
+      toast.success(`${result.invoiceNumber} ${result.reused ? "renvoyée" : "créée et envoyée"}`);
+      onAction();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const registerMutation = trpc.membership.markRegisterSigned.useMutation({
+    onSuccess: () => {
+      toast.success("Signature du registre enregistrée");
+      onAction();
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const approve = () => {
-    updateMutation.mutate({ id: request.id, status: "approved" });
+    approveMutation.mutate({ id: request.id });
   };
 
   const reject = () => {
-    updateMutation.mutate({ id: request.id, status: "rejected", note: rejectionNote });
+    updateMutation.mutate({ id: request.id, status: "rejected", reviewNote: rejectionNote });
   };
 
   return (
@@ -187,6 +184,9 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
             {request.message && (
               <p className="mt-2 text-sm text-gray-500 italic bg-gray-50 rounded p-2">{request.message}</p>
             )}
+            {request.reviewNote && (
+              <p className="mt-2 text-sm text-red-700 bg-red-50 rounded p-2">Motif : {request.reviewNote}</p>
+            )}
           </div>
 
           {/* Colonne statuts */}
@@ -197,9 +197,9 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
               <div className="flex gap-1.5">
                 {request.status === "pending" && (
                   <>
-                    <Button size="sm" onClick={approve} disabled={updateMutation.isPending}
+                    <Button size="sm" onClick={approve} disabled={approveMutation.isPending}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3">
-                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approuver
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approuver et facturer
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => setShowReject(true)}
                       className="text-xs px-3">
@@ -208,9 +208,16 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
                   </>
                 )}
                 {request.status === "approved" && (
-                  <span className="text-emerald-700 font-semibold text-sm flex items-center gap-1">
-                    <CheckCircle2 className="w-4 h-4" /> Approuvé
-                  </span>
+                  <div className="space-y-2">
+                    <span className="text-emerald-700 font-semibold text-sm flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" /> Approuvé
+                    </span>
+                    {request.paiementStatut === "en_attente" && (
+                      <Button size="sm" variant="outline" onClick={approve} disabled={approveMutation.isPending} className="text-xs">
+                        Renvoyer la facture
+                      </Button>
+                    )}
+                  </div>
                 )}
                 {request.status === "rejected" && (
                   <span className="text-red-600 font-semibold text-sm flex items-center gap-1">
@@ -220,31 +227,35 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
               </div>
             </div>
 
-            {/* Statut paiement */}
+            {/* Cotisation 2026 */}
             <div>
-              <p className="text-xs text-gray-500 mb-1 font-medium">Statut paiement</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {PAIEMENT_OPTIONS.map((opt) => {
-                  const Icon = opt.icon;
-                  const isActive = (request.paiementStatut || "en_attente") === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => setPaiement(opt.value)}
-                      disabled={updateMutation.isPending}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                        isActive
-                          ? opt.color + " shadow-sm scale-105"
-                          : "bg-gray-100 text-gray-400 border-gray-200 hover:border-gray-400"
-                      }`}
-                    >
-                      <Icon className="w-3 h-3" />
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <p className="text-xs text-gray-500 mb-1 font-medium">Cotisation 2026</p>
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                request.paiementStatut === "paye"
+                  ? "border-emerald-300 bg-emerald-100 text-emerald-800"
+                  : request.paiementStatut === "gratuit"
+                    ? "border-blue-300 bg-blue-100 text-blue-800"
+                    : "border-amber-300 bg-amber-100 text-amber-800"
+              }`}>
+                <CreditCard className="w-3 h-3" />
+                {request.paiementStatut === "paye" ? "Payée — 50 €" : request.paiementStatut === "gratuit" ? "Exonérée" : "En attente — 50 €"}
+              </span>
+              {request.billingInvoiceId && <p className="mt-1 text-xs text-gray-500">Facture #{request.billingInvoiceId}</p>}
             </div>
+            {request.paiementStatut === "paye" && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1 font-medium">Registre des membres</p>
+                {request.memberRegisterSignedAt ? (
+                  <span className="text-xs font-medium text-emerald-700 flex items-center gap-1">
+                    <FileSignature className="w-3.5 h-3.5" /> Signé le {new Date(request.memberRegisterSignedAt).toLocaleDateString("fr-BE")}
+                  </span>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => registerMutation.mutate({ id: request.id })} disabled={registerMutation.isPending} className="text-xs">
+                    <FileSignature className="w-3.5 h-3.5 mr-1" /> Confirmer la signature
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

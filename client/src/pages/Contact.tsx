@@ -2,8 +2,8 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PublicLayout } from "@/components/PublicLayout";
 import { useLocation } from "wouter";
 import { ArrowLeft, Mail, Phone, MapPin, Send } from "lucide-react";
@@ -17,15 +17,14 @@ export default function Contact() {
     phone: "",
     subject: "",
     message: "",
+    rgpdConsent: false,
   });
-  const [rgpdConsent, setRgpdConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitContact = trpc.contact.submit.useMutation({
     onSuccess: () => {
       toast.success("Votre message a été envoyé avec succès !");
-      setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
-      setRgpdConsent(false);
+      setFormData({ name: "", email: "", phone: "", subject: "", message: "", rgpdConsent: false });
       setIsSubmitting(false);
     },
     onError: (error) => {
@@ -36,12 +35,10 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!rgpdConsent) {
-      toast.error("Vous devez accepter la politique de confidentialité (RGPD) pour envoyer votre message.");
+    if (!formData.rgpdConsent) {
+      toast.error("Vous devez accepter la politique de confidentialité pour envoyer votre message.");
       return;
     }
-
     setIsSubmitting(true);
 
     try {
@@ -51,9 +48,7 @@ export default function Contact() {
         phone: formData.phone,
         subject: formData.subject,
         message: formData.message,
-        status: "new",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        rgpdConsent: formData.rgpdConsent,
       });
     } catch (error) {
       console.error(error);
@@ -122,7 +117,7 @@ export default function Contact() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-gray-600">
-                      Grand'Place 9<br />
+                      Grand&apos;Place 9<br />
                       7370 Dour, Belgique
                     </p>
                   </CardContent>
@@ -220,27 +215,25 @@ export default function Contact() {
                         />
                       </div>
 
-                      {/* Consentement RGPD */}
-                      <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                      <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50/40 p-4">
                         <Checkbox
                           id="rgpd-consent"
-                          checked={rgpdConsent}
-                          onCheckedChange={(v) => setRgpdConsent(!!v)}
-                          className="mt-1"
+                          checked={formData.rgpdConsent}
+                          onCheckedChange={(checked) => setFormData({ ...formData, rgpdConsent: checked === true })}
+                          required
                         />
-                        <label htmlFor="rgpd-consent" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
-                          J'accepte que mes données personnelles soient traitées conformément à la{" "}
-                          <a href="/privacy" className="text-blue-900 underline hover:text-amber-600 font-medium">
+                        <label htmlFor="rgpd-consent" className="text-sm leading-relaxed text-gray-700">
+                          J'accepte que Synergie Dour traite ces informations afin de répondre à ma demande. Consultez notre{" "}
+                          <a href="/privacy" className="font-medium text-blue-900 underline hover:text-amber-700">
                             politique de confidentialité
-                          </a>{" "}
-                          de Synergie Dour, aux fins de traitement de ma demande de contact. *
+                          </a>.
                         </label>
                       </div>
 
                       <Button
                         type="submit"
-                        disabled={isSubmitting || !rgpdConsent}
-                        className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isSubmitting || !formData.rgpdConsent}
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-blue-900 font-semibold"
                       >
                         <Send className="mr-2 w-4 h-4" />
                         {isSubmitting ? "Envoi en cours..." : "Envoyer le Message"}

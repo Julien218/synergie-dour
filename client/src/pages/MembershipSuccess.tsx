@@ -9,7 +9,7 @@ export default function MembershipSuccess() {
 
   // Optionnel : faire un confetti ou un événement analytics ici
   useEffect(() => {
-    document.title = "Adhésion confirmée — Synergie Dour";
+    document.title = "Paiement transmis — Synergie Dour";
   }, []);
 
   return (
@@ -21,15 +21,15 @@ export default function MembershipSuccess() {
           </div>
 
           <h1 className="text-3xl font-bold text-[#001a3d] mb-3">
-            Bienvenue dans Synergie Dour !
+            Paiement transmis
           </h1>
 
           <p className="text-lg text-gray-700 mb-2">
-            Votre paiement a bien été reçu et votre adhésion est désormais active.
+            Stripe nous a transmis votre paiement de cotisation.
           </p>
           <p className="text-gray-600 mb-8">
-            Un email de confirmation vous a été envoyé avec tous les détails et les
-            prochaines étapes. À très vite pour les conférences et événements de l'association !
+            Le webhook signé doit encore confirmer l'encaissement. Vous recevrez ensuite
+            votre reçu et un lien sécurisé pour compléter la fiche de votre commerce.
           </p>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-8 text-left">
@@ -37,37 +37,30 @@ export default function MembershipSuccess() {
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-start gap-2">
                 <span className="text-[#D4AF37] font-bold mt-0.5">1.</span>
-                <span>Votre commerce apparaît dès maintenant dans l'annuaire public.</span>
+                <span>Attendez l'email confirmant l'activation de votre adhésion.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[#D4AF37] font-bold mt-0.5">2.</span>
-                <span>Nous vous contacterons sous peu pour la mini-vidéo promotionnelle.</span>
+                <span>Complétez ensuite les informations, photos ou vidéo de votre commerce.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[#D4AF37] font-bold mt-0.5">3.</span>
-                <span>Vous recevrez les invitations aux événements par email.</span>
+                <span>Un administrateur contrôle les informations et le montage proposé.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[#D4AF37] font-bold mt-0.5">4.</span>
-                <span>Accédez à votre espace membre pour gérer vos informations.</span>
+                <span>La publication n'intervient qu'après validation administrative.</span>
               </li>
             </ul>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
-              onClick={() => setLocation("/dashboard")}
+              onClick={() => setLocation("/")}
               className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a3d] font-semibold"
             >
-              Accéder à mon espace
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
-            <Button
-              onClick={() => setLocation("/")}
-              variant="outline"
-              className="border-[#001a3d] text-[#001a3d]"
-            >
               Retour à l'accueil
+              <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
           </div>
         </CardContent>

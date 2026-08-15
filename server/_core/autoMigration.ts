@@ -183,7 +183,7 @@ const CREATE_TABLES = [
     stripeInvoiceId VARCHAR(100),
     amountCents INT NOT NULL,
     currency VARCHAR(3) NOT NULL DEFAULT 'EUR',
-    feeJsInnovCents INT NOT NULL DEFAULT 150,
+    feeJsInnovCents INT NOT NULL DEFAULT 0,
     netToAsblCents INT NOT NULL,
     status ENUM('succeeded','refunded','failed') NOT NULL,
     paymentMethod VARCHAR(50),

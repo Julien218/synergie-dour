@@ -36,7 +36,7 @@ const faqs: FAQ[] = [
     category: "Adhésion",
     question: "Combien coûte l'adhésion à Synergie Dour ?",
     answer:
-      "La cotisation annuelle est de 50€ par an. Elle donne accès aux services exclusifs membres : alertes personnalisées, accompagnement administratif prioritaire, participation aux événements réservés membres et intégration dans l'annuaire professionnel.",
+      "La cotisation annuelle 2026 est fixée à 50 €. La demande est d'abord examinée par le Conseil d'administration ; la facture et le lien de paiement sont envoyés après approbation. L'adhésion donne accès aux services membres, aux événements et à l'annuaire professionnel.",
   },
   {
     category: "Adhésion",

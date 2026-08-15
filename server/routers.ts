@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { loginWithPassword, registerWithPassword, SESSION_COOKIE, SESSION_DURATION_MS, signSession } from "./authService";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, adminProcedure, protectedProcedure } from "./_core/trpc";
-import { getDb } from "./db";
+import { getDb, rawQuery, rawExecute } from "./db";
 import {
   getMerchants,
   getMerchantById,
@@ -30,7 +30,6 @@ import {
   updateContactRequest,
   deleteContactRequest,
   getMembershipRequests,
-  getMembershipRequestById,
   updateMembershipRequest,
   deleteMembershipRequest,
   getMerchantByUserId,
@@ -38,7 +37,8 @@ import {
   getLocalRequests,
   updateLocalRequest,
 } from "./db";
-import { sendAdminNewMessageNotification, sendInstantAcknowledgement, sendContractEmail } from "./email/notifications";
+import { sendAdminNewMessageNotification, sendInstantAcknowledgement } from "./email/notifications";
+import { approveMembershipAndSendInvoice } from "./membership/workflow";
 import { TRPCError } from "@trpc/server";
 import { getChatbotSystemPrompt } from "./chatbotPrompt";
 import { askOpenAI } from "./chatbotClient";
@@ -263,11 +263,23 @@ export const appRouter = router({
       if (!v.message || typeof v.message !== "string" || !v.message.trim()) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Le message est obligatoire." });
       }
+      if (v.rgpdConsent !== true) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Le consentement RGPD est obligatoire." });
+      }
       return v;
     }).mutation(async ({ input }: any) => {
       let result;
       try {
-        result = await createContactRequest(input as any);
+        result = await createContactRequest({
+          name: input.name.trim(),
+          email: input.email.trim().toLowerCase(),
+          phone: typeof input.phone === "string" && input.phone.trim() ? input.phone.trim() : null,
+          subject: input.subject.trim(),
+          message: input.message.trim(),
+          rgpdConsent: 1,
+          rgpdConsentAt: new Date(),
+          status: "new",
+        });
       } catch (e: any) {
         console.error("[contact.submit] Erreur base de données:", e.message);
         throw new TRPCError({
@@ -329,14 +341,21 @@ export const appRouter = router({
           website:             data.website             || null,
           socialMedia:         data.socialMedia         || null,
           employeeCount:       data.employeeCount       || null,
+          googleBusinessUrl:   data.googleBusinessUrl   || null,
           contactName:         data.contactName,
-          email:               data.email,
+          email:               data.email.trim().toLowerCase(),
           phone:               data.phone,
           address:             data.address,
+          village:             data.village             || null,
           message:             data.message             || null,
           howDidYouHear:       data.howDidYouHear       || null,
           acceptsEmailContact: data.acceptsEmailContact ? 1 : 0,
+          acceptsEmailContactAt: data.acceptsEmailContact ? new Date() : null,
           rgpdConsent:         data.rgpdConsent         ? 1 : 0,
+          rgpdConsentAt:       new Date(),
+          paymentMode:         "one_time",
+          status:              "pending",
+          paiementStatut:      "en_attente",
         });
       } catch (e: any) {
         console.error("[membership.request] Erreur base de données:", e.message);
@@ -366,29 +385,56 @@ export const appRouter = router({
     listAll: adminProcedure.query(async () => {
       return getMembershipRequests();
     }),
-    update: adminProcedure.input((val: unknown) => {
-      if (typeof val === "object" && val !== null) return val;
-      throw new Error("Invalid input");
-    }).mutation(async ({ input }: any) => {
-      const { id, ...data } = input;
-      const result = await updateMembershipRequest(id, data);
-      // Si la demande vient d'être approuvée → envoyer le contrat automatiquement
-      if (data.status === "approved") {
-        getMembershipRequestById(id).then((req: any) => {
-          if (req && req.email) {
-            sendContractEmail({
-              to: req.email,
-              contactName: req.contactName ?? req.businessName,
-              businessName: req.businessName,
-              address: req.address ?? "",
-              village: req.village ?? undefined,
-              vatNumber: req.vatNumber ?? undefined,
-              structureType: req.structureType ?? undefined,
-            }).catch(() => {});
-          }
-        }).catch(() => {});
+    approveAndSendInvoice: adminProcedure.input((val: unknown) => {
+      const id = Number((val as { id?: unknown } | null)?.id);
+      if (Number.isInteger(id) && id > 0) return { id };
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Demande invalide." });
+    }).mutation(async ({ input, ctx }) => {
+      try {
+        return await approveMembershipAndSendInvoice({
+          requestId: input.id,
+          adminUserId: ctx.user.id,
+        });
+      } catch (error: any) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error?.message || "La facture de cotisation n'a pas pu être envoyée.",
+        });
       }
-      return result;
+    }),
+    update: adminProcedure.input((val: unknown) => {
+      const data = val as { id?: unknown; status?: unknown; reviewNote?: unknown } | null;
+      const id = Number(data?.id);
+      if (Number.isInteger(id) && id > 0 && data?.status === "rejected") {
+        return {
+          id,
+          status: "rejected" as const,
+          reviewNote: typeof data.reviewNote === "string" ? data.reviewNote.trim().slice(0, 2_000) : "",
+        };
+      }
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Seul le refus motivé est permis par cette action.",
+      });
+    }).mutation(async ({ input, ctx }) => {
+      return updateMembershipRequest(input.id, {
+        status: "rejected",
+        reviewNote: input.reviewNote || null,
+        reviewedBy: ctx.user.id,
+        reviewedAt: new Date(),
+      });
+    }),
+    markRegisterSigned: adminProcedure.input((val: unknown) => {
+      const id = Number((val as { id?: unknown } | null)?.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Demande invalide.",
+        });
+      }
+      return { id };
+    }).mutation(async ({ input }) => {
+      return updateMembershipRequest(input.id, { memberRegisterSignedAt: new Date() });
     }),
     delete: adminProcedure.input((val: unknown) => {
       if (typeof val === "number") return val;
@@ -417,10 +463,10 @@ export const appRouter = router({
           const [rows] = await db.execute(
             "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, source, url_source, agence, statut, createdAt FROM biens_commerciaux ORDER BY createdAt DESC"
           ) as any;
-          for (const b of (rows as any[])) {
+          for (const b of (rows as unknown as any[])) {
             results.push({ ...b, source: b.source || "Immoweb" });
           }
-          console.log(`[locaux] ${(rows as any[]).length} biens chargés depuis MySQL`);
+          console.log(`[locaux] ${(rows as unknown as any[]).length} biens chargés depuis MySQL`);
         }
       } catch (e) {
         console.error("[locaux] biens_commerciaux MySQL error:", e);
@@ -433,7 +479,7 @@ export const appRouter = router({
           const [rows] = await db.execute(
             "SELECT id, titre, adresse, village, surface, loyer, type_bien, description, url_source, createdAt FROM local_requests WHERE status = 'published' ORDER BY createdAt DESC"
           ) as any;
-          for (const r of rows as any[]) {
+          for (const r of rows as unknown as any[]) {
             results.push({ ...r, source: "Annonce" });
           }
         }
@@ -478,10 +524,7 @@ export const appRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const now = new Date().toISOString().slice(0, 19).replace("T", " ");
-      await db.execute(
-        "UPDATE scheduled_posts SET status=?, approved_by=?, approved_at=?, updatedAt=? WHERE id=?",
-        [status, ctx.user.id, now, now, id]
-      );
+      await rawExecute("UPDATE scheduled_posts SET status=?, approved_by=?, approved_at=?, updatedAt=? WHERE id=?", [status, ctx.user.id, now, now, id]);
       return { success: true };
     }),
 
@@ -492,10 +535,7 @@ export const appRouter = router({
       const { title, content: postContent, day_of_week, scheduled_time, platforms, source_type } = input;
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      await db.execute(
-        "INSERT INTO scheduled_posts (title, content, day_of_week, scheduled_time, platforms, status, source_type) VALUES (?, ?, ?, ?, ?, 'draft', ?)",
-        [title, postContent, day_of_week, scheduled_time || "09:00:00", platforms || "facebook,instagram", source_type || "manual"]
-      );
+      await rawExecute("INSERT INTO scheduled_posts (title, content, day_of_week, scheduled_time, platforms, status, source_type) VALUES (?, ?, ?, ?, ?, 'draft', ?)", [title, postContent, day_of_week, scheduled_time || "09:00:00", platforms || "facebook,instagram", source_type || "manual"]);
       return { success: true };
     }),
 
@@ -505,7 +545,7 @@ export const appRouter = router({
     }).mutation(async ({ input }: any) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      await db.execute("DELETE FROM scheduled_posts WHERE id=?", [input.id]);
+      await rawExecute("DELETE FROM scheduled_posts WHERE id=?", [input.id]);
       return { success: true };
     }),
   }),
@@ -523,7 +563,7 @@ export const appRouter = router({
           [ctx.user.email]
         ) as any;
         await pool.end().catch(() => {});
-        return (rows as any[])[0] ?? null;
+        return (rows as unknown as any[])[0] ?? null;
       } catch {
         return null;
       }
@@ -571,7 +611,7 @@ export const appRouter = router({
     }),
 
     // Importer contacts LeadFinder → CRM commerçants Synergie
-    importToMerchants: adminProcedure.input((val: any) => val ?? {}).mutation(async ({ input }) => {
+    importToMerchants: adminProcedure.input((val: any) => val ?? {}).mutation(async ({ input, ctx }) => {
       const { getAllLeadFinderContacts } = await import("./leadfinder");
       const { createMerchant } = await import("./db");
       const contacts = await getAllLeadFinderContacts();
@@ -581,6 +621,7 @@ export const appRouter = router({
       for (const c of valid) {
         try {
           await createMerchant({
+            userId: ctx.user.id,
             businessName: c.full_name || c.company || "Sans nom",
             businessCategory: c.profession || "Professionnel",
             description: c.notes || "",
@@ -615,11 +656,65 @@ export const appRouter = router({
     unreadCount: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) return { contacts: 0, memberships: 0, total: 0 };
-      const [cr] = await db.execute("SELECT COUNT(*) as count FROM contact_requests WHERE status = 'new'");
-      const [mr] = await db.execute("SELECT COUNT(*) as count FROM membership_requests WHERE status = 'pending'");
-      const c = Number((cr as any[])[0]?.count ?? 0);
-      const m = Number((mr as any[])[0]?.count ?? 0);
+      const cr = await rawQuery("SELECT COUNT(*) as count FROM contact_requests WHERE status = 'new'");
+      const mr = await rawQuery("SELECT COUNT(*) as count FROM membership_requests WHERE status = 'pending'");
+      const c = Number((cr as unknown as any[])[0]?.count ?? 0);
+      const m = Number((mr as unknown as any[])[0]?.count ?? 0);
       return { contacts: c, memberships: m, total: c + m };
+    }),
+  }),
+
+  // ── PENDING CHANGES (agent de vérification) ────────────────────────────
+  pendingChanges: router({
+    listPending: adminProcedure.query(async () => {
+      try {
+        const rows = await rawQuery("SELECT pc.*, r.title as resource_title FROM pending_changes pc LEFT JOIN resources r ON pc.resourceId = r.id WHERE pc.status = ? ORDER BY pc.createdAt DESC", ["pending"]);
+        return rows as any[];
+      } catch { return []; }
+    }),
+    approve: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) {
+        return val as { id: number; note?: string };
+      }
+      throw new Error("Invalid input");
+    }).mutation(async ({ input, ctx }) => {
+      await rawExecute(
+        "UPDATE pending_changes SET status = ?, reviewedBy = ?, reviewNote = ?, reviewedAt = NOW() WHERE id = ?",
+        ["approved", ctx.user.id, input.note || null, input.id]
+      );
+      return { success: true };
+    }),
+    reject: adminProcedure.input((val: unknown) => {
+      if (typeof val === "object" && val !== null) return val as { id: number; note?: string };
+      throw new Error("Invalid input");
+    }).mutation(async ({ input }) => {
+      await rawExecute("UPDATE pending_changes SET status = ?, reviewNote = ?, reviewedAt = NOW() WHERE id = ?", ["rejected", input.note || null, input.id]);
+      return { success: true };
+    }),
+  }),
+
+  // ── AGENT (vérification hebdomadaire) ──────────────────────────────────
+  agent: router({
+    runManual: adminProcedure.mutation(async () => {
+      try {
+        const { runWeeklyVerification } = await import("./agents/verificationAgent");
+        const result = await runWeeklyVerification();
+        return result;
+      } catch (e: any) {
+        throw new Error(e.message || "Erreur agent");
+      }
+    }),
+    stats: adminProcedure.query(async () => {
+      try {
+        const pending = await rawQuery("SELECT COUNT(*) as count FROM pending_changes WHERE status = ?", ["pending"]);
+        const approved = await rawQuery("SELECT COUNT(*) as count FROM pending_changes WHERE status = ?", ["approved"]);
+        const rejected = await rawQuery("SELECT COUNT(*) as count FROM pending_changes WHERE status = ?", ["rejected"]);
+        return {
+          pending: Number((pending as any[])[0]?.count ?? 0),
+          approved: Number((approved as any[])[0]?.count ?? 0),
+          rejected: Number((rejected as any[])[0]?.count ?? 0),
+        };
+      } catch { return { pending: 0, approved: 0, rejected: 0 }; }
     }),
   }),
 });

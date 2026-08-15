@@ -1,193 +1,166 @@
-/**
- * Service Stripe Connect — paiements ASBL avec commission JS-Innov.IA.
- *
- * MODÈLE :
- *   - JS-Innov.IA = compte Stripe "plateforme" (votre compte principal)
- *   - Synergie Dour ASBL = compte Stripe "Connect" (sous-compte)
- *   - Quand un membre paie 50€, Stripe transfère automatiquement :
- *       * 47,50€ vers le compte de l'ASBL (montant - application_fee)
- *       * 2,50€ vers JS-Innov.IA (l'application_fee)
- *       * Stripe prélève ses propres frais des 50€ totaux
- *   - L'argent ne TRANSITE JAMAIS par votre compte personnel
- *
- * PRÉALABLE :
- *   1. Vous (JS-Innov.IA) avez un compte Stripe activé
- *   2. Activer Stripe Connect dans Settings > Connect
- *   3. L'ASBL crée son propre compte Stripe Connect (Express recommandé pour ASBL)
- *   4. Stocker l'ID Connect de l'ASBL dans une variable d'env ou en BDD
- *
- * Plateforme conçue par JS-Innov.IA — www.jsinnovia.com
- */
-
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-11-20.acacia",
-  typescript: true,
-});
+const APP_URL =
+  process.env.APP_URL ||
+  process.env.PUBLIC_URL ||
+  "https://www.synergiedour.be";
 
-const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "250", 10);
-const MEMBERSHIP_PRICE_CENTS = parseInt(process.env.MEMBERSHIP_PRICE_CENTS ?? "5000", 10);
-const APP_URL = process.env.APP_URL ?? "https://www.synergiedour.be";
+let stripeClient: Stripe | null = null;
 
-/* ------------------------------------------------------------------------- */
-/* CONFIGURATION DES PAIEMENTS                                                 */
-/* ------------------------------------------------------------------------- */
+export function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key) throw new Error("STRIPE_SECRET_KEY non configurée");
+  if (!stripeClient) {
+    stripeClient = new Stripe(key, {
+      // Version épinglée sur celle validée par l'intégration et les webhooks.
+      apiVersion: "2026-06-24.dahlia" as Stripe.LatestApiVersion,
+      typescript: true,
+    });
+  }
+  return stripeClient;
+}
 
-export type CheckoutMode = "one_time" | "subscription";
+export function getStripeMode(): "test" | "live" | "unconfigured" {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key) return "unconfigured";
+  return key.startsWith("sk_live_") || key.startsWith("rk_live_")
+    ? "live"
+    : "test";
+}
+
+export interface BillingCheckoutInput {
+  invoiceId: number;
+  invoiceNumber: string;
+  customerEmail: string;
+  clientName: string;
+  amountCents: number;
+  currency: string;
+  portalToken: string;
+  idempotencyKey: string;
+}
+
+/**
+ * Crée un paiement Checkout pour le solde d'une facture interne.
+ * Le montant est toujours calculé côté serveur à partir de la base.
+ */
+export async function createBillingCheckout(
+  input: BillingCheckoutInput
+): Promise<Stripe.Checkout.Session> {
+  if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
+    throw new Error("Montant de facture invalide");
+  }
+
+  const metadata = {
+    kind: "billing_invoice",
+    invoiceId: String(input.invoiceId),
+    invoiceNumber: input.invoiceNumber,
+  };
+  const encodedToken = encodeURIComponent(input.portalToken);
+
+  return getStripe().checkout.sessions.create(
+    {
+      mode: "payment",
+      integration_identifier: "synergie_billing_xqjmtvka",
+      locale: "fr",
+      client_reference_id: `invoice:${input.invoiceId}`,
+      customer_email: input.customerEmail,
+      success_url: `${APP_URL}/documents/${encodedToken}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${APP_URL}/documents/${encodedToken}?payment=cancelled`,
+      line_items: [
+        {
+          price_data: {
+            currency: input.currency.toLowerCase(),
+            product_data: {
+              name: `Facture ${input.invoiceNumber}`,
+              description: `Paiement à Synergie Dour ASBL — ${input.clientName}`,
+            },
+            unit_amount: input.amountCents,
+          },
+          quantity: 1,
+        },
+      ],
+      metadata,
+      payment_intent_data: {
+        metadata,
+        receipt_email: input.customerEmail,
+        description: `Facture ${input.invoiceNumber} — Synergie Dour ASBL`,
+      },
+    },
+    { idempotencyKey: input.idempotencyKey }
+  );
+}
+
+export async function getPaymentReceiptUrl(
+  paymentIntentId: string | null
+): Promise<string | null> {
+  if (!paymentIntentId) return null;
+  const paymentIntent = await getStripe().paymentIntents.retrieve(
+    paymentIntentId,
+    { expand: ["latest_charge"] }
+  );
+  const charge = paymentIntent.latest_charge;
+  return typeof charge === "object" && charge && "receipt_url" in charge
+    ? charge.receipt_url || null
+    : null;
+}
 
 export interface CreateCheckoutInput {
-  mode: CheckoutMode;
-  /** Email de l'adhérent — pré-rempli sur la page Stripe */
+  mode: "one_time";
   customerEmail: string;
-  /** Métadonnées libres pour reconnaître l'adhésion via le webhook */
   metadata: {
     membershipRequestId: string;
     userId?: string;
     businessName: string;
   };
-  /** ID du compte Stripe Connect de l'ASBL */
-  asblConnectAccountId: string;
 }
 
-/**
- * Crée une session Stripe Checkout pour une nouvelle adhésion.
- * Retourne l'URL où rediriger le membre.
- */
-export async function createMembershipCheckout(input: CreateCheckoutInput): Promise<string> {
-  const baseConfig: Stripe.Checkout.SessionCreateParams = {
+export async function createMembershipCheckout(
+  input: CreateCheckoutInput
+): Promise<string> {
+  if (process.env.MEMBERSHIP_FEES_ENABLED?.trim().toLowerCase() === "false") {
+    throw new Error(
+      "Les cotisations sont désactivées par la configuration de l'environnement."
+    );
+  }
+
+  const membershipPriceCents = Number(process.env.MEMBERSHIP_PRICE_CENTS);
+  const membershipPriceId = process.env.STRIPE_MEMBERSHIP_PRICE_ID?.trim();
+  if (!Number.isInteger(membershipPriceCents) || membershipPriceCents <= 0) {
+    throw new Error("MEMBERSHIP_PRICE_CENTS invalide");
+  }
+  if (!membershipPriceId?.startsWith("price_")) {
+    throw new Error("STRIPE_MEMBERSHIP_PRICE_ID invalide");
+  }
+
+  const base: Stripe.Checkout.SessionCreateParams = {
     customer_email: input.customerEmail,
     success_url: `${APP_URL}/membership/success?session={CHECKOUT_SESSION_ID}`,
     cancel_url: `${APP_URL}/membership/cancelled`,
-    metadata: input.metadata,
+    metadata: { ...input.metadata, kind: "membership" },
+    integration_identifier: "synergie_membership_bvclnqze",
     locale: "fr",
-    payment_method_types: ["card", "bancontact"],
   };
 
-  if (input.mode === "one_time") {
-    return createOneTimeCheckout(input, baseConfig);
-  }
-  return createSubscriptionCheckout(input, baseConfig);
-}
-
-/* ------------------------------------------------------------------------- */
-/* PAIEMENT ANNUEL UNIQUE                                                      */
-/* ------------------------------------------------------------------------- */
-
-async function createOneTimeCheckout(
-  input: CreateCheckoutInput,
-  base: Stripe.Checkout.SessionCreateParams
-): Promise<string> {
-  const session = await stripe.checkout.sessions.create({
-    ...base,
-    mode: "payment",
-    line_items: [
-      {
-        price_data: {
-          currency: "eur",
-          product_data: {
-            name: "Adhésion annuelle — Synergie Dour ASBL",
-            description: "Adhésion valable un an. Renouvellement manuel via mail de rappel.",
-          },
-          unit_amount: MEMBERSHIP_PRICE_CENTS,
-        },
-        quantity: 1,
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.create(
+    {
+      ...base,
+      mode: "payment",
+      line_items: [{ price: membershipPriceId, quantity: 1 }],
+      payment_intent_data: {
+        metadata: { ...input.metadata, kind: "membership" },
+        receipt_email: input.customerEmail,
+        description: `Cotisation Synergie Dour — ${input.metadata.businessName}`,
       },
-    ],
-    payment_intent_data: {
-      application_fee_amount: APPLICATION_FEE_CENTS,
-      transfer_data: {
-        destination: input.asblConnectAccountId,
-      },
-      description: `Adhésion ASBL ${input.metadata.businessName}`,
     },
-  });
+    {
+      idempotencyKey: `membership-checkout-${input.metadata.membershipRequestId}`,
+    }
+  );
 
-  if (!session.url) throw new Error("Stripe n'a pas retourné d'URL de checkout");
+  if (!session.url) throw new Error("Stripe n'a pas retourné d'URL Checkout");
   return session.url;
 }
-
-/* ------------------------------------------------------------------------- */
-/* ABONNEMENT ANNUEL RÉCURRENT                                                 */
-/* ------------------------------------------------------------------------- */
-
-async function createSubscriptionCheckout(
-  input: CreateCheckoutInput,
-  base: Stripe.Checkout.SessionCreateParams
-): Promise<string> {
-  const subscriptionPriceId = process.env.STRIPE_PRICE_ID_SUBSCRIPTION;
-  if (!subscriptionPriceId) {
-    throw new Error("STRIPE_PRICE_ID_SUBSCRIPTION non configuré");
-  }
-
-  const session = await stripe.checkout.sessions.create({
-    ...base,
-    mode: "subscription",
-    line_items: [{ price: subscriptionPriceId, quantity: 1 }],
-    subscription_data: {
-      application_fee_percent: undefined,
-      transfer_data: {
-        destination: input.asblConnectAccountId,
-        amount_percent: ((MEMBERSHIP_PRICE_CENTS - APPLICATION_FEE_CENTS) / MEMBERSHIP_PRICE_CENTS) * 100,
-      },
-      description: `Adhésion ASBL annuelle ${input.metadata.businessName}`,
-    },
-  });
-
-  if (!session.url) throw new Error("Stripe n'a pas retourné d'URL de checkout");
-  return session.url;
-}
-
-/* ------------------------------------------------------------------------- */
-/* GESTION DU COMPTE CONNECT DE L'ASBL                                         */
-/*                                                                             */
-/*   Cette fonction est utilisée UNE SEULE FOIS pour l'onboarding initial      */
-/*   de l'ASBL sur Stripe. Elle génère un lien que le président de l'ASBL      */
-/*   doit suivre pour activer son compte.                                      */
-/* ------------------------------------------------------------------------- */
-
-export async function createAsblOnboardingLink(connectAccountId: string): Promise<string> {
-  const accountLink = await stripe.accountLinks.create({
-    account: connectAccountId,
-    refresh_url: `${APP_URL}/admin/stripe/refresh`,
-    return_url: `${APP_URL}/admin/stripe/return`,
-    type: "account_onboarding",
-  });
-  return accountLink.url;
-}
-
-/**
- * Crée le compte Stripe Connect de l'ASBL.
- * À appeler UNE FOIS lors de la mise en place initiale.
- */
-export async function createAsblConnectAccount(asblData: {
-  email: string;
-  bceNumber: string;
-  legalName: string;
-}): Promise<string> {
-  const account = await stripe.accounts.create({
-    type: "express",
-    country: "BE",
-    email: asblData.email,
-    business_type: "non_profit",
-    company: {
-      name: asblData.legalName,
-      tax_id: asblData.bceNumber,
-    },
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
-    },
-    metadata: {
-      type: "asbl_synergie_dour",
-    },
-  });
-  return account.id;
-}
-
-/* ------------------------------------------------------------------------- */
-/* VÉRIFICATION SIGNATURE WEBHOOK                                              */
-/* ------------------------------------------------------------------------- */
 
 export function constructWebhookEvent(
   rawBody: string | Buffer,
@@ -195,7 +168,12 @@ export function constructWebhookEvent(
 ): Stripe.Event {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) throw new Error("STRIPE_WEBHOOK_SECRET non configuré");
-  return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+  return getStripe().webhooks.constructEvent(rawBody, signature, webhookSecret);
 }
 
-export { stripe };
+/** Compatibilité avec les imports existants. */
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, property) {
+    return (getStripe() as any)[property];
+  },
+});

@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import crypto from "node:crypto";
@@ -18,6 +18,13 @@ import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
 import { socialRouter } from "../social";
 import { seoRouter } from "../seo/router";
 import { autopublishRouter } from "../autopublish/router";
+import { requireAdmin as requireAutopublishAdmin } from "../autopublish/authMiddleware";
+import { billingRouter } from "../billing/router";
+import { billingPortalRouter } from "../billing/portal";
+import { membershipOnboardingRouter } from "../membership/onboardingRouter";
+import { runBillingMigrations } from "../billing/migrate";
+import { stripeWebhookHandler } from "../stripe/webhookHandler";
+import { getStripeMode } from "../stripe/stripeService";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
 import { cronBackupHandler, isProductionEnvironment } from "../cron/backup";
 
@@ -40,6 +47,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+
+
 async function ensureColumn(pool: any, table: string, column: string, addSql: string) {
   try {
     const [rows]: any = await pool.query(
@@ -51,7 +60,7 @@ async function ensureColumn(pool: any, table: string, column: string, addSql: st
       const conn = await pool.getConnection();
       try {
         await conn.execute(addSql);
-        console.log(`[DB] Colonne ${table}.${column} ajoutee`);
+        console.log(`[DB] Colonne ${table}.${column} ajoutée ✅`);
       } finally {
         conn.release();
       }
@@ -64,10 +73,11 @@ async function ensureColumn(pool: any, table: string, column: string, addSql: st
 async function initDatabase() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    console.warn("[DB] DATABASE_URL non definie");
+    console.warn("[DB] DATABASE_URL non définie — base de données désactivée");
     return;
   }
   try {
+    // Railway MySQL 9.x requiert TLS (même réseau interne)
     const pool = mysql.createPool({
       uri: databaseUrl.split("?")[0],
       ssl: { rejectUnauthorized: false },
@@ -76,11 +86,31 @@ async function initDatabase() {
       connectTimeout: 30000,
     });
     const db = drizzle(pool as any);
+    // Création des tables si absentes (idempotent)
+    let setupConnection: mysql.PoolConnection | null = null;
     try {
-      const conn = await pool.getConnection();
+      setupConnection = await pool.getConnection();
+      const sqls = [
+        `CREATE TABLE IF NOT EXISTS \`users\` (\`id\` int AUTO_INCREMENT NOT NULL, \`openId\` varchar(64) NOT NULL, \`name\` text, \`email\` varchar(320), \`loginMethod\` varchar(64), \`passwordHash\` varchar(255), \`emailVerifiedAt\` timestamp NULL, \`role\` enum('user','admin','super_admin') NOT NULL DEFAULT 'user', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, \`lastSignedIn\` timestamp NOT NULL DEFAULT (now()), CONSTRAINT \`users_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`users_openId_unique\` UNIQUE(\`openId\`))`,
+        `CREATE TABLE IF NOT EXISTS \`categories\` (\`id\` int AUTO_INCREMENT NOT NULL, \`name\` varchar(100) NOT NULL, \`description\` text, \`icon\` varchar(100), \`createdAt\` timestamp NOT NULL DEFAULT (now()), PRIMARY KEY(\`id\`), UNIQUE(\`name\`))`,
+        `CREATE TABLE IF NOT EXISTS \`contact_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`name\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20), \`subject\` varchar(255) NOT NULL, \`message\` text NOT NULL, \`rgpdConsent\` int NOT NULL DEFAULT 0, \`rgpdConsentAt\` timestamp NULL, \`status\` enum('new','read','replied','closed') NOT NULL DEFAULT 'new', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`membership_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`structureType\` varchar(50), \`vatNumber\` varchar(50), \`sector\` varchar(100), \`website\` varchar(255), \`socialMedia\` varchar(255), \`employeeCount\` varchar(20), \`googleBusinessUrl\` varchar(500), \`contactName\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20) NOT NULL, \`address\` varchar(255) NOT NULL, \`village\` varchar(100), \`message\` text, \`howDidYouHear\` varchar(100), \`acceptsEmailContact\` int NOT NULL DEFAULT 0, \`acceptsEmailContactAt\` timestamp NULL, \`rgpdConsent\` int NOT NULL DEFAULT 0, \`rgpdConsentAt\` timestamp NULL, \`paymentMode\` enum('one_time','subscription') NOT NULL DEFAULT 'one_time', \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`paiementStatut\` enum('en_attente','paye','gratuit') NOT NULL DEFAULT 'en_attente', \`activationEmailSentAt\` timestamp NULL, \`billingInvoiceId\` int NULL, \`onboardingTokenHash\` varchar(64), \`onboardingTokenExpiresAt\` timestamp NULL, \`onboardingCompletedAt\` timestamp NULL, \`mediaStatus\` varchar(32) NOT NULL DEFAULT 'awaiting', \`mediaUrls\` json, \`activityDescription\` text, \`openingHours\` text, \`publicationConsent\` int NOT NULL DEFAULT 0, \`publicationConsentAt\` timestamp NULL, \`appointmentRequested\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`), UNIQUE KEY \`uq_membership_request_invoice\` (\`billingInvoiceId\`))`,
+        `CREATE TABLE IF NOT EXISTS \`merchants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`description\` text, \`address\` varchar(255) NOT NULL, \`phone\` varchar(20), \`email\` varchar(320), \`website\` varchar(255), \`logo\` varchar(255), \`googleBusinessUrl\` varchar(500), \`isVerified\` int NOT NULL DEFAULT 0, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`news\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`content\` text NOT NULL, \`excerpt\` varchar(500), \`image\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`publishedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`events\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`description\` text NOT NULL, \`image\` varchar(255), \`startDate\` timestamp NOT NULL, \`endDate\` timestamp NULL, \`location\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`resources\` (\`id\` int AUTO_INCREMENT NOT NULL, \`slug\` varchar(200) NOT NULL, \`title\` varchar(255) NOT NULL, \`summary\` varchar(500) NOT NULL, \`category\` enum('starter','gestion','developpement','difficulte') NOT NULL, \`tags\` json NOT NULL, \`verifiedAt\` varchar(10) NOT NULL, \`content\` text NOT NULL, \`links\` json NOT NULL, \`localContacts\` json, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'published', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`), UNIQUE(\`slug\`))`,
+        `CREATE TABLE IF NOT EXISTS \`memberships\` (\`id\` int AUTO_INCREMENT NOT NULL, \`membershipRequestId\` int, \`userId\` int, \`merchantId\` int, \`paymentMode\` enum('one_time','subscription') NOT NULL DEFAULT 'one_time', \`status\` enum('pending_payment','active','expired','cancelled') NOT NULL DEFAULT 'active', \`stripeCustomerId\` varchar(100), \`stripeSubscriptionId\` varchar(100), \`stripePaymentIntentId\` varchar(100), \`startsAt\` timestamp NULL, \`expiresAt\` timestamp NULL, \`amountCents\` int NOT NULL DEFAULT 0, \`currency\` varchar(3) NOT NULL DEFAULT 'EUR', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`), UNIQUE KEY \`uq_memberships_request\` (\`membershipRequestId\`))`,
+        `CREATE TABLE IF NOT EXISTS \`local_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`titre\` varchar(255) NOT NULL, \`adresse\` varchar(255) NOT NULL, \`village\` varchar(100) NOT NULL, \`surface\` varchar(50), \`loyer\` varchar(50), \`type_bien\` varchar(100) NOT NULL, \`description\` text, \`nom_proprietaire\` varchar(255) NOT NULL, \`telephone_proprietaire\` varchar(30) NOT NULL, \`email_proprietaire\` varchar(320) NOT NULL, \`status\` enum('pending','published','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`biens_commerciaux\` (\`id\` varchar(64) NOT NULL, \`titre\` varchar(255) NOT NULL, \`adresse\` varchar(255), \`village\` varchar(100), \`surface\` varchar(50), \`loyer\` varchar(50), \`type_bien\` varchar(100) NOT NULL DEFAULT 'Commerce', \`description\` text, \`source\` varchar(100) DEFAULT 'Immoweb', \`url_source\` text, \`agence\` varchar(255), \`statut\` varchar(100) DEFAULT 'disponible', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+        `CREATE TABLE IF NOT EXISTS \`social_posts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL DEFAULT '', \`content\` text NOT NULL, \`image_url\` text, \`platforms\` varchar(255) NOT NULL DEFAULT 'facebook', \`scheduled_at\` varchar(50), \`status\` enum('draft','scheduled','published','error') NOT NULL DEFAULT 'draft', \`post_type\` varchar(100) NOT NULL DEFAULT 'actualite', \`created_by\` varchar(100), \`published_at\` timestamp NULL, \`error_message\` text, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
+      ];
+      for (const sql of sqls) {
+        await setupConnection.execute(sql);
+      }
+
+      // Migrations de colonnes — exécutées après CREATE TABLE pour que le
+      // démarrage fonctionne aussi sur une base totalement vierge.
       await ensureColumn(pool, "merchants", "googleBusinessUrl", "ALTER TABLE `merchants` ADD COLUMN `googleBusinessUrl` varchar(500)");
-      await ensureColumn(pool, "merchants", "photos", "ALTER TABLE `merchants` ADD COLUMN `photos` json");
-      await ensureColumn(pool, "merchants", "videos", "ALTER TABLE `merchants` ADD COLUMN `videos` json");
       await ensureColumn(pool, "membership_requests", "structureType", "ALTER TABLE `membership_requests` ADD COLUMN `structureType` varchar(50)");
       await ensureColumn(pool, "membership_requests", "vatNumber", "ALTER TABLE `membership_requests` ADD COLUMN `vatNumber` varchar(50)");
       await ensureColumn(pool, "membership_requests", "sector", "ALTER TABLE `membership_requests` ADD COLUMN `sector` varchar(100)");
@@ -89,202 +119,217 @@ async function initDatabase() {
       await ensureColumn(pool, "membership_requests", "employeeCount", "ALTER TABLE `membership_requests` ADD COLUMN `employeeCount` varchar(20)");
       await ensureColumn(pool, "membership_requests", "howDidYouHear", "ALTER TABLE `membership_requests` ADD COLUMN `howDidYouHear` varchar(100)");
       await ensureColumn(pool, "membership_requests", "acceptsEmailContact", "ALTER TABLE `membership_requests` ADD COLUMN `acceptsEmailContact` int NOT NULL DEFAULT 0");
-      await ensureColumn(pool, "membership_requests", "rgpdConsent", "ALTER TABLE `membership_requests` ADD COLUMN `rgpdConsent` int NOT NULL DEFAULT 1");
       await ensureColumn(pool, "membership_requests", "paiementStatut", "ALTER TABLE `membership_requests` ADD COLUMN `paiementStatut` VARCHAR(20) NOT NULL DEFAULT 'en_attente'");
-      await ensureColumn(pool, "membership_requests", "rgpdConsentAt", "ALTER TABLE `membership_requests` ADD COLUMN `rgpdConsentAt` timestamp NULL");
       await ensureColumn(pool, "membership_requests", "acceptsEmailContactAt", "ALTER TABLE `membership_requests` ADD COLUMN `acceptsEmailContactAt` timestamp NULL");
-
-      const sqls = [
-        `CREATE TABLE IF NOT EXISTS \`users\` (\`id\` int AUTO_INCREMENT NOT NULL, \`openId\` varchar(64) NOT NULL, \`name\` text, \`email\` varchar(320), \`loginMethod\` varchar(64), \`passwordHash\` varchar(255), \`emailVerifiedAt\` timestamp NULL, \`role\` enum('user','admin','super_admin') NOT NULL DEFAULT 'user', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, \`lastSignedIn\` timestamp NOT NULL DEFAULT (now()), CONSTRAINT \`users_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`users_openId_unique\` UNIQUE(\`openId\`))`,
-        `CREATE TABLE IF NOT EXISTS \`categories\` (\`id\` int AUTO_INCREMENT NOT NULL, \`name\` varchar(100) NOT NULL, \`description\` text, \`icon\` varchar(100), \`createdAt\` timestamp NOT NULL DEFAULT (now()), PRIMARY KEY(\`id\`), UNIQUE(\`name\`))`,
-        `CREATE TABLE IF NOT EXISTS \`contact_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`name\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20), \`subject\` varchar(255) NOT NULL, \`message\` text NOT NULL, \`status\` enum('new','read','replied','closed') NOT NULL DEFAULT 'new', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`membership_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`structureType\` varchar(50), \`vatNumber\` varchar(50), \`sector\` varchar(100), \`website\` varchar(255), \`socialMedia\` varchar(255), \`employeeCount\` varchar(20), \`contactName\` varchar(255) NOT NULL, \`email\` varchar(320) NOT NULL, \`phone\` varchar(20) NOT NULL, \`address\` varchar(255) NOT NULL, \`message\` text, \`howDidYouHear\` varchar(100), \`acceptsEmailContact\` int NOT NULL DEFAULT 0, \`rgpdConsent\` int NOT NULL DEFAULT 1, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`paiementStatut\` varchar(20) NOT NULL DEFAULT 'en_attente', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`merchants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`businessName\` varchar(255) NOT NULL, \`businessCategory\` varchar(100) NOT NULL, \`description\` text, \`address\` varchar(255) NOT NULL, \`phone\` varchar(20), \`email\` varchar(320), \`website\` varchar(255), \`logo\` varchar(500), \`photos\` json, \`videos\` json, \`googleBusinessUrl\` varchar(500), \`isVerified\` int NOT NULL DEFAULT 0, \`status\` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`news\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`content\` text NOT NULL, \`excerpt\` varchar(500), \`image\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`publishedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`events\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL, \`description\` text NOT NULL, \`image\` varchar(255), \`startDate\` timestamp NOT NULL, \`endDate\` timestamp NULL, \`location\` varchar(255), \`authorId\` int NOT NULL, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'draft', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`resources\` (\`id\` int AUTO_INCREMENT NOT NULL, \`slug\` varchar(200) NOT NULL, \`title\` varchar(255) NOT NULL, \`summary\` varchar(500) NOT NULL, \`category\` enum('starter','gestion','developpement','difficulte') NOT NULL, \`tags\` json NOT NULL, \`verifiedAt\` varchar(10) NOT NULL, \`content\` text NOT NULL, \`links\` json NOT NULL, \`localContacts\` json, \`status\` enum('draft','published','archived') NOT NULL DEFAULT 'published', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`), UNIQUE(\`slug\`))`,
-        `CREATE TABLE IF NOT EXISTS \`memberships\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`merchantId\` int, \`paymentMode\` enum('one_time','subscription') NOT NULL, \`status\` enum('pending_payment','active','expired','cancelled') NOT NULL DEFAULT 'pending_payment', \`stripeCustomerId\` varchar(100), \`stripeSubscriptionId\` varchar(100), \`stripePaymentIntentId\` varchar(100), \`startsAt\` timestamp NULL, \`expiresAt\` timestamp NULL, \`amountCents\` int NOT NULL DEFAULT 5000, \`currency\` varchar(3) NOT NULL DEFAULT 'EUR', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`local_requests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`titre\` varchar(255) NOT NULL, \`adresse\` varchar(255) NOT NULL, \`village\` varchar(100) NOT NULL, \`surface\` varchar(50), \`loyer\` varchar(50), \`type_bien\` varchar(100) NOT NULL, \`description\` text, \`nom_proprietaire\` varchar(255) NOT NULL, \`telephone_proprietaire\` varchar(30) NOT NULL, \`email_proprietaire\` varchar(320) NOT NULL, \`status\` enum('pending','published','rejected') NOT NULL DEFAULT 'pending', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`biens_commerciaux\` (\`id\` varchar(64) NOT NULL, \`titre\` varchar(255) NOT NULL, \`adresse\` varchar(255), \`village\` varchar(100), \`surface\` varchar(50), \`loyer\` varchar(50), \`type_bien\` varchar(100) NOT NULL DEFAULT 'Commerce', \`description\` text, \`source\` varchar(100) DEFAULT 'Immoweb', \`url_source\` text, \`agence\` varchar(255), \`statut\` varchar(100) DEFAULT 'disponible', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`social_posts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`title\` varchar(255) NOT NULL DEFAULT '', \`content\` text NOT NULL, \`image_url\` text, \`platforms\` varchar(255) NOT NULL DEFAULT 'facebook', \`scheduled_at\` varchar(50), \`status\` enum('draft','scheduled','published','error') NOT NULL DEFAULT 'draft', \`post_type\` varchar(100) NOT NULL DEFAULT 'actualite', \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-        `CREATE TABLE IF NOT EXISTS \`image_generations\` (\`id\` int AUTO_INCREMENT NOT NULL, \`prompt\` text NOT NULL, \`image_url\` text, \`status\` enum('pending','completed','failed','archived') NOT NULL DEFAULT 'pending', \`createdBy\` int, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(\`id\`))`,
-      ];
-      for (const sql of sqls) {
-        await conn.execute(sql);
-      }
-      conn.release();
-
+      await ensureColumn(pool, "membership_requests", "rgpdConsent", "ALTER TABLE `membership_requests` ADD COLUMN `rgpdConsent` int NOT NULL DEFAULT 0");
+      await ensureColumn(pool, "membership_requests", "rgpdConsentAt", "ALTER TABLE `membership_requests` ADD COLUMN `rgpdConsentAt` timestamp NULL");
+      await ensureColumn(pool, "contact_requests", "rgpdConsent", "ALTER TABLE `contact_requests` ADD COLUMN `rgpdConsent` int NOT NULL DEFAULT 0");
+      await ensureColumn(pool, "contact_requests", "rgpdConsentAt", "ALTER TABLE `contact_requests` ADD COLUMN `rgpdConsentAt` timestamp NULL");
+      await setupConnection.execute("ALTER TABLE `membership_requests` MODIFY COLUMN `rgpdConsent` int NOT NULL DEFAULT 0");
+      await runBillingMigrations(pool);
+      console.log("[DB] Tables vérifiées/créées ✅");
+    } catch (e: any) {
+      console.warn("[DB] Setup tables:", e.message?.slice(0,150));
+    } finally {
+      setupConnection?.release();
+    }
+    // Seed super admin si absent — uniquement via variables d'environnement sécurisées
+    try {
       const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
       const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
 
-      if (superAdminEmail && superAdminPassword) {
-        const [existing] = await pool.query(
-          "SELECT id, role FROM users WHERE email = ? LIMIT 1",
-          [superAdminEmail]
-        );
-
-        if ((existing as any[]).length === 0) {
-          const openId = `local_${nanoid(21)}`;
-          const salt = crypto.randomBytes(16).toString("hex");
-          const hash = crypto.scryptSync(superAdminPassword, salt, 64).toString("hex");
-          const passwordHash = `${salt}:${hash}`;
-
-          await pool.execute(
-            "INSERT INTO users (openId, name, email, loginMethod, passwordHash, role, lastSignedIn) VALUES (?, ?, ?, 'password', ?, 'super_admin', NOW())",
-            [openId, "Super Admin", superAdminEmail, passwordHash]
-          );
-          console.log("[DB] Super admin cree");
-        } else if ((existing as any[])[0].role !== "super_admin") {
-          await pool.execute(
-            "UPDATE users SET role = 'super_admin' WHERE email = ?",
-            [superAdminEmail]
-          );
-          console.log("[DB] Role super_admin applique");
-        }
+      if (!superAdminEmail) {
+        console.warn("[DB] SUPER_ADMIN_EMAIL non défini — seed super_admin ignoré");
       } else {
-        if (!superAdminEmail) {
-          console.warn("[DB] SUPER_ADMIN_EMAIL non defini");
-        } else if (!superAdminPassword) {
-          console.warn("[DB] SUPER_ADMIN_PASSWORD non defini");
+        const existing = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, superAdminEmail))
+          .limit(1);
+
+        if (!existing[0]) {
+          if (!superAdminPassword) {
+            console.warn("[DB] SUPER_ADMIN_PASSWORD non défini — création super_admin ignorée");
+          } else {
+            const salt = crypto.randomBytes(16).toString("hex");
+            const hash = crypto.scryptSync(superAdminPassword, salt, 64).toString("hex");
+
+            await db.insert(users).values({
+              openId: "local_" + nanoid(21),
+              name: "Super Admin",
+              email: superAdminEmail,
+              loginMethod: "password",
+              passwordHash: salt + ":" + hash,
+              lastSignedIn: new Date(),
+              role: "super_admin",
+            } as any);
+
+            console.log("[DB] Super admin créé depuis variables d'environnement ✅");
+          }
+        } else if (existing[0].role !== "super_admin") {
+          await db
+            .update(users)
+            .set({ role: "super_admin" })
+            .where(eq(users.id, existing[0].id));
+
+          console.log("[DB] Rôle super_admin appliqué ✅");
+        } else {
+          console.log("[DB] Super admin déjà présent ✅");
         }
       }
-
-      const [catCount]: any = await pool.query("SELECT COUNT(*) as cnt FROM categories");
-      if (catCount?.[0]?.cnt === 0) {
-        const cats = [
-          ["Commerce & Boutiques", "Commerces de detail, boutiques specialisees"],
-          ["Horeca", "Restaurants, cafes, hotels, traiteurs"],
-          ["Services", "Services aux particuliers et aux entreprises"],
-          ["Bien-etre & Sante", "Salons, instituts, praticiens"],
-          ["Artisanat", "Artisans d'art, metiers manuels"],
-          ["Construction & Travaux", "Entreprises de construction, renovation"],
-          ["Automobile", "Garages, concessionnaires, services auto"],
-          ["Agriculture & Nature", "Exploitations, producteurs locaux"],
-          ["Industrie & Fabrication", "PME industrielles, ateliers de production"],
-          ["Culture & Loisirs", "Evenementiel, culture, divertissement"],
-          ["Autres", "Activites diverses non classees"],
-        ];
-        for (const [name, desc] of cats) {
-          await pool.execute(
-            "INSERT INTO categories (name, description, icon) VALUES (?, ?, NULL)",
-            [name, desc]
-          );
-        }
-        console.log(`[DB] ${cats.length} categories initiales creees`);
-      }
-
-      try {
-        const { seedBiensCommerciaux } = await import("../seeder/seedBiens");
-        const [bienCount]: any = await pool.query("SELECT COUNT(*) as cnt FROM biens_commerciaux");
-        if (bienCount?.[0]?.cnt === 0) {
-          await seedBiensCommerciaux(pool);
-        }
-      } catch (e: any) {
-        console.warn("[Seed] seedBiensCommerciaux non disponible:", e.message);
-      }
-
-      try {
-        const { patchOlivierEmail } = await import("../seeder/patchOlivierEmail");
-        await patchOlivierEmail(pool);
-      } catch (e: any) {
-        console.warn("[Seed] patchOlivierEmail non disponible:", e.message);
-      }
-    } catch (dbErr: any) {
-      console.error("[DB] Erreur d'initialisation:", dbErr.message);
-    }
-
-    try {
-      const { runAutoMigration } = await import("./autoMigration");
-      await runAutoMigration(pool);
     } catch (e: any) {
-      console.warn("[Migration] Auto-migration non disponible:", e.message);
+      console.warn("[DB] Seed skipped:", e.message?.slice(0, 100));
     }
-
-    return { pool, db };
-  } catch (err: any) {
-    console.error("[DB] Connexion impossible:", err.message);
-    return null;
+    await pool.end();
+  } catch (e: any) {
+    console.error("[DB] Erreur init:", e.message?.slice(0,200));
   }
 }
 
 async function startServer() {
-  const { pool, db } = (await initDatabase()) || {};
-  (globalThis as any).__DB_POOL = pool;
+  await initDatabase();
+  // Patch one-shot : correction email olivier.trevis
+  try {
+    const { patchOlivierEmail } = await import("../seeder/patchOlivierEmail");
+    await patchOlivierEmail();
+  } catch (e: any) {
+    console.warn("[Patch] patchOlivierEmail non disponible:", e.message);
+  }
 
+  // Seed initial des biens commerciaux (migration Base44 → MySQL, idempotent)
+  try {
+    const { seedBiensCommerciaux } = await import("../seeder/biensCommerciaux");
+    await seedBiensCommerciaux();
+  } catch (e: any) {
+    console.warn("[Seed] seedBiensCommerciaux non disponible:", e.message);
+  }
   const app = express();
   const server = createServer(app);
   
+  // Important pour Railway/Proxies
   app.set("trust proxy", 1);
 
-  // ─── Helmet : headers de securite HTTP ────────────────────────────────────
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.google.com", "https://www.gstatic.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://www.gstatic.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "https://fonts.googleapis.com"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          ...(process.env.NODE_ENV === "development" ? ["'unsafe-eval'"] : []),
+          "https://accounts.google.com",
+          "https://www.gstatic.com",
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
-        connectSrc: ["'self'", "https://api.openai.com", "https://graph.facebook.com", "https://www.googleapis.com"],
-        frameSrc: ["'self'", "https://www.google.com"],
+        connectSrc: ["'self'", "https:", "wss:"],
+        frameSrc: ["'self'", "https://www.google.com", "https://www.facebook.com"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
       },
     },
     crossOriginEmbedderPolicy: false,
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true,
+    hsts: process.env.NODE_ENV === "production"
+      ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
+      : false,
+  }));
+
+  // Stripe exige le corps brut pour vérifier la signature. Cette route doit
+  // impérativement précéder express.json().
+  app.post(
+    "/api/stripe/webhook",
+    express.raw({ type: "application/json", limit: "1mb" }),
+    stripeWebhookHandler
+  );
+  app.get("/api/stripe/webhook", (_req, res) => {
+    res.status(405).json({ error: "Method not allowed" });
+  });
+
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { message: "Trop de requêtes. Réessayez dans quelques minutes." },
+  });
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    message: { message: "Trop de tentatives de connexion. Réessayez plus tard." },
+  });
+  const publicFormLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 8,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { message: "Trop d'envois. Réessayez dans une heure." },
+  });
+  const mediaUploadLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 20,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { message: "Limite d'envoi de médias atteinte. Réessayez plus tard." },
+  });
+
+  // Le média est authentifié avant d'autoriser un corps volumineux. La limite
+  // 270 Mo couvre l'encodage base64 d'une vidéo de 200 Mo. Le reste de l'API
+  // conserve une limite stricte de 2 Mo.
+  app.use(
+    "/api/autopublish/media/upload",
+    mediaUploadLimiter,
+    requireAutopublishAdmin,
+    express.json({ limit: "270mb" }),
+    express.urlencoded({ limit: "270mb", extended: true })
+  );
+  app.use(
+    "/api/membership/onboarding/:token/media",
+    mediaUploadLimiter,
+    express.json({ limit: "270mb" })
+  );
+  app.use("/api/trpc/auth.login", authLimiter);
+  app.use("/api/trpc/contact.submit", publicFormLimiter);
+  app.use("/api/trpc/membership.request", publicFormLimiter);
+  app.use("/api", apiLimiter);
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ limit: "2mb", extended: true }));
+  app.get("/api/health", (req, res) => res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    billing: {
+      stripeMode: getStripeMode(),
+      webhookConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
+      emailConfigured: Boolean(process.env.RESEND_API_KEY),
     },
   }));
 
-  // ─── Rate limiting ────────────────────────────────────────────────────────
-  const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Trop de requetes. Reessayez dans quelques minutes." },
-  });
-
-  const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Trop de tentatives de connexion. Reessayez dans 15 minutes." },
-  });
-
-  const formLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    limit: 5,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Trop de soumissions. Reessayez dans une heure." },
-  });
-
-  // Body parser — reduit de 50mb a 2mb
-  app.use(express.json({ limit: "2mb" }));
-  app.use(express.urlencoded({ limit: "2mb", extended: true }));
-
-  // Rate limiting global sur API
-  app.use("/api/", apiLimiter);
-  app.use("/api/trpc/auth.login", loginLimiter);
-  app.use("/api/trpc/auth.register", loginLimiter);
-
-  // Diagnostic (reduit en production)
+  // Diagnostic local uniquement : aucun chemin métier n'est journalisé en production.
   app.use((req, res, next) => {
-    if (req.url.startsWith('/api') && process.env.NODE_ENV !== "production") {
-      console.log(`[API Request] ${req.method} ${req.url}`);
+    if (process.env.NODE_ENV !== "production" && req.url.startsWith('/api')) {
+      const safeUrl = req.url.replace(
+        /^\/api\/documents\/[^/?]+/,
+        "/api/documents/[redacted]"
+      ).replace(
+        /^\/api\/membership\/onboarding\/[^/?]+/,
+        "/api/membership/onboarding/[redacted]"
+      );
+      console.log(`[API Request] ${req.method} ${safeUrl}`);
     }
     next();
   });
 
+  // OAuth callback - Doit être AVANT le service statique
   registerOAuthRoutes(app);
+
+  // OG Image generation endpoints
   registerOgImageRoutes(app);
 
+  // tRPC API
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -293,15 +338,19 @@ async function startServer() {
     })
   );
 
+  // Routes métier disponibles en développement comme en production.
+  app.use("/api/social", socialRouter);
+  app.use("/api/seo", seoRouter);
+  app.use("/api/autopublish", autopublishRouter);
+  app.use("/api/billing", billingRouter);
+  app.use("/api/documents", billingPortalRouter);
+  app.use("/api/membership/onboarding", membershipOnboardingRouter);
+  app.post("/api/cron/autopublish", cronAutopublishHandler);
+  app.post("/api/cron/backup", cronBackupHandler);
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
-    app.use("/api/social", socialRouter);
-    app.use("/api/seo", seoRouter);
-    app.use("/api/autopublish", autopublishRouter);
-    app.post("/api/cron/autopublish", cronAutopublishHandler);
-    app.post("/api/cron/backup", cronBackupHandler);
-
   // ─── Backup automatique quotidien à 2h00 ─────────────────────────────────
   if (isProductionEnvironment()) (async () => {
     const { runDatabaseBackup } = await import("../cron/backup");
@@ -318,11 +367,10 @@ async function startServer() {
         setTimeout(tick, 24 * 60 * 60 * 1000);
       }
       setTimeout(tick, msUntilNext(hour, minute));
-      console.log(`[BACKUP CRON] Planifie chaque jour a ${hour}h${String(minute).padStart(2,"0")}`);
+      console.log(`[BACKUP CRON] Planifié chaque jour à ${hour}h${String(minute).padStart(2,"0")}`);
     }
     scheduleDaily(2, 0, runDatabaseBackup);
   })();
-  else console.log(`[BACKUP CRON] Désactivé hors production (${process.env.RAILWAY_ENVIRONMENT_NAME || process.env.NODE_ENV || "unknown"})`);
   serveStatic(app);
   }
 

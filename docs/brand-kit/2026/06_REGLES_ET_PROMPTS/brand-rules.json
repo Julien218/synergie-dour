@@ -2,7 +2,7 @@
   "brand": "Synergie Dour",
   "version": "2026.08",
   "status": "production",
-  "master_logo": "01_LOGO/SD_Embleme_Master_Transparent_1024.png",
+  "master_logo": "client/public/logo-sd-transparent.png",
   "signature": "Commerçants & indépendants réunis",
   "institutional_name": "ASBL Synergie Dour",
   "palette": {
@@ -61,7 +61,7 @@
     ]
   },
   "co_branding": {
-    "JS-Innov.IA": "crédit optionnel en pied de page, séparé du logo Synergie Dour, largeur maximale 12% du support"
+    "JS-Innov.IA": "crédit optionnel en pied de page, séparé du logo Synergie Dour, largeur maximale 12% du support; export bloqué tant que l'actif transparent officiel JS-Innov.IA n'est pas fourni"
   },
   "quality_gate": [
     "orthographe validée",
