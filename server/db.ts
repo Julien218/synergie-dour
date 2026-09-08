@@ -319,16 +319,33 @@ export async function updateMerchant(id: number, data: Partial<InsertMerchant>) 
 }
 
 export async function getCategories() {
-  // Extraire les catégories depuis l'entité Commercant Base44
+  // Extraire les catégories depuis l'annuaire officiel (fonction publique Base44)
+  // puis fallback EntityList forge. Aucune dépendance à un secret.
+  const cats = new Set<string>();
   try {
-    const commercants = await fetchBase44Entity("Commercant");
-    const cats = new Set<string>();
-    for (const c of commercants) {
-      if (c.categorie) cats.add(c.categorie);
-      if (Array.isArray(c.categories)) c.categories.forEach((cat: string) => cats.add(cat));
+    const resp = await fetch(MERCHANTS_PUBLIC_FN_URL, {
+      method: "GET",
+      headers: { "accept": "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (resp.ok) {
+      const payload = await resp.json().catch(() => ({}));
+      const raw: any[] = Array.isArray(payload?.data) ? payload.data : [];
+      for (const m of raw) {
+        if (m.businessCategory) cats.add(m.businessCategory);
+      }
     }
-    return [...cats].filter(Boolean).sort().map((name, id) => ({ id, name }));
-  } catch { return []; }
+  } catch { /* fallback ci-dessous */ }
+  if (cats.size === 0) {
+    try {
+      const commercants = await fetchBase44Entity("Commercant");
+      for (const c of commercants) {
+        if (c.categorie) cats.add(c.categorie);
+        if (Array.isArray(c.categories)) c.categories.forEach((cat: string) => cats.add(cat));
+      }
+    } catch { /* rien */ }
+  }
+  return [...cats].filter(Boolean).sort().map((name, id) => ({ id, name }));
 }
 
 export async function getPublishedNews(limit = 10) {
@@ -460,7 +477,39 @@ export async function getAllMerchants() {
     return "approved";
   }
 
-  // 1. Essayer Base44
+  // 1. Source principale — fonction publique Base44 (annuaire officiel, identique à /merchants)
+  //    Robuste : aucun secret requis, contrairement à fetchBase44Entity (EntityList forge).
+  try {
+    const resp = await fetch(MERCHANTS_PUBLIC_FN_URL, {
+      method: "GET",
+      headers: { "accept": "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (resp.ok) {
+      const payload = await resp.json().catch(() => ({}));
+      const raw: any[] = Array.isArray(payload?.data) ? payload.data : [];
+      if (raw.length > 0) {
+        return raw.map((m: any) => ({
+          id: m.id,
+          businessName: m.businessName || "",
+          businessCategory: m.businessCategory || "",
+          description: m.description || "",
+          address: m.address || "",
+          phone: m.phone || "",
+          email: m.email || "",
+          website: m.website || "",
+          logo: m.logo || null,
+          isVerified: m.isVerified ?? true,
+          status: normalizeStatus(m.status),
+          createdAt: m.createdAt,
+        }));
+      }
+    }
+  } catch (e: any) {
+    console.error("[getAllMerchants] Fonction publique Base44 error:", e.message);
+  }
+
+  // 2. Ancienne source — EntityList forge (nécessite VITE_APP_ID/BUILT_IN_FORGE_API_KEY)
   try {
     const raw = await fetchBase44Entity("Commercant");
     if (Array.isArray(raw) && raw.length > 0) {
