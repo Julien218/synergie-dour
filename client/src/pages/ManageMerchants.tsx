@@ -107,6 +107,7 @@ export default function ManageMerchants() {
 
   // Import CSV
   const [isImporting, setIsImporting] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [importResult, setImportResult] = useState<{ inserted: number; skipped: number; errors: string[] } | null>(null);
   const csvInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -859,23 +860,44 @@ export default function ManageMerchants() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      🎬 Upload vidéo
+                      {videoUploading ? "⏳ Envoi en cours…" : "🎬 Upload vidéo"}
                       <input
                         id="merchant-video-upload"
                         type="file"
-                        accept="video/*"
+                        accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-msvideo,video/x-matroska"
                         style={{ display: "none" }}
-                        onChange={(e) => {
+                        disabled={videoUploading}
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = (ev) => {
-                            setFormData((prev: any) => ({
-                              ...prev,
-                              videos: [...(prev.videos || []), ev.target?.result as string],
-                            }));
-                          };
-                          reader.readAsDataURL(file);
+                          if (file.size > 150 * 1024 * 1024) {
+                            toast.error("Vidéo trop volumineuse — maximum 150 Mo");
+                            e.target.value = "";
+                            return;
+                          }
+                          setVideoUploading(true);
+                          try {
+                            const resp = await fetch("/api/dropbox/upload-video", {
+                              method: "POST",
+                              headers: { "x-file-name": encodeURIComponent(file.name), "Content-Type": "application/octet-stream" },
+                              body: file,
+                            });
+                            const data = await resp.json().catch(() => null);
+                            if (!resp.ok || !data?.url) {
+                              toast.error(data?.message || `Échec de l'upload vidéo (HTTP ${resp.status})`);
+                            } else {
+                              setFormData((prev: any) => ({
+                                ...prev,
+                                videos: [...(prev.videos || []), data.url],
+                              }));
+                              toast.success("Vidéo envoyée sur Dropbox et ajoutée à la fiche");
+                            }
+                          } catch {
+                            toast.error("Erreur réseau pendant l'upload de la vidéo");
+                          } finally {
+                            setVideoUploading(false);
+                            e.target.value = "";
+                          }
                         }}
                       />
                     </label>
