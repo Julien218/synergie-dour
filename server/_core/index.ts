@@ -18,6 +18,7 @@ import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
 import { socialRouter } from "../social";
 import { seoRouter } from "../seo/router";
 import { autopublishRouter } from "../autopublish/router";
+import { dropboxRouter } from "../dropbox";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
 import { cronBackupHandler, isProductionEnvironment } from "../cron/backup";
 
@@ -225,6 +226,7 @@ async function startServer() {
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://www.gstatic.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
+        mediaSrc: ["'self'", "blob:", "https://dl.dropboxusercontent.com", "https://www.dropbox.com"],
         connectSrc: ["'self'", "https://api.openai.com", "https://graph.facebook.com", "https://www.googleapis.com"],
         frameSrc: ["'self'", "https://www.google.com"],
         objectSrc: ["'none'"],
@@ -299,6 +301,7 @@ async function startServer() {
     app.use("/api/social", socialRouter);
     app.use("/api/seo", seoRouter);
     app.use("/api/autopublish", autopublishRouter);
+    app.use("/api/dropbox", dropboxRouter);
     app.post("/api/cron/autopublish", cronAutopublishHandler);
     app.post("/api/cron/backup", cronBackupHandler);
 

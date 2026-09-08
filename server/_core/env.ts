@@ -41,6 +41,9 @@ export const ENV = {
   // xAI Grok Imagine — génération d'images (server-side only)
   xaiApiKey: process.env.XAI_API_KEY ?? "",
 
+  // Dropbox — stockage vidéos (scopes: files.content.write/read, sharing.write)
+  dropboxAccessToken: process.env.DROPBOX_ACCESS_TOKEN ?? "",
+
   // Cron interne (Railway Cron Jobs)
   cronSecret: process.env.CRON_SECRET ?? "",
 };
