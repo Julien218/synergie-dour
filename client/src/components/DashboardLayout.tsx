@@ -21,35 +21,51 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { 
-  LayoutDashboard, UserCheck,
-  LogOut, 
-  PanelLeft, 
-  Users, 
-  Store, 
-  FileText, 
-  Calendar, 
-  ClipboardList,
-  Image,
+import {
   Building2,
-  Share2, FileEdit, Zap, Rocket,
+  Calendar,
+  ChevronDown,
+  ClipboardList,
+  CreditCard,
+  FileEdit,
+  FileText,
+  Image,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  Megaphone,
+  PanelLeft,
+  Rocket,
+  Share2,
+  Store,
+  UserCheck,
+  Users,
+  Wrench,
+  Zap,
 } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+type MenuItem = {
+  icon: any;
+  label: string;
+  path: string;
+};
+
+type MenuGroup = {
+  key: string;
+  label: string;
+  icon: any;
+  items: MenuItem[];
+};
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const { loading, user } = useAuth();
 
-  if (loading) {
-    return <DashboardLayoutSkeleton />
-  }
+  if (loading) return <DashboardLayoutSkeleton />;
 
   if (!user) {
     return (
@@ -57,12 +73,8 @@ export default function DashboardLayout({
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full bg-white rounded-xl shadow-xl">
           <img src="/logo.png" alt="Synergie Dour" className="h-24 w-24 object-contain" />
           <div className="flex flex-col items-center gap-4">
-            <h1 className="text-2xl font-bold text-blue-900 text-center">
-              Accès Réservé
-            </h1>
-            <p className="text-sm text-gray-600 text-center">
-              Veuillez vous connecter pour accéder à votre espace Synergie Dour.
-            </p>
+            <h1 className="text-2xl font-bold text-blue-900 text-center">Accès Réservé</h1>
+            <p className="text-sm text-gray-600 text-center">Veuillez vous connecter pour accéder à votre espace Synergie Dour.</p>
           </div>
           <Button
             onClick={() => { window.location.href = getLoginUrl(); }}
@@ -77,23 +89,15 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": `${sidebarWidth}px`,
-        } as CSSProperties
-      }
-    >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
-        {children}
-      </DashboardLayoutContent>
+    <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
+      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>{children}</DashboardLayoutContent>
     </SidebarProvider>
   );
 }
 
 function DashboardLayoutContent({
   children,
-  setSidebarWidth,
+  setSidebarWidth: _setSidebarWidth,
 }: {
   children: React.ReactNode;
   setSidebarWidth: (width: number) => void;
@@ -102,35 +106,68 @@ function DashboardLayoutContent({
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
-  const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
 
-  const adminMenuItems = [
-    { icon: LayoutDashboard, label: "Tableau de Bord", path: "/dashboard" },
-    { icon: Store, label: "Commerçants", path: "/dashboard/merchants" },
-    { icon: ClipboardList, label: "Demandes", path: "/dashboard/requests" },
-    { icon: UserCheck, label: "Adhésions", path: "/dashboard/membership-requests" },
-    { icon: FileText, label: "Actualités", path: "/dashboard/news" },
-    { icon: Calendar, label: "Événements", path: "/dashboard/events" },
-    { icon: Building2, label: "Locaux à Louer", path: "/dashboard/locaux" },
-    { icon: Share2, label: "Réseaux Sociaux", path: "/dashboard/social" },
-    { icon: FileEdit, label: "Posts à publier", path: "/dashboard/posts" },
-    { icon: Rocket, label: "Synergie AutoPublish", path: "/dashboard/autopublish" },
-    { icon: Users, label: "Membres CA", path: "/dashboard/members" },
-  { icon: Zap, label: "LeadFinder Pro", path: "/dashboard/leadfinder" },
-  { icon: Users, label: "Liste Clients", path: "/dashboard/clients" },
+  const dashboardItem: MenuItem = { icon: LayoutDashboard, label: "Tableau de bord", path: "/dashboard" };
+  const billingItem: MenuItem = { icon: CreditCard, label: "Facturation", path: "/dashboard/facturation" };
+
+  const adminGroups: MenuGroup[] = [
+    {
+      key: "crm",
+      label: "CRM & Membres",
+      icon: Users,
+      items: [
+        { icon: Store, label: "Commerçants", path: "/dashboard/merchants" },
+        { icon: Users, label: "Liste clients", path: "/dashboard/clients" },
+        { icon: Inbox, label: "Boîte de réception", path: "/dashboard/inbox" },
+        { icon: ClipboardList, label: "Demandes", path: "/dashboard/requests" },
+        { icon: UserCheck, label: "Adhésions", path: "/dashboard/membership-requests" },
+        { icon: Users, label: "Membres CA", path: "/dashboard/members" },
+      ],
+    },
+    {
+      key: "communication",
+      label: "Communication",
+      icon: Megaphone,
+      items: [
+        { icon: FileText, label: "Actualités", path: "/dashboard/news" },
+        { icon: Calendar, label: "Événements", path: "/dashboard/events" },
+        { icon: Share2, label: "Réseaux sociaux", path: "/dashboard/social" },
+        { icon: FileEdit, label: "Posts à publier", path: "/dashboard/posts" },
+        { icon: Rocket, label: "AutoPublish", path: "/dashboard/autopublish" },
+      ],
+    },
+    {
+      key: "tools",
+      label: "Outils",
+      icon: Wrench,
+      items: [
+        { icon: Building2, label: "Locaux à louer", path: "/dashboard/locaux" },
+        { icon: Zap, label: "LeadFinder Pro", path: "/dashboard/leadfinder" },
+      ],
+    },
   ];
 
-  const merchantMenuItems = [
-    { icon: LayoutDashboard, label: "Mon Profil", path: "/dashboard" },
-    { icon: Image, label: "Ma Galerie", path: "/dashboard/gallery" },
+  const merchantMenuItems: MenuItem[] = [
+    { icon: LayoutDashboard, label: "Mon profil", path: "/dashboard" },
+    { icon: Image, label: "Ma galerie", path: "/dashboard/gallery" },
   ];
 
-  const menuItems = isAdmin ? adminMenuItems : merchantMenuItems;
-  const activeMenuItem = menuItems.find(item => location === item.path);
+  const allAdminItems = useMemo(
+    () => [dashboardItem, billingItem, ...adminGroups.flatMap((group) => group.items)],
+    [],
+  );
+  const activeMenuItem = (isAdmin ? allAdminItems : merchantMenuItems).find((item) => location === item.path);
+
+  const initialOpen = useMemo(() => {
+    const match = adminGroups.find((group) => group.items.some((item) => item.path === location));
+    return match?.key || "";
+  }, []);
+  const [openGroup, setOpenGroup] = useState(initialOpen);
+
+  const navigate = (path: string) => setLocation(path);
 
   return (
     <>
@@ -141,31 +178,99 @@ function DashboardLayoutContent({
               <button onClick={toggleSidebar} className="h-8 w-8 flex items-center justify-center hover:bg-amber-50 rounded-lg shrink-0">
                 <PanelLeft className="h-5 w-5 text-blue-900" />
               </button>
-              {!isCollapsed && (
-                <span className="font-bold text-blue-900 truncate">Espace {isAdmin ? 'Admin' : 'Pro'}</span>
-              )}
+              {!isCollapsed && <span className="font-bold text-blue-900 truncate">Espace {isAdmin ? "Admin" : "Pro"}</span>}
             </div>
           </SidebarHeader>
 
           <SidebarContent className="py-4">
-            <SidebarMenu className="px-3 gap-1">
-              {menuItems.map(item => {
-                const isActive = location === item.path;
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-11 transition-all ${isActive ? "bg-amber-100 text-blue-900" : "text-gray-600 hover:bg-amber-50"}`}
-                    >
-                      <item.icon className={`h-5 w-5 ${isActive ? "text-amber-600" : ""}`} />
-                      <span className="font-medium">{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
+            {isAdmin ? (
+              <SidebarMenu className="px-3 gap-1">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={location === dashboardItem.path}
+                    onClick={() => navigate(dashboardItem.path)}
+                    tooltip={dashboardItem.label}
+                    className={`h-11 transition-all ${location === dashboardItem.path ? "bg-amber-100 text-blue-900" : "text-gray-600 hover:bg-amber-50"}`}
+                  >
+                    <LayoutDashboard className={`h-5 w-5 ${location === dashboardItem.path ? "text-amber-600" : ""}`} />
+                    <span className="font-medium">{dashboardItem.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+
+                {adminGroups.map((group) => {
+                  const GroupIcon = group.icon;
+                  const containsActive = group.items.some((item) => item.path === location);
+                  const isOpen = openGroup === group.key;
+                  return (
+                    <div key={group.key} className="space-y-1">
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          isActive={containsActive}
+                          onClick={() => setOpenGroup(isOpen ? "" : group.key)}
+                          tooltip={group.label}
+                          className={`h-11 transition-all ${containsActive ? "bg-blue-50 text-blue-900" : "text-gray-600 hover:bg-amber-50"}`}
+                        >
+                          <GroupIcon className={`h-5 w-5 ${containsActive ? "text-amber-600" : ""}`} />
+                          <span className="font-medium flex-1">{group.label}</span>
+                          {!isCollapsed && <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {isOpen && !isCollapsed && (
+                        <div className="ml-5 pl-3 border-l border-amber-100 space-y-1">
+                          {group.items.map((item) => {
+                            const ItemIcon = item.icon;
+                            const isActive = location === item.path;
+                            return (
+                              <button
+                                key={item.path}
+                                onClick={() => navigate(item.path)}
+                                className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-left transition-colors ${isActive ? "bg-amber-100 text-blue-900 font-semibold" : "text-gray-600 hover:bg-amber-50"}`}
+                              >
+                                <ItemIcon className="w-4 h-4 shrink-0" />
+                                <span>{item.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                <SidebarMenuItem className="pt-1">
+                  <SidebarMenuButton
+                    isActive={location === billingItem.path}
+                    onClick={() => navigate(billingItem.path)}
+                    tooltip={billingItem.label}
+                    className={`h-11 transition-all ${location === billingItem.path ? "bg-amber-100 text-blue-900" : "text-gray-600 hover:bg-amber-50"}`}
+                  >
+                    <CreditCard className={`h-5 w-5 ${location === billingItem.path ? "text-amber-600" : ""}`} />
+                    <span className="font-medium">Facturation</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            ) : (
+              <SidebarMenu className="px-3 gap-1">
+                {merchantMenuItems.map((item) => {
+                  const ItemIcon = item.icon;
+                  const isActive = location === item.path;
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => navigate(item.path)}
+                        tooltip={item.label}
+                        className={`h-11 transition-all ${isActive ? "bg-amber-100 text-blue-900" : "text-gray-600 hover:bg-amber-50"}`}
+                      >
+                        <ItemIcon className={`h-5 w-5 ${isActive ? "text-amber-600" : ""}`} />
+                        <span className="font-medium">{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            )}
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-amber-50">
@@ -173,9 +278,7 @@ function DashboardLayoutContent({
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg p-1 hover:bg-amber-50 transition-all w-full text-left">
                   <Avatar className="h-10 w-10 border-2 border-amber-200 shrink-0">
-                    <AvatarFallback className="bg-blue-900 text-white font-bold">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
+                    <AvatarFallback className="bg-blue-900 text-white font-bold">{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   {!isCollapsed && (
                     <div className="flex-1 min-w-0">
@@ -186,9 +289,7 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 p-2">
-                <DropdownMenuItem onClick={() => setLocation("/")} className="cursor-pointer">
-                  Retour au site
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation("/")} className="cursor-pointer">Retour au site</DropdownMenuItem>
                 <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600 focus:text-red-700">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Déconnexion</span>
@@ -206,9 +307,7 @@ function DashboardLayoutContent({
             <span className="ml-4 font-bold text-blue-900">{activeMenuItem?.label ?? "Synergie Dour"}</span>
           </div>
         )}
-        <main className="p-6 md:p-10 max-w-7xl mx-auto w-full">
-          {children}
-        </main>
+        <main className="p-6 md:p-10 max-w-7xl mx-auto w-full">{children}</main>
       </SidebarInset>
     </>
   );
