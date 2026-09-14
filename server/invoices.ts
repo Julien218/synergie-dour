@@ -194,9 +194,9 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
     if (!response.ok || (!contentType.startsWith("image/") && !url.toLowerCase().endsWith(".png"))) return null;
     return Buffer.from(await response.arrayBuffer());
   };
-  const logoUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/client/public/logo-full.png";
-  const watermarkUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/client/public/logo-sd-transparent.png";
-  const [logoBuffer, watermarkBuffer] = await Promise.all([fetchImage(logoUrl, "logo-full.png"), fetchImage(watermarkUrl, "logo-sd-transparent.png")]);
+  const logoUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/client/public/logo-sd-transparent.png";
+  const watermarkUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/client/public/logo-full.png";
+  const [logoBuffer, watermarkBuffer] = await Promise.all([fetchImage(logoUrl, "logo-sd-transparent.png"), fetchImage(watermarkUrl, "logo-full.png")]);
   const commands: string[] = [];
   const text = (x: number, y: number, size: number, value: unknown, bold = false) => {
     commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${pdfSafe(value)}) Tj ET`);
