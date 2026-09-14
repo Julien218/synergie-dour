@@ -82,6 +82,8 @@ async function api<T = any>(url: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
+const defaultInvoiceItem: InvoiceItem = { description: "Cotisation 2027", quantity: 1, unitPriceCents: 5000, vatRate: 0 };
+
 const emptySettings: BillingSettings = {
   issuerName: "Synergie Dour ASBL",
   issuerAddress: "",
@@ -117,7 +119,7 @@ export default function InvoicesPage() {
     dueDate: addDays(today(), 14),
   });
   const [items, setItems] = useState<InvoiceItem[]>([
-    { description: "", quantity: 1, unitPriceCents: 0, vatRate: 21 },
+    { ...defaultInvoiceItem },
   ]);
 
   const load = async () => {
@@ -201,7 +203,7 @@ export default function InvoicesPage() {
       setShowCreate(false);
       setEditingId(null);
       setForm({ merchantId: "", clientName: "", clientEmail: "", clientAddress: "", clientVat: "", issueDate: today(), dueDate: addDays(today(), Number(settings.paymentTermsDays || 14)) });
-      setItems([{ description: "", quantity: 1, unitPriceCents: 0, vatRate: Number(settings.defaultVatRate || 21) }]);
+      setItems([{ ...defaultInvoiceItem }]);
       await load();
     } catch (error: any) {
       toast.error(error.message || "Création impossible");
