@@ -283,14 +283,28 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   const watermarkJpeg = watermarkBuffer ? await sharp(watermarkBuffer).flatten({ background: "#ffffff" }).resize(1000, 1000, { fit: "contain", background: "#ffffff" }).jpeg({ quality: 75 }).toBuffer() : null;
   const imageObject = (data: Buffer) => Buffer.concat([Buffer.from(`<< /Type /XObject /Subtype /Image /Width 1000 /Height 1000 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${data.length} >>\nstream\n`, "binary"), data, Buffer.from("\nendstream", "binary")]);
   const content = Buffer.from(commands.join("\n"), "latin1");
+  const imageObjects: Buffer[] = [];
+  const xobjectRefs: string[] = [];
+  let nextObjectNumber = 6;
+  if (logoJpeg) {
+    imageObjects.push(imageObject(logoJpeg));
+    xobjectRefs.push(`/Im1 ${nextObjectNumber} 0 R`);
+    nextObjectNumber += 1;
+  }
+  if (watermarkJpeg) {
+    imageObjects.push(imageObject(watermarkJpeg));
+    xobjectRefs.push(`/Im2 ${nextObjectNumber} 0 R`);
+    nextObjectNumber += 1;
+  }
+  const contentObjectNumber = nextObjectNumber;
+  const xobjects = xobjectRefs.length ? ` /XObject << ${xobjectRefs.join(" ")} >>` : "";
   const objects = [
     Buffer.from("<< /Type /Catalog /Pages 2 0 R >>", "binary"),
     Buffer.from("<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "binary"),
-    Buffer.from("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> /XObject << /Im1 6 0 R /Im2 7 0 R >> >> /Contents 8 0 R >>", "binary"),
+    Buffer.from(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${xobjects} >> /Contents ${contentObjectNumber} 0 R >>`, "binary"),
     Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>", "binary"),
     Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>", "binary"),
-    ...(logoJpeg ? [imageObject(logoJpeg)] : []),
-    ...(watermarkJpeg ? [imageObject(watermarkJpeg)] : []),
+    ...imageObjects,
     Buffer.concat([
       Buffer.from(`<< /Length ${content.length} >>\nstream\n`, "binary"),
       content,
