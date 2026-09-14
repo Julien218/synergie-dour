@@ -178,20 +178,23 @@ function buildPdf(objects: Buffer[]) {
 
 async function createInvoicePdf(invoice: any, settings: any, acquitted = false) {
   const items = Array.isArray(invoice.items) ? invoice.items.slice(0, 10) : [];
-  const logoUrl = `${APP_URL.replace(/\/$/, "")}/logo-sd-officiel.png`;
-  const watermarkUrl = `${APP_URL.replace(/\/$/, "")}/logo-transparent.png`;
-  const [logoBuffer, watermarkBuffer] = await Promise.all([
-    fetch(logoUrl).then((r) => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`Logo indisponible (${r.status})`))).then((b) => sharp(Buffer.from(b)).png().toBuffer()),
-    fetch(watermarkUrl).then((r) => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`Filigrane indisponible (${r.status})`))).then((b) => sharp(Buffer.from(b)).png().toBuffer()),
-  ]);
+  const fetchImage = async (url: string) => {
+    const response = await fetch(url);
+    const contentType = response.headers.get("content-type") || "";
+    if (!response.ok || !contentType.startsWith("image/")) return null;
+    return Buffer.from(await response.arrayBuffer());
+  };
+  const logoUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/public/logo-sd-officiel.png";
+  const watermarkUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/public/logo-transparent.png";
+  const [logoBuffer, watermarkBuffer] = await Promise.all([fetchImage(logoUrl), fetchImage(watermarkUrl)]);
   const commands: string[] = [];
   const text = (x: number, y: number, size: number, value: unknown, bold = false) => {
     commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${pdfSafe(value)}) Tj ET`);
   };
   const line = (x1: number, y1: number, x2: number, y2: number) => commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
 
-  commands.push("q 0.18 0 0 0.07 50 770 cm /Im1 Do Q");
-  commands.push("q 0.32 0 0 0.32 195 260 cm /Im2 Do Q");
+  if (logoBuffer) commands.push("q 0.18 0 0 0.07 50 770 cm /Im1 Do Q");
+  if (watermarkBuffer) commands.push("q 0.32 0 0 0.32 195 260 cm /Im2 Do Q");
   commands.push("0.00 0.10 0.28 rg");
   text(50, 752, 22, settings.issuerName || "Synergie Dour ASBL", true);
   text(50, 775, 9, settings.issuerAddress || "Adresse de facturation à configurer");
@@ -265,6 +268,9 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   text(50, 55, 8, "Document genere par le cockpit Synergie Dour. Conservez cette facture pour votre comptabilite.");
   text(50, 40, 7, `${APP_URL} - ${settings.issuerEmail || "contact@synergiedour.be"}`);
 
+  const logoJpeg = logoBuffer ? await sharp(logoBuffer).flatten({ background: "#ffffff" }).jpeg({ quality: 90 }).toBuffer() : null;
+  const watermarkJpeg = watermarkBuffer ? await sharp(watermarkBuffer).flatten({ background: "#ffffff" }).jpeg({ quality: 75 }).toBuffer() : null;
+  const imageObject = (data: Buffer) => Buffer.concat([Buffer.from(`<< /Type /XObject /Subtype /Image /Width 1000 /Height 300 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${data.length} >>\nstream\n`, "binary"), data, Buffer.from("\nendstream", "binary")]);
   const content = Buffer.from(commands.join("\n"), "latin1");
   const objects = [
     Buffer.from("<< /Type /Catalog /Pages 2 0 R >>", "binary"),
@@ -272,8 +278,8 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
     Buffer.from("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> /XObject << /Im1 6 0 R /Im2 7 0 R >> >> /Contents 8 0 R >>", "binary"),
     Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>", "binary"),
     Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>", "binary"),
-    imageObject(logoJpeg),
-    imageObject(watermarkJpeg),
+    ...(logoJpeg ? [imageObject(logoJpeg)] : []),
+    ...(watermarkJpeg ? [imageObject(watermarkJpeg)] : []),
     Buffer.concat([
       Buffer.from(`<< /Length ${content.length} >>\nstream\n`, "binary"),
       content,
