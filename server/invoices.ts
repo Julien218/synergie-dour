@@ -197,11 +197,11 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   if (logoBuffer) commands.push("q 0.18 0 0 0.07 50 770 cm /Im1 Do Q");
   if (watermarkBuffer) commands.push("q 0.32 0 0 0.32 195 260 cm /Im2 Do Q");
   commands.push("0.00 0.10 0.28 rg");
-  text(50, 752, 22, settings.issuerName || "Synergie Dour ASBL", true);
-  text(50, 775, 9, settings.issuerAddress || "Adresse de facturation à configurer");
-  text(50, 760, 9, settings.issuerEmail || "contact@synergiedour.be");
-  if (settings.enterpriseNumber) text(50, 745, 9, `BCE : ${settings.enterpriseNumber}`);
-  if (settings.vatNumber) text(50, 730, 9, `TVA : ${settings.vatNumber}`);
+  text(50, 720, 12, settings.issuerName || "Synergie Dour ASBL", true);
+  text(50, 703, 9, settings.issuerAddress || "Grand’Place 9, 7370 Dour");
+  text(50, 688, 9, settings.issuerEmail || "contact@synergiedour.be");
+  if (settings.enterpriseNumber) text(50, 673, 9, `BCE : ${settings.enterpriseNumber}`);
+  if (settings.vatNumber) text(50, 658, 9, `TVA : ${settings.vatNumber}`);
 
   text(355, 795, 20, acquitted ? "FACTURE ACQUITTEE" : "FACTURE", true);
   text(355, 772, 10, `N° ${invoice.invoiceNumber}`, true);
@@ -252,9 +252,9 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   text(500, y, 9, money(Number(invoice.vatCents)));
   y -= 22;
   text(385, y, 12, "TOTAL", true);
-  text(500, y, 12, money(Number(invoice.totalCents)), true);
+  text(450, y, 12, money(Number(invoice.totalCents)), true);
 
-  const payY = Math.max(115, y - 55);
+  const payY = Math.max(115, y - 95);
   commands.push("0.96 0.95 0.88 rg 50 " + (payY - 8) + " 495 72 re f");
   commands.push("0.00 0.10 0.28 rg");
   text(60, payY + 44, 10, acquitted ? "Paiement recu" : "Informations de paiement", true);
