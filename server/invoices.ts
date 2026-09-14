@@ -28,7 +28,7 @@ async function ensureInvoiceTables() {
       vatNumber varchar(64) DEFAULT NULL,
       iban varchar(64) DEFAULT NULL,
       bic varchar(32) DEFAULT NULL,
-      defaultVatRate decimal(5,2) NOT NULL DEFAULT 21.00,
+      defaultVatRate decimal(5,2) NOT NULL DEFAULT 0.00,
       paymentTermsDays int NOT NULL DEFAULT 14,
       updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
@@ -36,7 +36,7 @@ async function ensureInvoiceTables() {
   await pool.execute(`
     INSERT IGNORE INTO billing_settings
       (id, issuerName, issuerEmail, defaultVatRate, paymentTermsDays)
-    VALUES (1, 'Synergie Dour ASBL', 'contact@synergiedour.be', 21.00, 14)
+    VALUES (1, 'Synergie Dour ASBL', 'contact@synergiedour.be', 0.00, 14)
   `);
 
   await pool.execute(`
@@ -69,6 +69,7 @@ async function ensureInvoiceTables() {
     )
   `);
 
+  await pool.execute("UPDATE billing_settings SET defaultVatRate=0 WHERE id=1");
   tablesReady = true;
 }
 
@@ -393,7 +394,7 @@ invoiceRouter.post("/", async (req, res) => {
       description: String(item.description || "Service").trim().slice(0, 255),
       quantity: Math.max(0.01, Number(item.quantity || 1)),
       unitPriceCents: Math.max(0, Math.round(Number(item.unitPriceCents || 0))),
-      vatRate: Math.max(0, Math.min(100, Number(item.vatRate ?? settings.defaultVatRate ?? 21))),
+      vatRate: Math.max(0, Math.min(100, Number(item.vatRate ?? settings.defaultVatRate ?? 0))),
     }));
     if (items.some((i: any) => !i.description || !Number.isFinite(i.quantity) || !Number.isFinite(i.unitPriceCents) || !Number.isFinite(i.vatRate))) {
       return res.status(400).json({ message: "Lignes de facture invalides" });
