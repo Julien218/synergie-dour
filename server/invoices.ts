@@ -24,7 +24,7 @@ async function ensureInvoiceTables() {
     CREATE TABLE IF NOT EXISTS billing_settings (
       id tinyint NOT NULL PRIMARY KEY,
       issuerName varchar(255) NOT NULL DEFAULT 'Synergie Dour ASBL',
-      issuerAddress varchar(500) NOT NULL DEFAULT 'Grand'Place 9, 7370 Dour',
+      issuerAddress varchar(500) NOT NULL DEFAULT 'Grand''Place 9, 7370 Dour',
       issuerEmail varchar(320) NOT NULL DEFAULT 'contact@synergiedour.be',
       enterpriseNumber varchar(64) DEFAULT NULL,
       vatNumber varchar(64) DEFAULT NULL,
@@ -71,7 +71,7 @@ async function ensureInvoiceTables() {
     )
   `);
 
-  await pool.execute(`UPDATE billing_settings SET issuerAddress=IFNULL(NULLIF(issuerAddress, ''), 'Grand'Place 9, 7370 Dour'), enterpriseNumber=IFNULL(NULLIF(enterpriseNumber, ''), 'BE 1036.801.623'), iban=IFNULL(NULLIF(iban, ''), 'BE6368960307808'), defaultVatRate=0 WHERE id=1`);
+  await pool.execute(`UPDATE billing_settings SET issuerAddress=IFNULL(NULLIF(issuerAddress, ''), 'Grand''Place 9, 7370 Dour'), enterpriseNumber=IFNULL(NULLIF(enterpriseNumber, ''), 'BE 1036.801.623'), iban=IFNULL(NULLIF(iban, ''), 'BE6368960307808'), defaultVatRate=0 WHERE id=1`);
   tablesReady = true;
 }
 
