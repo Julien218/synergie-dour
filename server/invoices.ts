@@ -182,7 +182,7 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   const fetchImage = async (url: string) => {
     const response = await fetch(url);
     const contentType = response.headers.get("content-type") || "";
-    if (!response.ok || !contentType.startsWith("image/")) return null;
+    if (!response.ok || (!contentType.startsWith("image/") && !url.toLowerCase().endsWith(".png"))) return null;
     return Buffer.from(await response.arrayBuffer());
   };
   const logoUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/public/logo-sd-officiel.png";
@@ -197,7 +197,7 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   if (logoBuffer) commands.push("q 0.18 0 0 0.07 50 770 cm /Im1 Do Q");
   if (watermarkBuffer) commands.push("q 0.32 0 0 0.32 195 260 cm /Im2 Do Q");
   commands.push("0.00 0.10 0.28 rg");
-  text(50, 720, 12, settings.issuerName || "Synergie Dour ASBL", true);
+  // Le nom est déjà intégré au logo officiel : ne pas le redessiner par-dessus.
   text(50, 703, 9, settings.issuerAddress || "Grand’Place 9, 7370 Dour");
   text(50, 688, 9, settings.issuerEmail || "contact@synergiedour.be");
   if (settings.enterpriseNumber) text(50, 673, 9, `BCE : ${settings.enterpriseNumber}`);
