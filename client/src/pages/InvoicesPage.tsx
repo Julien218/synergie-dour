@@ -101,6 +101,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<number | "create" | "settings" | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Invoice["status"]>("all");
@@ -187,17 +188,18 @@ export default function InvoicesPage() {
     }
     setBusy("create");
     try {
-      const invoice = await api<Invoice>("/api/invoices", {
-        method: "POST",
+      const invoice = await api<Invoice>(editingId ? `/api/invoices/${editingId}` : "/api/invoices", {
+        method: editingId ? "PUT" : "POST",
         body: JSON.stringify({ ...form, items }),
       });
       if (sendNow) {
         await api(`/api/invoices/${invoice.id}/send`, { method: "POST", body: "{}" });
         toast.success(`Facture ${invoice.invoiceNumber} créée et envoyée`);
       } else {
-        toast.success(`Brouillon ${invoice.invoiceNumber} créé`);
+        toast.success(editingId ? `Brouillon ${invoice.invoiceNumber} modifié` : `Brouillon ${invoice.invoiceNumber} créé`);
       }
       setShowCreate(false);
+      setEditingId(null);
       setForm({ merchantId: "", clientName: "", clientEmail: "", clientAddress: "", clientVat: "", issueDate: today(), dueDate: addDays(today(), Number(settings.paymentTermsDays || 14)) });
       setItems([{ description: "", quantity: 1, unitPriceCents: 0, vatRate: Number(settings.defaultVatRate || 21) }]);
       await load();
@@ -206,6 +208,23 @@ export default function InvoicesPage() {
     } finally {
       setBusy(null);
     }
+  };
+
+  const editDraft = (invoice: Invoice) => {
+    if (invoice.status !== "draft") return toast.error("Seuls les brouillons peuvent être modifiés");
+    setEditingId(invoice.id);
+    setForm({ merchantId: invoice.merchantId || "", clientName: invoice.clientName, clientEmail: invoice.clientEmail, clientAddress: invoice.clientAddress || "", clientVat: invoice.clientVat || "", issueDate: String(invoice.issueDate).slice(0, 10), dueDate: String(invoice.dueDate).slice(0, 10) });
+    setItems(invoice.items);
+    setShowCreate(true);
+  };
+
+  const deleteDraft = async (invoice: Invoice) => {
+    if (invoice.status !== "draft") return toast.error("Seuls les brouillons peuvent être supprimés");
+    if (!window.confirm(`Supprimer définitivement le brouillon ${invoice.invoiceNumber} ?`)) return;
+    setBusy(invoice.id);
+    try { await api(`/api/invoices/${invoice.id}`, { method: "DELETE" }); toast.success(`Brouillon ${invoice.invoiceNumber} supprimé`); await load(); }
+    catch (error: any) { toast.error(error.message || "Suppression impossible"); }
+    finally { setBusy(null); }
   };
 
   const requestAction = (invoice: Invoice, kind: "send" | "remind" | "paid" | "receipt") => setPendingAction({ invoice, kind });
@@ -296,7 +315,7 @@ export default function InvoicesPage() {
 
         {showCreate && (
           <Card className="border-2 border-[#D4AF37]/40">
-            <CardHeader><CardTitle>Nouvelle facture</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{editingId ? "Modifier le brouillon" : "Nouvelle facture"}</CardTitle></CardHeader>
             <CardContent className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="md:col-span-2"><span className="text-xs font-medium text-gray-600">Reprendre un commerçant</span><select value={form.merchantId} onChange={(e) => selectMerchant(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"><option value="">Client libre / rechercher...</option>{[...merchants].sort((a: any, b: any) => String(a.businessName).localeCompare(String(b.businessName))).map((m: any) => <option key={String(m.id)} value={String(m.id)}>{m.businessName}</option>)}</select></label>
@@ -349,7 +368,7 @@ export default function InvoicesPage() {
                     <td className="px-3 py-3 text-center">{statusBadge(invoice.status)}</td>
                     <td className="px-3 py-3 text-center"><div className="inline-flex items-center gap-2"><Switch checked={invoice.status === "paid"} disabled={invoice.status === "paid" || busy === invoice.id} onCheckedChange={(checked) => checked && requestAction(invoice, "paid")} className="data-[state=checked]:bg-emerald-500" />{invoice.status === "paid" && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}</div></td>
                     <td className="px-3 py-3"><div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => window.open(`/api/invoices/${invoice.id}/pdf`, "_blank")}><Download className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => window.open(`/api/invoices/${invoice.id}/pdf`, "_blank")}><Download className="w-4 h-4" /></Button>{invoice.status === "draft" && <><Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => editDraft(invoice)}>Modifier</Button><Button size="sm" variant="outline" className="text-red-600" disabled={busy === invoice.id} onClick={() => deleteDraft(invoice)}>Supprimer</Button></>}
                       {invoice.status === "draft" && <Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => requestAction(invoice, "send")}><Mail className="w-4 h-4 mr-1" /> Envoyer</Button>}
                       {(invoice.status === "sent" || invoice.status === "overdue") && <Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => requestAction(invoice, "remind")}><Mail className="w-4 h-4 mr-1" /> Rappel</Button>}
                       {invoice.status === "paid" && <Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => requestAction(invoice, "receipt")}><Send className="w-4 h-4 mr-1" /> Acquittée</Button>}
