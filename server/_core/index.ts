@@ -19,6 +19,7 @@ import { socialRouter } from "../social";
 import { seoRouter } from "../seo/router";
 import { autopublishRouter } from "../autopublish/router";
 import { dropboxRouter } from "../dropbox";
+import { invoiceRouter } from "../invoices";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
 import { cronBackupHandler, isProductionEnvironment } from "../cron/backup";
 
@@ -217,7 +218,6 @@ async function startServer() {
   
   app.set("trust proxy", 1);
 
-  // ─── Helmet : headers de securite HTTP ────────────────────────────────────
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -242,7 +242,6 @@ async function startServer() {
     },
   }));
 
-  // ─── Rate limiting ────────────────────────────────────────────────────────
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 100,
@@ -267,16 +266,13 @@ async function startServer() {
     message: { message: "Trop de soumissions. Reessayez dans une heure." },
   });
 
-  // Body parser — reduit de 50mb a 2mb
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
-  // Rate limiting global sur API
   app.use("/api/", apiLimiter);
   app.use("/api/trpc/auth.login", loginLimiter);
   app.use("/api/trpc/auth.register", loginLimiter);
 
-  // Diagnostic (reduit en production)
   app.use((req, res, next) => {
     if (req.url.startsWith('/api') && process.env.NODE_ENV !== "production") {
       console.log(`[API Request] ${req.method} ${req.url}`);
@@ -294,6 +290,7 @@ async function startServer() {
       createContext,
     })
   );
+  app.use("/api/invoices", invoiceRouter);
 
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -305,7 +302,6 @@ async function startServer() {
     app.post("/api/cron/autopublish", cronAutopublishHandler);
     app.post("/api/cron/backup", cronBackupHandler);
 
-  // ─── Backup automatique quotidien à 2h00 ─────────────────────────────────
   if (isProductionEnvironment()) (async () => {
     const { runDatabaseBackup } = await import("../cron/backup");
     function scheduleDaily(hour: number, minute: number, fn: () => Promise<any>) {
