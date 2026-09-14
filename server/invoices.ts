@@ -443,6 +443,42 @@ invoiceRouter.post("/", async (req, res) => {
   }
 });
 
+invoiceRouter.put("/:id", async (req, res) => {
+  try {
+    const invoice = await getInvoice(Number(req.params.id));
+    if (!invoice) return res.status(404).json({ message: "Facture introuvable" });
+    if (invoice.status !== "draft") return res.status(409).json({ message: "Seuls les brouillons peuvent être modifiés" });
+    const v = req.body ?? {};
+    const clientName = String(v.clientName || invoice.clientName).trim();
+    const clientEmail = String(v.clientEmail || invoice.clientEmail).trim().toLowerCase();
+    const items = Array.isArray(v.items) ? v.items.slice(0, 10).map((item: any) => ({
+      description: String(item.description || "Service").trim().slice(0, 255),
+      quantity: Math.max(0.01, Number(item.quantity || 1)),
+      unitPriceCents: Math.max(0, Math.round(Number(item.unitPriceCents || 0))),
+      vatRate: Math.max(0, Math.min(100, Number(item.vatRate ?? 21))),
+    })) : invoice.items;
+    if (!clientName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail) || !items.length) return res.status(400).json({ message: "Données de facture invalides" });
+    const subtotalCents = items.reduce((s: number, i: any) => s + Math.round(i.quantity * i.unitPriceCents), 0);
+    const vatCents = items.reduce((s: number, i: any) => s + Math.round(i.quantity * i.unitPriceCents * i.vatRate / 100), 0);
+    await (await getPool()).execute("UPDATE invoices SET clientName=?, clientEmail=?, clientAddress=?, clientVat=?, items=?, subtotalCents=?, vatCents=?, totalCents=?, issueDate=?, dueDate=? WHERE id=?", [
+      clientName, clientEmail, v.clientAddress ?? invoice.clientAddress, v.clientVat ?? invoice.clientVat, JSON.stringify(items), subtotalCents, vatCents, subtotalCents + vatCents,
+      v.issueDate || invoice.issueDate, v.dueDate || invoice.dueDate, invoice.id,
+    ]);
+    res.json(await getInvoice(invoice.id));
+  } catch (error: any) { res.status(500).json({ message: error.message }); }
+});
+
+invoiceRouter.delete("/:id", async (req, res) => {
+  try {
+    const invoice = await getInvoice(Number(req.params.id));
+    if (!invoice) return res.status(404).json({ message: "Facture introuvable" });
+    if (invoice.status !== "draft") return res.status(409).json({ message: "Une facture envoyée ou payée ne peut pas être supprimée" });
+    const pool = await getPool();
+    await pool.execute("DELETE FROM invoices WHERE id=? AND status='draft'", [invoice.id]);
+    res.json({ success: true });
+  } catch (error: any) { res.status(500).json({ message: error.message }); }
+});
+
 invoiceRouter.post("/:id/send", async (req, res) => {
   try {
     const id = Number(req.params.id);
