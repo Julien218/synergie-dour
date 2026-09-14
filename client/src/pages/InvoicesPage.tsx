@@ -92,7 +92,7 @@ const emptySettings: BillingSettings = {
   vatNumber: "",
   iban: "",
   bic: "",
-  defaultVatRate: 21,
+  defaultVatRate: 0,
   paymentTermsDays: 14,
 };
 
