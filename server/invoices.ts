@@ -2,6 +2,8 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { parse as parseCookie } from "cookie";
 import { Resend } from "resend";
 import sharp from "sharp";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { getPool } from "./db";
 import { SESSION_COOKIE, verifySessionToken } from "./authService";
 
@@ -179,7 +181,8 @@ function buildPdf(objects: Buffer[]) {
 
 async function createInvoicePdf(invoice: any, settings: any, acquitted = false) {
   const items = Array.isArray(invoice.items) ? invoice.items.slice(0, 10) : [];
-  const fetchImage = async (url: string) => {
+  const fetchImage = async (url: string, localName: string) => {
+    try { return await readFile(path.join(process.cwd(), "public", localName)); } catch {}
     const response = await fetch(url);
     const contentType = response.headers.get("content-type") || "";
     if (!response.ok || (!contentType.startsWith("image/") && !url.toLowerCase().endsWith(".png"))) return null;
@@ -187,7 +190,7 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   };
   const logoUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/public/logo-sd-officiel.png";
   const watermarkUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/public/logo-transparent.png";
-  const [logoBuffer, watermarkBuffer] = await Promise.all([fetchImage(logoUrl), fetchImage(watermarkUrl)]);
+  const [logoBuffer, watermarkBuffer] = await Promise.all([fetchImage(logoUrl, "logo-sd-officiel.png"), fetchImage(watermarkUrl, "logo-transparent.png")]);
   const commands: string[] = [];
   const text = (x: number, y: number, size: number, value: unknown, bold = false) => {
     commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${pdfSafe(value)}) Tj ET`);
