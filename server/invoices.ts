@@ -194,8 +194,8 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   };
   const line = (x1: number, y1: number, x2: number, y2: number) => commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
 
-  if (logoBuffer) commands.push("q 0.18 0 0 0.07 50 770 cm /Im1 Do Q");
-  if (watermarkBuffer) commands.push("q 0.32 0 0 0.32 195 260 cm /Im2 Do Q");
+  if (logoBuffer) commands.push("q 0.12 0 0 0.12 50 690 cm /Im1 Do Q");
+  if (watermarkBuffer) commands.push("q 0.42 0 0 0.42 80 230 cm /Im2 Do Q");
   commands.push("0.00 0.10 0.28 rg");
   // Le nom est déjà intégré au logo officiel : ne pas le redessiner par-dessus.
   text(50, 703, 9, settings.issuerAddress || "Grand’Place 9, 7370 Dour");
@@ -269,9 +269,9 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   text(50, 55, 8, "Document genere par le cockpit Synergie Dour. Conservez cette facture pour votre comptabilite.");
   text(50, 40, 7, `${APP_URL} - ${settings.issuerEmail || "contact@synergiedour.be"}`);
 
-  const logoJpeg = logoBuffer ? await sharp(logoBuffer).flatten({ background: "#ffffff" }).jpeg({ quality: 90 }).toBuffer() : null;
-  const watermarkJpeg = watermarkBuffer ? await sharp(watermarkBuffer).flatten({ background: "#ffffff" }).jpeg({ quality: 75 }).toBuffer() : null;
-  const imageObject = (data: Buffer) => Buffer.concat([Buffer.from(`<< /Type /XObject /Subtype /Image /Width 1000 /Height 300 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${data.length} >>\nstream\n`, "binary"), data, Buffer.from("\nendstream", "binary")]);
+  const logoJpeg = logoBuffer ? await sharp(logoBuffer).flatten({ background: "#ffffff" }).resize(1000, 1000, { fit: "contain", background: "#ffffff" }).jpeg({ quality: 90 }).toBuffer() : null;
+  const watermarkJpeg = watermarkBuffer ? await sharp(watermarkBuffer).flatten({ background: "#ffffff" }).resize(1000, 1000, { fit: "contain", background: "#ffffff" }).jpeg({ quality: 75 }).toBuffer() : null;
+  const imageObject = (data: Buffer) => Buffer.concat([Buffer.from(`<< /Type /XObject /Subtype /Image /Width 1000 /Height 1000 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${data.length} >>\nstream\n`, "binary"), data, Buffer.from("\nendstream", "binary")]);
   const content = Buffer.from(commands.join("\n"), "latin1");
   const objects = [
     Buffer.from("<< /Type /Catalog /Pages 2 0 R >>", "binary"),
