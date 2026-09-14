@@ -58,7 +58,7 @@ async function ensureInvoiceTables() {
       issueDate date NOT NULL,
       dueDate date NOT NULL,
       paymentReference varchar(100) NOT NULL,
-      status enum('draft','sent','paid','overdue') NOT NULL DEFAULT 'draft',
+      status enum('draft','sent','paid','overdue','cancelled') NOT NULL DEFAULT 'draft',
       sentAt datetime DEFAULT NULL,
       paidAt datetime DEFAULT NULL,
       lastReminderAt datetime DEFAULT NULL,
@@ -500,6 +500,19 @@ invoiceRouter.put("/:id", async (req, res) => {
     ]);
     res.json(await getInvoice(invoice.id));
   } catch (error: any) { res.status(500).json({ message: error.message }); }
+});
+
+invoiceRouter.post("/:id/cancel", async (req, res) => {
+  try {
+    const invoice = await getInvoice(Number(req.params.id));
+    if (!invoice) return res.status(404).json({ message: "Facture introuvable" });
+    if (invoice.status === "paid") return res.status(409).json({ message: "Une facture payée ne peut pas être annulée" });
+    if (invoice.status === "cancelled") return res.json(invoice);
+    await (await getPool()).execute("UPDATE invoices SET status='cancelled' WHERE id=?", [invoice.id]);
+    res.json(await getInvoice(invoice.id));
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || "Annulation impossible" });
+  }
 });
 
 invoiceRouter.delete("/:id", async (req, res) => {
