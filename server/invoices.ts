@@ -10,7 +10,11 @@ import { SESSION_COOKIE, verifySessionToken } from "./authService";
 export const invoiceRouter = Router();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_BILLING = process.env.EMAIL_FROM_CONTACT ?? "Synergie Dour <contact@synergiedour.be>";
+const DEFAULT_FROM_BILLING = "Synergie Dour <contact@synergiedour.be>";
+const configuredFrom = String(process.env.EMAIL_FROM_CONTACT ?? "").trim();
+const FROM_BILLING = /^[^<>@\\s]+@[^<>@\\s]+\\.[^<>@\\s]+$/.test(configuredFrom)
+  ? `Synergie Dour <${configuredFrom}>`
+  : (/^.+<[^<>@\\s]+@[^<>@\\s]+\\.[^<>@\\s]+>$/.test(configuredFrom) ? configuredFrom : DEFAULT_FROM_BILLING);
 const APP_URL = process.env.APP_URL ?? "https://www.synergiedour.be";
 
 let tablesReady = false;
