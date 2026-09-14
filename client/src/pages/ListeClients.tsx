@@ -6,14 +6,46 @@ import { Search, Users, ToggleLeft, ToggleRight, Download, RefreshCw } from "luc
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 
+const DIFFUSION_STORAGE_KEY = "synergie-dour:client-diffusion:v1";
+
+type DiffusionPreferences = Record<string, boolean>;
+
+function loadDiffusionPreferences(): DiffusionPreferences {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const stored = window.localStorage.getItem(DIFFUSION_STORAGE_KEY);
+    if (!stored) return {};
+
+    const parsed = JSON.parse(stored);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, value]) => typeof value === "boolean")
+    ) as DiffusionPreferences;
+  } catch {
+    return {};
+  }
+}
+
+function saveDiffusionPreferences(preferences: DiffusionPreferences) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(DIFFUSION_STORAGE_KEY, JSON.stringify(preferences));
+  } catch {
+    // La sélection reste fonctionnelle pour la session même si le stockage local est indisponible.
+  }
+}
+
 export default function ListeClients() {
   const [search, setSearch] = useState("");
   const [filtre, setFiltre] = useState<"tous" | "actifs" | "inactifs">("tous");
+  const [diffusionPreferences, setDiffusionPreferences] = useState<DiffusionPreferences>(
+    () => loadDiffusionPreferences()
+  );
 
   const { data: rawMerchants = [], isLoading, refetch } = trpc.merchants.listAll.useQuery();
-  const updateMerchant = trpc.merchants.update.useMutation({
-    onSuccess: () => refetch(),
-  });
 
   const clients = useMemo(() =>
     rawMerchants.map((c: any) => ({
@@ -24,34 +56,49 @@ export default function ListeClients() {
       localite: "",
       telephone: c.phone || "—",
       email: c.email || "—",
-      actif: (c.status || "Actif") !== "Inactif",
-      status: c.status || "Actif",
+      // La diffusion est indépendante du statut administratif du commerçant.
+      // Par sécurité, aucun client n'est sélectionné automatiquement.
+      actif: diffusionPreferences[String(c.id)] === true,
+      status: c.status || "",
     }))
-  , [rawMerchants]);
+  , [rawMerchants, diffusionPreferences]);
+
+  const updateDiffusionPreferences = (
+    updater: (previous: DiffusionPreferences) => DiffusionPreferences
+  ) => {
+    setDiffusionPreferences((previous) => {
+      const next = updater(previous);
+      saveDiffusionPreferences(next);
+      return next;
+    });
+  };
 
   const toggle = (id: string | number) => {
-    const c = clients.find((x: any) => x.id === id);
-    if (!c) return;
-    const newStatus = c.actif ? "Inactif" : "Actif";
-    updateMerchant.mutate({ id, status: newStatus });
+    const key = String(id);
+    updateDiffusionPreferences((previous) => ({
+      ...previous,
+      [key]: previous[key] !== true,
+    }));
   };
 
   const toggleAll = (val: boolean) => {
-    clients.forEach((c: any) => {
-      const newStatus = val ? "Actif" : "Inactif";
-      if (c.actif !== val) {
-        updateMerchant.mutate({ id: c.id, status: newStatus });
-      }
+    updateDiffusionPreferences((previous) => {
+      const next = { ...previous };
+      clients.forEach((c: any) => {
+        next[String(c.id)] = val;
+      });
+      return next;
     });
   };
 
   const filtered = useMemo(() => {
     return clients.filter((c: any) => {
+      const query = search.toLowerCase();
       const matchSearch =
-        c.nom.toLowerCase().includes(search.toLowerCase()) ||
-        c.type.toLowerCase().includes(search.toLowerCase()) ||
-        c.adresse.toLowerCase().includes(search.toLowerCase()) ||
-        c.email.toLowerCase().includes(search.toLowerCase());
+        c.nom.toLowerCase().includes(query) ||
+        c.type.toLowerCase().includes(query) ||
+        c.adresse.toLowerCase().includes(query) ||
+        c.email.toLowerCase().includes(query);
       const matchFiltre =
         filtre === "tous" ||
         (filtre === "actifs" && c.actif) ||
@@ -69,13 +116,15 @@ export default function ListeClients() {
       ["ID", "Type", "Nom", "Adresse", "Téléphone", "Email"],
       ...actifs.map((c: any) => [c.id, c.type, c.nom, c.adresse, c.telephone, c.email]),
     ];
-    const csv = rows.map((r: any[]) => r.map((v: any) => `"${String(v).replace(/"/g, '\'')}"`).join(";")).join("\n");
+    const escapeCsv = (value: any) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const csv = rows.map((r: any[]) => r.map(escapeCsv).join(";")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `synergiedour_clients_actifs_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -87,7 +136,7 @@ export default function ListeClients() {
             <h1 className="text-2xl font-bold text-[#001a3d]">Liste Clients</h1>
             <p className="text-sm text-gray-500 mt-1">
               {isLoading ? "Chargement..." : (
-                <>{clients.length} commerces · <span className="text-green-600 font-medium">{actifCount} actifs</span> · <span className="text-gray-400">{inactifCount} inactifs</span></>
+                <>{clients.length} commerces · <span className="text-green-600 font-medium">{actifCount} sélectionnés pour diffusion</span> · <span className="text-gray-400">{inactifCount} non sélectionnés</span></>
               )}
             </p>
           </div>
@@ -96,13 +145,13 @@ export default function ListeClients() {
               <RefreshCw className="w-4 h-4 mr-1" /> Actualiser
             </Button>
             <Button variant="outline" size="sm" onClick={() => toggleAll(true)} className="text-green-700 border-green-300">
-              <ToggleRight className="w-4 h-4 mr-1" /> Tout activer
+              <ToggleRight className="w-4 h-4 mr-1" /> Tout sélectionner
             </Button>
             <Button variant="outline" size="sm" onClick={() => toggleAll(false)} className="text-gray-500 border-gray-300">
-              <ToggleLeft className="w-4 h-4 mr-1" /> Tout désactiver
+              <ToggleLeft className="w-4 h-4 mr-1" /> Tout désélectionner
             </Button>
             <Button size="sm" onClick={exportCSV} className="bg-[#D4AF37] hover:bg-[#c9a227] text-[#001a3d] font-semibold">
-              <Download className="w-4 h-4 mr-1" /> Export CSV actifs
+              <Download className="w-4 h-4 mr-1" /> Export CSV sélectionnés
             </Button>
           </div>
         </div>
@@ -130,7 +179,7 @@ export default function ListeClients() {
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {f === "tous" ? "Tous" : f === "actifs" ? "Sélectionnés" : "Non sélectionnés"}
               </button>
             ))}
           </div>
@@ -188,7 +237,6 @@ export default function ListeClients() {
                           checked={c.actif}
                           onCheckedChange={() => toggle(c.id)}
                           className="data-[state=checked]:bg-green-500"
-                          disabled={updateMerchant.isPending}
                         />
                       </td>
                     </tr>
