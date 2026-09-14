@@ -204,7 +204,7 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   const line = (x1: number, y1: number, x2: number, y2: number) => commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
 
   if (logoBuffer) commands.push("q 100 0 0 100 50 700 cm /Im1 Do Q");
-  if (watermarkBuffer) commands.push("q 340 0 0 340 130 190 cm /Im2 Do Q");
+  if (watermarkBuffer) commands.push("q /GS1 gs 340 0 0 340 130 190 cm /Im2 Do Q");
   commands.push("0.00 0.10 0.28 rg");
   // Le nom est intégré au logo officiel. Si l'asset ne peut pas être lu, on garde un en-tête textuel de secours.
   if (!logoBuffer) text(50, 720, 16, settings.issuerName || "SYNERGIE DOUR ASBL", true);
@@ -285,7 +285,8 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   const content = Buffer.from(commands.join("\n"), "latin1");
   const imageObjects: Buffer[] = [];
   const xobjectRefs: string[] = [];
-  let nextObjectNumber = 6;
+  const transparencyObject = Buffer.from("<< /Type /ExtGState /ca 0.12 /CA 0.12 >>", "binary");
+  let nextObjectNumber = 7;
   if (logoJpeg) {
     imageObjects.push(imageObject(logoJpeg));
     xobjectRefs.push(`/Im1 ${nextObjectNumber} 0 R`);
@@ -298,12 +299,14 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   }
   const contentObjectNumber = nextObjectNumber;
   const xobjects = xobjectRefs.length ? ` /XObject << ${xobjectRefs.join(" ")} >>` : "";
+  const extGState = watermarkJpeg ? " /ExtGState << /GS1 6 0 R >>" : "";
   const objects = [
     Buffer.from("<< /Type /Catalog /Pages 2 0 R >>", "binary"),
     Buffer.from("<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "binary"),
-    Buffer.from(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${xobjects} >> /Contents ${contentObjectNumber} 0 R >>`, "binary"),
+    Buffer.from(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${xobjects}${extGState} >> /Contents ${contentObjectNumber} 0 R >>`, "binary"),
     Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>", "binary"),
     Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>", "binary"),
+    transparencyObject,
     ...imageObjects,
     Buffer.concat([
       Buffer.from(`<< /Length ${content.length} >>\nstream\n`, "binary"),
