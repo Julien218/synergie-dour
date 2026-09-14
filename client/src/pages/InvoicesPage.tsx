@@ -104,6 +104,7 @@ export default function InvoicesPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Invoice["status"]>("all");
+  const [pendingAction, setPendingAction] = useState<{ invoice: Invoice; kind: "send" | "remind" | "paid" | "receipt" } | null>(null);
 
   const [form, setForm] = useState({
     merchantId: "",
@@ -206,6 +207,8 @@ export default function InvoicesPage() {
       setBusy(null);
     }
   };
+
+  const requestAction = (invoice: Invoice, kind: "send" | "remind" | "paid" | "receipt") => setPendingAction({ invoice, kind });
 
   const action = async (invoice: Invoice, kind: "send" | "remind" | "paid" | "receipt") => {
     setBusy(invoice.id);
@@ -320,7 +323,7 @@ export default function InvoicesPage() {
 
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-t pt-4">
                 <div className="text-sm"><span className="text-gray-500">HTVA {euro(formTotals.subtotal)} · TVA {euro(formTotals.vat)}</span><div className="text-xl font-bold text-[#001a3d]">Total {euro(formTotals.total)}</div></div>
-                <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setShowCreate(false)}>Annuler</Button><Button variant="outline" onClick={() => createInvoice(false)} disabled={busy === "create"}>Créer brouillon</Button><Button onClick={() => createInvoice(true)} disabled={busy === "create"} className="bg-[#D4AF37] hover:bg-[#c7a32c] text-[#001a3d]"><Send className="w-4 h-4 mr-2" /> Créer + envoyer</Button></div>
+                <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setShowCreate(false)}>Annuler</Button><Button variant="outline" onClick={() => createInvoice(false)} disabled={busy === "create"}>Créer brouillon</Button></div>
               </div>
             </CardContent>
           </Card>
@@ -344,12 +347,12 @@ export default function InvoicesPage() {
                     <td className="px-3 py-3">{String(invoice.dueDate).slice(0, 10)}{invoice.reminderCount > 0 && <div className="text-xs text-amber-600">{invoice.reminderCount} rappel{invoice.reminderCount > 1 ? "s" : ""}</div>}</td>
                     <td className="px-3 py-3 text-right font-bold">{euro(invoice.totalCents)}</td>
                     <td className="px-3 py-3 text-center">{statusBadge(invoice.status)}</td>
-                    <td className="px-3 py-3 text-center"><div className="inline-flex items-center gap-2"><Switch checked={invoice.status === "paid"} disabled={invoice.status === "paid" || busy === invoice.id} onCheckedChange={(checked) => checked && action(invoice, "paid")} className="data-[state=checked]:bg-emerald-500" />{invoice.status === "paid" && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}</div></td>
+                    <td className="px-3 py-3 text-center"><div className="inline-flex items-center gap-2"><Switch checked={invoice.status === "paid"} disabled={invoice.status === "paid" || busy === invoice.id} onCheckedChange={(checked) => checked && requestAction(invoice, "paid")} className="data-[state=checked]:bg-emerald-500" />{invoice.status === "paid" && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}</div></td>
                     <td className="px-3 py-3"><div className="flex justify-end gap-1">
                       <Button variant="ghost" size="sm" onClick={() => window.open(`/api/invoices/${invoice.id}/pdf`, "_blank")}><Download className="w-4 h-4" /></Button>
-                      {invoice.status === "draft" && <Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => action(invoice, "send")}><Mail className="w-4 h-4 mr-1" /> Envoyer</Button>}
-                      {(invoice.status === "sent" || invoice.status === "overdue") && <Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => action(invoice, "remind")}><Mail className="w-4 h-4 mr-1" /> Rappel</Button>}
-                      {invoice.status === "paid" && <Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => action(invoice, "receipt")}><Send className="w-4 h-4 mr-1" /> Acquittée</Button>}
+                      {invoice.status === "draft" && <Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => requestAction(invoice, "send")}><Mail className="w-4 h-4 mr-1" /> Envoyer</Button>}
+                      {(invoice.status === "sent" || invoice.status === "overdue") && <Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => requestAction(invoice, "remind")}><Mail className="w-4 h-4 mr-1" /> Rappel</Button>}
+                      {invoice.status === "paid" && <Button size="sm" variant="outline" disabled={busy === invoice.id} onClick={() => requestAction(invoice, "receipt")}><Send className="w-4 h-4 mr-1" /> Acquittée</Button>}
                     </div></td>
                   </tr>
                 ))}</tbody>
@@ -359,6 +362,34 @@ export default function InvoicesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {pendingAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="invoice-send-confirmation">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+            <div className="border-b px-6 py-5">
+              <h2 id="invoice-send-confirmation" className="text-lg font-semibold text-[#001a3d]">Confirmer l’envoi</h2>
+              <p className="mt-1 text-sm text-gray-500">Vérifiez le récapitulatif avant toute transmission.</p>
+            </div>
+            <div className="space-y-3 px-6 py-5 text-sm">
+              <div className="rounded-lg bg-slate-50 p-4">
+                <div className="font-semibold text-[#001a3d]">{pendingAction.invoice.invoiceNumber}</div>
+                <div className="mt-2 grid grid-cols-2 gap-y-2">
+                  <span className="text-gray-500">Destinataire</span><span className="text-right font-medium break-all">{pendingAction.invoice.clientName}</span>
+                  <span className="text-gray-500">Email</span><span className="text-right break-all">{pendingAction.invoice.clientEmail}</span>
+                  <span className="text-gray-500">Montant</span><span className="text-right font-semibold">{euro(pendingAction.invoice.totalCents)}</span>
+                  <span className="text-gray-500">Échéance</span><span className="text-right">{String(pendingAction.invoice.dueDate).slice(0, 10)}</span>
+                  <span className="text-gray-500">Statut</span><span className="text-right">{pendingAction.invoice.status}</span>
+                </div>
+              </div>
+              <p className="text-gray-600">Le PDF sera joint lorsque l’action le prévoit. L’action sera enregistrée dans le suivi de facturation.</p>
+            </div>
+            <div className="flex justify-end gap-2 border-t px-6 py-4">
+              <Button variant="outline" onClick={() => setPendingAction(null)}>Annuler</Button>
+              <Button className="bg-[#D4AF37] text-[#001a3d] hover:bg-[#c7a32c]" disabled={busy === pendingAction.invoice.id} onClick={async () => { const current = pendingAction; setPendingAction(null); await action(current.invoice, current.kind); }}><Send className="mr-2 h-4 w-4" /> Confirmer l’envoi</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
