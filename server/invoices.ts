@@ -178,8 +178,8 @@ function buildPdf(objects: Buffer[]) {
 
 async function createInvoicePdf(invoice: any, settings: any, acquitted = false) {
   const items = Array.isArray(invoice.items) ? invoice.items.slice(0, 10) : [];
-  const logoUrl = `${APP_URL.replace(/\\/$/, "")}/logo-sd-officiel.png`;
-  const watermarkUrl = `${APP_URL.replace(/\\/$/, "")}/logo-transparent.png`;
+  const logoUrl = `${APP_URL.replace(/\/$/, "")}/logo-sd-officiel.png`;
+  const watermarkUrl = `${APP_URL.replace(/\/$/, "")}/logo-transparent.png`;
   const [logoBuffer, watermarkBuffer] = await Promise.all([
     fetch(logoUrl).then((r) => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`Logo indisponible (${r.status})`))).then((b) => sharp(Buffer.from(b)).png().toBuffer()),
     fetch(watermarkUrl).then((r) => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`Filigrane indisponible (${r.status})`))).then((b) => sharp(Buffer.from(b)).png().toBuffer()),
