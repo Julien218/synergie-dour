@@ -71,7 +71,7 @@ async function ensureInvoiceTables() {
     )
   `);
 
-  await pool.execute(`UPDATE billing_settings SET issuerAddress=IFNULL(NULLIF(issuerAddress, ''), 'Grand''Place 9, 7370 Dour'), enterpriseNumber=IFNULL(NULLIF(enterpriseNumber, ''), 'BE 1036.801.623'), iban=IFNULL(NULLIF(iban, ''), 'BE6368960307808'), defaultVatRate=0 WHERE id=1`);
+  await pool.execute(`UPDATE billing_settings SET issuerName='SYNERGIE DOUR ASBL', issuerAddress='Grand''Place 9, 7370 Dour', issuerEmail='contact@synergiedour.be', enterpriseNumber='BE 1036.801.623', iban='BE6368960307808', defaultVatRate=0 WHERE id=1`);
   tablesReady = true;
 }
 
@@ -182,7 +182,13 @@ function buildPdf(objects: Buffer[]) {
 async function createInvoicePdf(invoice: any, settings: any, acquitted = false) {
   const items = Array.isArray(invoice.items) ? invoice.items.slice(0, 10) : [];
   const fetchImage = async (url: string, localName: string) => {
-    try { return await readFile(path.join(process.cwd(), "public", localName)); } catch {}
+    const localCandidates = [
+      path.join(process.cwd(), "client", "public", localName),
+      path.join(process.cwd(), "public", localName),
+    ];
+    for (const localPath of localCandidates) {
+      try { return await readFile(localPath); } catch {}
+    }
     const response = await fetch(url);
     const contentType = response.headers.get("content-type") || "";
     if (!response.ok || (!contentType.startsWith("image/") && !url.toLowerCase().endsWith(".png"))) return null;
@@ -200,7 +206,8 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   if (logoBuffer) commands.push("q 0.10 0 0 0.10 50 700 cm /Im1 Do Q");
   if (watermarkBuffer) commands.push("q 0.34 0 0 0.34 130 190 cm /Im2 Do Q");
   commands.push("0.00 0.10 0.28 rg");
-  // Le nom est déjà intégré au logo officiel : ne pas le redessiner par-dessus.
+  // Le nom est intégré au logo officiel. Si l'asset ne peut pas être lu, on garde un en-tête textuel de secours.
+  if (!logoBuffer) text(50, 720, 16, settings.issuerName || "SYNERGIE DOUR ASBL", true);
   text(50, 680, 9, settings.issuerAddress || "Grand’Place 9, 7370 Dour");
   text(50, 665, 9, settings.issuerEmail || "contact@synergiedour.be");
   if (settings.enterpriseNumber) text(50, 650, 9, `BCE : ${settings.enterpriseNumber}`);
