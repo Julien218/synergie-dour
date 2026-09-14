@@ -1,6 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { parse as parseCookie } from "cookie";
 import { Resend } from "resend";
+import sharp from "sharp";
 import { getPool } from "./db";
 import { SESSION_COOKIE, verifySessionToken } from "./authService";
 
@@ -175,16 +176,24 @@ function buildPdf(objects: Buffer[]) {
   return Buffer.concat(chunks);
 }
 
-function createInvoicePdf(invoice: any, settings: any, acquitted = false) {
+async function createInvoicePdf(invoice: any, settings: any, acquitted = false) {
   const items = Array.isArray(invoice.items) ? invoice.items.slice(0, 10) : [];
+  const logoUrl = `${APP_URL.replace(/\\/$/, "")}/logo-sd-officiel.png`;
+  const watermarkUrl = `${APP_URL.replace(/\\/$/, "")}/logo-transparent.png`;
+  const [logoBuffer, watermarkBuffer] = await Promise.all([
+    fetch(logoUrl).then((r) => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`Logo indisponible (${r.status})`))).then((b) => sharp(Buffer.from(b)).png().toBuffer()),
+    fetch(watermarkUrl).then((r) => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`Filigrane indisponible (${r.status})`))).then((b) => sharp(Buffer.from(b)).png().toBuffer()),
+  ]);
   const commands: string[] = [];
   const text = (x: number, y: number, size: number, value: unknown, bold = false) => {
     commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${pdfSafe(value)}) Tj ET`);
   };
   const line = (x1: number, y1: number, x2: number, y2: number) => commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
 
+  commands.push("q 0.18 0 0 0.07 50 770 cm /Im1 Do Q");
+  commands.push("q 0.32 0 0 0.32 195 260 cm /Im2 Do Q");
   commands.push("0.00 0.10 0.28 rg");
-  text(50, 795, 22, settings.issuerName || "Synergie Dour ASBL", true);
+  text(50, 752, 22, settings.issuerName || "Synergie Dour ASBL", true);
   text(50, 775, 9, settings.issuerAddress || "Adresse de facturation à configurer");
   text(50, 760, 9, settings.issuerEmail || "contact@synergiedour.be");
   if (settings.enterpriseNumber) text(50, 745, 9, `BCE : ${settings.enterpriseNumber}`);
@@ -260,9 +269,11 @@ function createInvoicePdf(invoice: any, settings: any, acquitted = false) {
   const objects = [
     Buffer.from("<< /Type /Catalog /Pages 2 0 R >>", "binary"),
     Buffer.from("<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "binary"),
-    Buffer.from("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>", "binary"),
+    Buffer.from("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> /XObject << /Im1 6 0 R /Im2 7 0 R >> >> /Contents 8 0 R >>", "binary"),
     Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>", "binary"),
     Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>", "binary"),
+    imageObject(logoJpeg),
+    imageObject(watermarkJpeg),
     Buffer.concat([
       Buffer.from(`<< /Length ${content.length} >>\nstream\n`, "binary"),
       content,
@@ -284,7 +295,7 @@ async function sendInvoiceEmail(invoice: any, kind: "invoice" | "reminder" | "pa
   if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY non configurée");
 
   const isPaid = kind === "paid";
-  const pdf = createInvoicePdf(invoice, settings, isPaid);
+  const pdf = await createInvoicePdf(invoice, settings, isPaid);
   const paymentBlock = isPaid ? "" : `<div style="background:#f8f4e8;border-left:4px solid #D4AF37;padding:14px 16px;margin:18px 0"><strong>Paiement</strong><br>IBAN : ${htmlEscape(settings.iban || "À configurer")} ${settings.bic ? `<br>BIC : ${htmlEscape(settings.bic)}` : ""}<br>Communication : <strong>${htmlEscape(invoice.paymentReference)}</strong></div>`;
 
   const titles = {
@@ -505,7 +516,7 @@ invoiceRouter.get("/:id/pdf", async (req, res) => {
     if (!invoice) return res.status(404).json({ message: "Facture introuvable" });
     const settings = await getSettings();
     const acquitted = invoice.status === "paid" || req.query.acquitted === "1";
-    const pdf = createInvoicePdf(invoice, settings, acquitted);
+    const pdf = await createInvoicePdf(invoice, settings, acquitted);
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename=\"${invoice.invoiceNumber}${acquitted ? "-ACQUITTEE" : ""}.pdf\"`);
     res.send(pdf);
