@@ -176,10 +176,10 @@ async function initDatabase() {
       }
 
       try {
-        const { seedBiensCommerciaux } = await import("../seeder/seedBiens");
+        const { seedBiensCommerciaux } = await import("../seeder/biensCommerciaux");
         const [bienCount]: any = await pool.query("SELECT COUNT(*) as cnt FROM biens_commerciaux");
         if (bienCount?.[0]?.cnt === 0) {
-          await seedBiensCommerciaux(pool);
+          await seedBiensCommerciaux();
         }
       } catch (e: any) {
         console.warn("[Seed] seedBiensCommerciaux non disponible:", e.message);
