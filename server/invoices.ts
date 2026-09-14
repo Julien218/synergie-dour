@@ -24,7 +24,7 @@ async function ensureInvoiceTables() {
     CREATE TABLE IF NOT EXISTS billing_settings (
       id tinyint NOT NULL PRIMARY KEY,
       issuerName varchar(255) NOT NULL DEFAULT 'Synergie Dour ASBL',
-      issuerAddress varchar(500) NOT NULL DEFAULT '',
+      issuerAddress varchar(500) NOT NULL DEFAULT 'Grand'Place 9, 7370 Dour',
       issuerEmail varchar(320) NOT NULL DEFAULT 'contact@synergiedour.be',
       enterpriseNumber varchar(64) DEFAULT NULL,
       vatNumber varchar(64) DEFAULT NULL,
@@ -71,7 +71,7 @@ async function ensureInvoiceTables() {
     )
   `);
 
-  await pool.execute("UPDATE billing_settings SET defaultVatRate=0 WHERE id=1");
+  await pool.execute(`UPDATE billing_settings SET issuerAddress=IFNULL(NULLIF(issuerAddress, ''), 'Grand'Place 9, 7370 Dour'), enterpriseNumber=IFNULL(NULLIF(enterpriseNumber, ''), 'BE 1036.801.623'), iban=IFNULL(NULLIF(iban, ''), 'BE6368960307808'), defaultVatRate=0 WHERE id=1`);
   tablesReady = true;
 }
 
@@ -188,23 +188,23 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
     if (!response.ok || (!contentType.startsWith("image/") && !url.toLowerCase().endsWith(".png"))) return null;
     return Buffer.from(await response.arrayBuffer());
   };
-  const logoUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/public/logo-sd-officiel.png";
-  const watermarkUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/public/logo-transparent.png";
-  const [logoBuffer, watermarkBuffer] = await Promise.all([fetchImage(logoUrl, "logo-sd-officiel.png"), fetchImage(watermarkUrl, "logo-transparent.png")]);
+  const logoUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/client/public/logo-full.png";
+  const watermarkUrl = "https://raw.githubusercontent.com/Julien218/synergie-dour/main/client/public/logo-sd-transparent.png";
+  const [logoBuffer, watermarkBuffer] = await Promise.all([fetchImage(logoUrl, "logo-full.png"), fetchImage(watermarkUrl, "logo-sd-transparent.png")]);
   const commands: string[] = [];
   const text = (x: number, y: number, size: number, value: unknown, bold = false) => {
     commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${pdfSafe(value)}) Tj ET`);
   };
   const line = (x1: number, y1: number, x2: number, y2: number) => commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
 
-  if (logoBuffer) commands.push("q 0.12 0 0 0.12 50 690 cm /Im1 Do Q");
-  if (watermarkBuffer) commands.push("q 0.42 0 0 0.42 80 230 cm /Im2 Do Q");
+  if (logoBuffer) commands.push("q 0.10 0 0 0.10 50 700 cm /Im1 Do Q");
+  if (watermarkBuffer) commands.push("q 0.34 0 0 0.34 130 190 cm /Im2 Do Q");
   commands.push("0.00 0.10 0.28 rg");
   // Le nom est déjà intégré au logo officiel : ne pas le redessiner par-dessus.
-  text(50, 703, 9, settings.issuerAddress || "Grand’Place 9, 7370 Dour");
-  text(50, 688, 9, settings.issuerEmail || "contact@synergiedour.be");
-  if (settings.enterpriseNumber) text(50, 673, 9, `BCE : ${settings.enterpriseNumber}`);
-  if (settings.vatNumber) text(50, 658, 9, `TVA : ${settings.vatNumber}`);
+  text(50, 680, 9, settings.issuerAddress || "Grand’Place 9, 7370 Dour");
+  text(50, 665, 9, settings.issuerEmail || "contact@synergiedour.be");
+  if (settings.enterpriseNumber) text(50, 650, 9, `BCE : ${settings.enterpriseNumber}`);
+  if (settings.vatNumber) text(50, 635, 9, `TVA : ${settings.vatNumber}`);
 
   text(355, 795, 20, acquitted ? "FACTURE ACQUITTEE" : "FACTURE", true);
   text(355, 772, 10, `N° ${invoice.invoiceNumber}`, true);
@@ -213,22 +213,22 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   if (acquitted && invoice.paidAt) text(355, 722, 10, `Payee le : ${new Date(invoice.paidAt).toLocaleDateString("fr-BE")}`, true);
 
   commands.push("0.83 0.69 0.22 RG 1 w");
-  line(50, 705, 545, 705);
+  line(50, 620, 545, 620);
   commands.push("0.00 0.10 0.28 rg");
-  text(50, 682, 11, "Facture a :", true);
-  text(50, 662, 11, invoice.clientName, true);
-  if (invoice.clientAddress) text(50, 646, 9, invoice.clientAddress);
-  if (invoice.clientVat) text(50, 630, 9, `TVA/BCE : ${invoice.clientVat}`);
-  text(50, 614, 9, invoice.clientEmail);
+  text(50, 595, 11, "Facture a :", true);
+  text(50, 575, 11, invoice.clientName, true);
+  if (invoice.clientAddress) text(50, 559, 9, invoice.clientAddress);
+  if (invoice.clientVat) text(50, 543, 9, `TVA/BCE : ${invoice.clientVat}`);
+  text(50, 527, 9, invoice.clientEmail);
 
-  let y = 565;
-  commands.push("0.94 0.94 0.94 rg 50 575 495 24 re f");
+  let y = 480;
+  commands.push("0.94 0.94 0.94 rg 50 490 495 24 re f");
   commands.push("0.00 0.10 0.28 rg");
-  text(58, 583, 9, "Description", true);
-  text(345, 583, 9, "Qte", true);
-  text(385, 583, 9, "PU HTVA", true);
-  text(475, 583, 9, "TVA", true);
-  text(515, 583, 9, "Total", true);
+  text(58, 498, 9, "Description", true);
+  text(345, 498, 9, "Qte", true);
+  text(385, 498, 9, "PU HTVA", true);
+  text(475, 498, 9, "TVA", true);
+  text(515, 498, 9, "Total", true);
 
   for (const item of items) {
     const qty = Number(item.quantity || 1);
