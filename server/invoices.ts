@@ -357,9 +357,9 @@ async function sendInvoiceEmail(invoice: any, kind: "invoice" | "reminder" | "pa
     paid: `Facture acquittée — ${invoice.invoiceNumber}`,
   };
   const intro = kind === "invoice"
-    ? `Veuillez trouver en pièce jointe votre facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong> d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong>, payable au plus tard le ${htmlEscape(String(invoice.dueDate).slice(0, 10))}.`
+    ? `Veuillez trouver en pièce jointe votre facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong> d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong>, concernant votre cotisation annuelle à Synergie Dour ASBL pour la période <strong>${htmlEscape(membershipPeriod(invoice.issueDate))}</strong>. Nous vous invitons à effectuer le paiement dès réception.`
     : kind === "reminder"
-      ? `Sauf erreur de notre part, la facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong> d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong> n'est pas encore enregistrée comme payée.`
+      ? `Sauf erreur de notre part, la facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong> d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong>, concernant votre cotisation annuelle pour la période <strong>${htmlEscape(membershipPeriod(invoice.issueDate))}</strong>, n'est pas encore enregistrée comme payée. Nous vous remercions de bien vouloir régulariser la situation.`
       : `Nous confirmons la réception de votre paiement pour la facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong>. Vous trouverez en pièce jointe la facture acquittée à conserver pour votre comptabilité.`;
 
   const html = invoiceEmailLayout(`<h2 style="color:#001a3d;margin-top:0">${titles[kind]}</h2><p>Bonjour ${htmlEscape(invoice.clientName)},</p><p style="line-height:1.65">${intro}</p>${paymentBlock}<p style="line-height:1.65">Bien à vous,<br><strong>Synergie Dour</strong></p>`);
