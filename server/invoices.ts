@@ -135,6 +135,25 @@ function money(cents: number) {
   return new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
 
+function buildPaymentReference(invoiceNumber: string, clientName: string) {
+  const cleanName = String(clientName || "Client")
+    .normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 55);
+  return `${invoiceNumber}-${cleanName || "Client"}`.slice(0, 100);
+}
+
+function membershipPeriod(issueDate: unknown) {
+  const start = new Date(`${String(issueDate).slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(start.getTime())) return "";
+  const end = new Date(start);
+  end.setUTCFullYear(end.getUTCFullYear() + 1);
+  const format = (date: Date) => date.toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+  return `du ${format(start)} au ${format(end)}`;
+}
+
 function htmlEscape(value: unknown) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -447,7 +466,7 @@ invoiceRouter.post("/", async (req, res) => {
       seq += 1;
       invoiceNumber = `SD-${year}-${String(seq).padStart(4, "0")}`;
     }
-    const paymentReference = invoiceNumber;
+    const paymentReference = buildPaymentReference(invoiceNumber, clientName);
 
     const [result] = await pool.execute(`
       INSERT INTO invoices
@@ -496,7 +515,7 @@ invoiceRouter.put("/:id", async (req, res) => {
     const vatCents = items.reduce((s: number, i: any) => s + Math.round(i.quantity * i.unitPriceCents * i.vatRate / 100), 0);
     await (await getPool()).execute("UPDATE invoices SET clientName=?, clientEmail=?, clientAddress=?, clientVat=?, items=?, subtotalCents=?, vatCents=?, totalCents=?, issueDate=?, dueDate=? WHERE id=?", [
       clientName, clientEmail, v.clientAddress ?? invoice.clientAddress, v.clientVat ?? invoice.clientVat, JSON.stringify(items), subtotalCents, vatCents, subtotalCents + vatCents,
-      v.issueDate || invoice.issueDate, v.dueDate || invoice.dueDate, invoice.id,
+      v.issueDate || invoice.issueDate, v.dueDate || invoice.dueDate, buildPaymentReference(invoice.invoiceNumber, clientName), invoice.id,
     ]);
     res.json(await getInvoice(invoice.id));
   } catch (error: any) { res.status(500).json({ message: error.message }); }
