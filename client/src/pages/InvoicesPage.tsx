@@ -82,7 +82,7 @@ async function api<T = any>(url: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-const defaultInvoiceItem: InvoiceItem = { description: "Cotisation 2027", quantity: 1, unitPriceCents: 5000, vatRate: 0 };
+const defaultInvoiceItem: InvoiceItem = { description: "Cotisation annuelle Synergie Dour ASBL", quantity: 1, unitPriceCents: 5000, vatRate: 0 };
 
 const emptySettings: BillingSettings = {
   issuerName: "Synergie Dour ASBL",
@@ -279,7 +279,12 @@ export default function InvoicesPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setShowSettings((v) => !v)}><Settings2 className="w-4 h-4 mr-2" /> Paramètres</Button>
-            <Button onClick={() => setShowCreate(true)} className="bg-[#D4AF37] hover:bg-[#c7a32c] text-[#001a3d] font-semibold"><Plus className="w-4 h-4 mr-2" /> Nouvelle facture</Button>
+            <Button onClick={() => {
+              const issueDate = today();
+              setEditingId(null);
+              setForm((current) => ({ ...current, issueDate, dueDate: addDays(issueDate, Number(settings.paymentTermsDays || 14)) }));
+              setShowCreate(true);
+            }} className="bg-[#D4AF37] hover:bg-[#c7a32c] text-[#001a3d] font-semibold"><Plus className="w-4 h-4 mr-2" /> Nouvelle facture</Button>
           </div>
         </div>
 
@@ -325,7 +330,7 @@ export default function InvoicesPage() {
                 <label><span className="text-xs font-medium text-gray-600">Email *</span><input type="email" value={form.clientEmail} onChange={(e) => setForm((f) => ({ ...f, clientEmail: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
                 <label><span className="text-xs font-medium text-gray-600">Adresse</span><input value={form.clientAddress} onChange={(e) => setForm((f) => ({ ...f, clientAddress: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
                 <label><span className="text-xs font-medium text-gray-600">TVA / BCE client</span><input value={form.clientVat} onChange={(e) => setForm((f) => ({ ...f, clientVat: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
-                <label><span className="text-xs font-medium text-gray-600">Date facture</span><input type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value, dueDate: addDays(e.target.value, Number(settings.paymentTermsDays || 14)) }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+                <label><span className="text-xs font-medium text-gray-600">Date facture (automatique)</span><input type="date" value={form.issueDate} readOnly className="mt-1 w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm text-gray-700" /></label>
                 <label><span className="text-xs font-medium text-gray-600">Échéance</span><input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
               </div>
 
