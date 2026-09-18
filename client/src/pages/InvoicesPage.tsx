@@ -62,7 +62,16 @@ type BillingSettings = {
   paymentTermsDays: number;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Brussels",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
 const addDays = (date: string, days: number) => {
   const d = new Date(`${date}T12:00:00`);
   d.setDate(d.getDate() + days);
