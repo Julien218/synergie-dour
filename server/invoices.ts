@@ -71,7 +71,8 @@ async function ensureInvoiceTables() {
     )
   `);
 
-  await pool.execute(`UPDATE billing_settings SET issuerName='SYNERGIE DOUR ASBL', issuerAddress='Grand''Place 9, 7370 Dour', issuerEmail='contact@synergiedour.be', enterpriseNumber='BE 1036.801.623', iban='BE6368960307808', defaultVatRate=0 WHERE id=1`);
+  await pool.execute(`UPDATE billing_settings SET issuerName='SYNERGIE DOUR ASBL', issuerAddress='Grand''Place 9, 7370 Dour', issuerEmail='contact@synergiedour.be', enterpriseNumber='BE 1036.801.623', iban='BE6263068960307808', defaultVatRate=0 WHERE id=1`);
+  await pool.execute("DELETE FROM invoices WHERE invoiceNumber IN (?, ?)", ["D-2026-0002", "SD-2026-0001"]);
   tablesReady = true;
 }
 
@@ -144,6 +145,18 @@ function belgiumTodayIsoDate() {
 
 function money(cents: number) {
   return new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(cents / 100);
+}
+
+function formatBelgianDate(value: unknown) {
+  const iso = String(value ?? "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return String(value ?? "");
+  const [year, month, day] = iso.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function formatIban(value: unknown) {
+  const clean = String(value ?? "").replace(/\s+/g, "").toUpperCase();
+  return clean.replace(/(.{4})/g, "$1 ").trim();
 }
 
 function buildPaymentReference(invoiceNumber: string, clientName: string) {
@@ -250,8 +263,8 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
 
   text(355, 795, 20, acquitted ? "FACTURE ACQUITTEE" : "FACTURE", true);
   text(355, 772, 10, `N° ${invoice.invoiceNumber}`, true);
-  text(355, 755, 9, `Date : ${String(invoice.issueDate).slice(0, 10)}`);
-  text(355, 740, 9, `Echeance : ${String(invoice.dueDate).slice(0, 10)}`);
+  text(355, 755, 9, `Date : ${formatBelgianDate(invoice.issueDate)}`);
+  text(355, 740, 9, `Echeance : ${formatBelgianDate(invoice.dueDate)}`);
   if (acquitted && invoice.paidAt) text(355, 722, 10, `Payee le : ${new Date(invoice.paidAt).toLocaleDateString("fr-BE")}`, true);
 
   commands.push("0.83 0.69 0.22 RG 1 w");
@@ -307,7 +320,7 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   commands.push("0.00 0.10 0.28 rg");
   text(60, payY + 44, 10, acquitted ? "Paiement recu" : "Informations de paiement", true);
   if (!acquitted) {
-    text(60, payY + 27, 9, `IBAN : ${settings.iban || "A configurer"}`);
+    text(60, payY + 27, 9, `IBAN : ${settings.iban ? formatIban(settings.iban) : "A configurer"}`);
     if (settings.bic) text(250, payY + 27, 9, `BIC : ${settings.bic}`);
     text(60, payY + 10, 9, `Communication : ${invoice.paymentReference}`, true);
   } else {
@@ -368,7 +381,7 @@ async function sendInvoiceEmail(invoice: any, kind: "invoice" | "reminder" | "pa
 
   const isPaid = kind === "paid";
   const pdf = await createInvoicePdf(invoice, settings, isPaid);
-  const paymentBlock = isPaid ? "" : `<div style="background:#f8f4e8;border-left:4px solid #D4AF37;padding:14px 16px;margin:18px 0"><strong>Paiement</strong><br>IBAN : ${htmlEscape(settings.iban || "À configurer")} ${settings.bic ? `<br>BIC : ${htmlEscape(settings.bic)}` : ""}<br>Communication : <strong>${htmlEscape(invoice.paymentReference)}</strong></div>`;
+  const paymentBlock = isPaid ? "" : `<div style="background:#f8f4e8;border-left:4px solid #D4AF37;padding:14px 16px;margin:18px 0"><strong>Paiement</strong><br>IBAN : ${htmlEscape(settings.iban ? formatIban(settings.iban) : "À configurer")} ${settings.bic ? `<br>BIC : ${htmlEscape(settings.bic)}` : ""}<br>Communication : <strong>${htmlEscape(invoice.paymentReference)}</strong></div>`;
 
   const membership = isMembershipInvoice(invoice);
   const titles = {
