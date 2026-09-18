@@ -709,6 +709,7 @@ export async function runAutomatedInvoiceReminders() {
 }
 
 if (process.env.NODE_ENV === "production") {
+  ensureInvoiceTables().catch((error) => console.error("[Invoices startup init]", error));
   const startDelay = 90_000;
   setTimeout(() => {
     runAutomatedInvoiceReminders().catch(console.error);
