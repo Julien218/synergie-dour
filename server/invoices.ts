@@ -72,8 +72,8 @@ async function ensureInvoiceTables() {
   `);
 
   await pool.execute(`UPDATE billing_settings SET issuerName='SYNERGIE DOUR ASBL', issuerAddress='Grand''Place 9, 7370 Dour', issuerEmail='contact@synergiedour.be', enterpriseNumber='BE 1036.801.623', iban='BE6263068960307808', defaultVatRate=0 WHERE id=1`);
-  const [cleanupResult] = await pool.execute("DELETE FROM invoices WHERE invoiceNumber IN (?, ?)", ["D-2026-0002", "SD-2026-0001"]);
-  console.log("[Invoices cleanup] removed", Number((cleanupResult as any)?.affectedRows || 0), "target invoices");
+  const [cleanupResult] = await pool.execute("DELETE FROM invoices WHERE invoiceNumber = ?", ["SD-2026-0002"]);
+  console.log("[Invoices cleanup] removed", Number((cleanupResult as any)?.affectedRows || 0), "target invoice SD-2026-0002");
   tablesReady = true;
 }
 
