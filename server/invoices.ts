@@ -131,6 +131,17 @@ function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+function belgiumTodayIsoDate() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Brussels",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 function money(cents: number) {
   return new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
@@ -152,6 +163,11 @@ function membershipPeriod(issueDate: unknown) {
   end.setUTCFullYear(end.getUTCFullYear() + 1);
   const format = (date: Date) => date.toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
   return `du ${format(start)} au ${format(end)}`;
+}
+
+function isMembershipInvoice(invoice: any) {
+  return Array.isArray(invoice?.items)
+    && invoice.items.some((item: any) => /\bcotisation\b/i.test(String(item?.description || "")));
 }
 
 function htmlEscape(value: unknown) {
@@ -261,7 +277,10 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
     const unit = Number(item.unitPriceCents || 0);
     const rate = Number(item.vatRate || 0);
     const total = Math.round(qty * unit * (1 + rate / 100));
-    const desc = String(item.description || "Service").slice(0, 48);
+    const rawDescription = String(item.description || "Service");
+    const desc = /\bcotisation\b/i.test(rawDescription)
+      ? `Cotisation annuelle ${membershipPeriod(invoice.issueDate).replace(/^du /, "").replace(" au ", " - ")}`.slice(0, 48)
+      : rawDescription.slice(0, 48);
     text(58, y, 8, desc);
     text(345, y, 8, qty.toFixed(2));
     text(385, y, 8, money(unit));
@@ -351,22 +370,43 @@ async function sendInvoiceEmail(invoice: any, kind: "invoice" | "reminder" | "pa
   const pdf = await createInvoicePdf(invoice, settings, isPaid);
   const paymentBlock = isPaid ? "" : `<div style="background:#f8f4e8;border-left:4px solid #D4AF37;padding:14px 16px;margin:18px 0"><strong>Paiement</strong><br>IBAN : ${htmlEscape(settings.iban || "À configurer")} ${settings.bic ? `<br>BIC : ${htmlEscape(settings.bic)}` : ""}<br>Communication : <strong>${htmlEscape(invoice.paymentReference)}</strong></div>`;
 
+  const membership = isMembershipInvoice(invoice);
   const titles = {
-    invoice: `Facture ${invoice.invoiceNumber}`,
+    invoice: membership ? "Votre cotisation annuelle Synergie Dour" : `Facture ${invoice.invoiceNumber}`,
     reminder: `Rappel de paiement — ${invoice.invoiceNumber}`,
     paid: `Facture acquittée — ${invoice.invoiceNumber}`,
   };
-  const intro = kind === "invoice"
-    ? `Veuillez trouver en pièce jointe votre facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong> d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong>, concernant votre cotisation annuelle à Synergie Dour ASBL pour la période <strong>${htmlEscape(membershipPeriod(invoice.issueDate))}</strong>. Nous vous invitons à effectuer le paiement dès réception.`
+
+  const standardIntro = kind === "invoice"
+    ? `Veuillez trouver en pièce jointe votre facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong> d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong>. Nous vous invitons à effectuer le paiement dès réception.`
     : kind === "reminder"
-      ? `Sauf erreur de notre part, la facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong> d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong>, concernant votre cotisation annuelle pour la période <strong>${htmlEscape(membershipPeriod(invoice.issueDate))}</strong>, n'est pas encore enregistrée comme payée. Nous vous remercions de bien vouloir régulariser la situation.`
+      ? membership
+        ? `Sauf erreur de notre part, la facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong> d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong>, concernant votre cotisation annuelle pour la période <strong>${htmlEscape(membershipPeriod(invoice.issueDate))}</strong>, n'est pas encore enregistrée comme payée. Nous vous remercions de bien vouloir régulariser la situation.`
+        : `Sauf erreur de notre part, la facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong> d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong> n'est pas encore enregistrée comme payée. Nous vous remercions de bien vouloir régulariser la situation.`
       : `Nous confirmons la réception de votre paiement pour la facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong>. Vous trouverez en pièce jointe la facture acquittée à conserver pour votre comptabilité.`;
 
-  const html = invoiceEmailLayout(`<h2 style="color:#001a3d;margin-top:0">${titles[kind]}</h2><p>Bonjour ${htmlEscape(invoice.clientName)},</p><p style="line-height:1.65">${intro}</p>${paymentBlock}<p style="line-height:1.65">Bien à vous,<br><strong>Synergie Dour</strong></p>`);
+  const membershipInvoiceHtml = `<h2 style="color:#001a3d;margin-top:0">Votre cotisation annuelle Synergie Dour</h2>
+    <p>Bonjour ${htmlEscape(invoice.clientName)},</p>
+    <p style="line-height:1.65">Nous vous remercions de faire partie de <strong>Synergie Dour ASBL</strong>.</p>
+    <p style="line-height:1.65">Vous trouverez en pièce jointe votre facture <strong>${htmlEscape(invoice.invoiceNumber)}</strong>, d'un montant de <strong>${htmlEscape(money(invoice.totalCents))}</strong>, correspondant à votre <strong>cotisation annuelle à Synergie Dour</strong>.</p>
+    <p style="line-height:1.65">Votre cotisation est valable pendant <strong>un an à compter de la date de facturation</strong>, soit <strong>${htmlEscape(membershipPeriod(invoice.issueDate))}</strong>.</p>
+    <p style="line-height:1.65">Nous vous invitons à effectuer le règlement dès réception de la facture.</p>
+    ${paymentBlock}
+    <p style="line-height:1.65">Votre participation contribue directement aux actions menées par Synergie Dour pour soutenir, représenter et dynamiser les commerces et acteurs locaux.</p>
+    <p style="line-height:1.65">Merci pour votre confiance et votre engagement à nos côtés.</p>
+    <p style="line-height:1.65">Bien cordialement,<br><strong>Olivier TREVIS</strong><br>Président<br><strong>Synergie Dour ASBL</strong></p>`;
+
+  const html = invoiceEmailLayout(
+    kind === "invoice" && membership
+      ? membershipInvoiceHtml
+      : `<h2 style="color:#001a3d;margin-top:0">${titles[kind]}</h2><p>Bonjour ${htmlEscape(invoice.clientName)},</p><p style="line-height:1.65">${standardIntro}</p>${paymentBlock}<p style="line-height:1.65">Bien à vous,<br><strong>Synergie Dour</strong></p>`
+  );
   const { error } = await resend.emails.send({
     from: FROM_BILLING,
     to: invoice.clientEmail,
-    subject: `${titles[kind]} — Synergie Dour`,
+    subject: kind === "invoice" && membership
+      ? `Votre cotisation annuelle Synergie Dour – Facture ${invoice.invoiceNumber}`
+      : `${titles[kind]} — Synergie Dour`,
     html,
     attachments: [{
       filename: `${invoice.invoiceNumber}${isPaid ? "-ACQUITTEE" : ""}.pdf`,
@@ -451,7 +491,7 @@ invoiceRouter.post("/", async (req, res) => {
     const totalCents = subtotalCents + vatCents;
     if (totalCents <= 0) return res.status(400).json({ message: "Le montant total doit être supérieur à 0" });
 
-    const issue = safeDate(v.issueDate, new Date());
+    const issue = safeDate(belgiumTodayIsoDate(), new Date());
     const fallbackDue = new Date(issue);
     fallbackDue.setDate(fallbackDue.getDate() + Number(settings.paymentTermsDays || 14));
     const due = safeDate(v.dueDate, fallbackDue);
