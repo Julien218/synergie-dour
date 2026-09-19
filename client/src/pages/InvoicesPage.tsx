@@ -33,8 +33,14 @@ type Invoice = {
   invoiceNumber: string;
   merchantId?: string | null;
   clientName: string;
+  clientFirstName?: string | null;
+  clientLastName?: string | null;
   clientEmail: string;
   clientAddress?: string | null;
+  clientStreet?: string | null;
+  clientStreetNumber?: string | null;
+  clientPostalCode?: string | null;
+  clientCity?: string | null;
   clientVat?: string | null;
   items: InvoiceItem[];
   subtotalCents: number;
@@ -77,6 +83,30 @@ const addDays = (date: string, days: number) => {
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 };
+
+const parseAddress = (value: string) => {
+  const text = String(value || "").trim();
+  let street = text;
+  let streetNumber = "";
+  let postalCode = "";
+  let city = "";
+
+  const postalMatch = text.match(/\b(\d{4})\s+(.+)$/);
+  if (postalMatch) {
+    postalCode = postalMatch[1];
+    city = postalMatch[2].trim().replace(/^,\s*/, "");
+    street = text.slice(0, postalMatch.index).trim().replace(/[,\s]+$/, "");
+  }
+
+  const numberMatch = street.match(/(?:,?\s+)(\d+[A-Za-zÀ-ÿ\/-]*)$/);
+  if (numberMatch) {
+    streetNumber = numberMatch[1];
+    street = street.slice(0, numberMatch.index).trim().replace(/[,\s]+$/, "");
+  }
+
+  return { street, streetNumber, postalCode, city };
+};
+
 const euro = (cents: number) => new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format((cents || 0) / 100);
 
 async function api<T = any>(url: string, init?: RequestInit): Promise<T> {
@@ -121,8 +151,14 @@ export default function InvoicesPage() {
   const [form, setForm] = useState({
     merchantId: "",
     clientName: "",
+    clientFirstName: "",
+    clientLastName: "",
     clientEmail: "",
     clientAddress: "",
+    clientStreet: "",
+    clientStreetNumber: "",
+    clientPostalCode: "",
+    clientCity: "",
     clientVat: "",
     issueDate: today(),
     dueDate: addDays(today(), 14),
@@ -174,13 +210,22 @@ export default function InvoicesPage() {
 
   const selectMerchant = (id: string) => {
     const merchant = merchants.find((m: any) => String(m.id) === id) as any;
+    const parsed = parseAddress(merchant?.address || "");
+    const contactName = String(merchant?.contactName || merchant?.responsable || "").trim();
+    const contactParts = contactName.split(/\s+/).filter(Boolean);
     setForm((prev) => ({
       ...prev,
       merchantId: id,
       clientName: merchant?.businessName || "",
+      clientFirstName: merchant?.firstName || merchant?.contactFirstName || merchant?.prenom || (contactParts.length > 1 ? contactParts[0] : ""),
+      clientLastName: merchant?.lastName || merchant?.contactLastName || merchant?.nom || (contactParts.length > 1 ? contactParts.slice(1).join(" ") : ""),
       clientEmail: merchant?.email || "",
       clientAddress: merchant?.address || "",
-      clientVat: merchant?.vatNumber || "",
+      clientStreet: merchant?.street || merchant?.rue || parsed.street,
+      clientStreetNumber: merchant?.streetNumber || merchant?.numero || merchant?.number || parsed.streetNumber,
+      clientPostalCode: merchant?.postalCode || merchant?.codePostal || parsed.postalCode,
+      clientCity: merchant?.city || merchant?.locality || merchant?.village || parsed.city,
+      clientVat: merchant?.vatNumber || merchant?.bce || "",
     }));
   };
 
@@ -189,8 +234,12 @@ export default function InvoicesPage() {
   };
 
   const createInvoice = async (sendNow: boolean) => {
-    if (!form.clientName.trim() || !form.clientEmail.trim()) {
-      toast.error("Le nom et l'email du client sont obligatoires");
+    if (!form.clientName.trim() || !form.clientFirstName.trim() || !form.clientLastName.trim() || !form.clientEmail.trim()) {
+      toast.error("Le commerce, le nom, le prénom et l'email sont obligatoires");
+      return;
+    }
+    if (!form.clientStreet.trim() || !form.clientStreetNumber.trim() || !form.clientPostalCode.trim() || !form.clientCity.trim()) {
+      toast.error("Complétez l'adresse : rue, numéro, code postal et localité");
       return;
     }
     if (items.some((item) => !item.description.trim() || item.unitPriceCents <= 0)) {
@@ -211,7 +260,21 @@ export default function InvoicesPage() {
       }
       setShowCreate(false);
       setEditingId(null);
-      setForm({ merchantId: "", clientName: "", clientEmail: "", clientAddress: "", clientVat: "", issueDate: today(), dueDate: addDays(today(), Number(settings.paymentTermsDays || 14)) });
+      setForm({
+        merchantId: "",
+        clientName: "",
+        clientFirstName: "",
+        clientLastName: "",
+        clientEmail: "",
+        clientAddress: "",
+        clientStreet: "",
+        clientStreetNumber: "",
+        clientPostalCode: "",
+        clientCity: "",
+        clientVat: "",
+        issueDate: today(),
+        dueDate: addDays(today(), Number(settings.paymentTermsDays || 14)),
+      });
       setItems([{ ...defaultInvoiceItem }]);
       await load();
     } catch (error: any) {
@@ -223,8 +286,23 @@ export default function InvoicesPage() {
 
   const editDraft = (invoice: Invoice) => {
     if (invoice.status !== "draft") return toast.error("Seuls les brouillons peuvent être modifiés");
+    const parsed = parseAddress(invoice.clientAddress || "");
     setEditingId(invoice.id);
-    setForm({ merchantId: invoice.merchantId || "", clientName: invoice.clientName, clientEmail: invoice.clientEmail, clientAddress: invoice.clientAddress || "", clientVat: invoice.clientVat || "", issueDate: String(invoice.issueDate).slice(0, 10), dueDate: String(invoice.dueDate).slice(0, 10) });
+    setForm({
+      merchantId: invoice.merchantId || "",
+      clientName: invoice.clientName,
+      clientFirstName: invoice.clientFirstName || "",
+      clientLastName: invoice.clientLastName || "",
+      clientEmail: invoice.clientEmail,
+      clientAddress: invoice.clientAddress || "",
+      clientStreet: invoice.clientStreet || parsed.street,
+      clientStreetNumber: invoice.clientStreetNumber || parsed.streetNumber,
+      clientPostalCode: invoice.clientPostalCode || parsed.postalCode,
+      clientCity: invoice.clientCity || parsed.city,
+      clientVat: invoice.clientVat || "",
+      issueDate: String(invoice.issueDate).slice(0, 10),
+      dueDate: String(invoice.dueDate).slice(0, 10),
+    });
     setItems(invoice.items);
     setShowCreate(true);
   };
@@ -333,14 +411,24 @@ export default function InvoicesPage() {
           <Card className="border-2 border-[#D4AF37]/40">
             <CardHeader><CardTitle>{editingId ? "Modifier le brouillon" : "Nouvelle facture"}</CardTitle></CardHeader>
             <CardContent className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="md:col-span-2"><span className="text-xs font-medium text-gray-600">Reprendre un commerçant</span><select value={form.merchantId} onChange={(e) => selectMerchant(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"><option value="">Client libre / rechercher...</option>{[...merchants].sort((a: any, b: any) => String(a.businessName).localeCompare(String(b.businessName))).map((m: any) => <option key={String(m.id)} value={String(m.id)}>{m.businessName}</option>)}</select></label>
-                <label><span className="text-xs font-medium text-gray-600">Nom / société *</span><input value={form.clientName} onChange={(e) => setForm((f) => ({ ...f, clientName: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
-                <label><span className="text-xs font-medium text-gray-600">Email *</span><input type="email" value={form.clientEmail} onChange={(e) => setForm((f) => ({ ...f, clientEmail: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
-                <label><span className="text-xs font-medium text-gray-600">Adresse</span><input value={form.clientAddress} onChange={(e) => setForm((f) => ({ ...f, clientAddress: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
-                <label><span className="text-xs font-medium text-gray-600">TVA / BCE client</span><input value={form.clientVat} onChange={(e) => setForm((f) => ({ ...f, clientVat: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
-                <label><span className="text-xs font-medium text-gray-600">Date facture (automatique)</span><input type="date" value={form.issueDate} readOnly className="mt-1 w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm text-gray-700" /></label>
-                <label><span className="text-xs font-medium text-gray-600">Échéance</span><input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <label className="md:col-span-4"><span className="text-xs font-medium text-gray-600">Reprendre un commerçant</span><select value={form.merchantId} onChange={(e) => selectMerchant(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"><option value="">Client libre / rechercher...</option>{[...merchants].sort((a: any, b: any) => String(a.businessName).localeCompare(String(b.businessName))).map((m: any) => <option key={String(m.id)} value={String(m.id)}>{m.businessName}</option>)}</select></label>
+
+                <label className="md:col-span-2"><span className="text-xs font-medium text-gray-600">Commerce / société *</span><input value={form.clientName} onChange={(e) => setForm((f) => ({ ...f, clientName: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+                <label className="md:col-span-2"><span className="text-xs font-medium text-gray-600">Email *</span><input type="email" value={form.clientEmail} onChange={(e) => setForm((f) => ({ ...f, clientEmail: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+
+                <label className="md:col-span-2"><span className="text-xs font-medium text-gray-600">Prénom *</span><input value={form.clientFirstName} onChange={(e) => setForm((f) => ({ ...f, clientFirstName: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+                <label className="md:col-span-2"><span className="text-xs font-medium text-gray-600">Nom *</span><input value={form.clientLastName} onChange={(e) => setForm((f) => ({ ...f, clientLastName: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+
+                <div className="md:col-span-4 mt-1 text-sm font-semibold text-[#001a3d]">Adresse</div>
+                <label className="md:col-span-3"><span className="text-xs font-medium text-gray-600">Rue *</span><input value={form.clientStreet} onChange={(e) => setForm((f) => ({ ...f, clientStreet: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+                <label className="md:col-span-1"><span className="text-xs font-medium text-gray-600">N° *</span><input value={form.clientStreetNumber} onChange={(e) => setForm((f) => ({ ...f, clientStreetNumber: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+                <label className="md:col-span-1"><span className="text-xs font-medium text-gray-600">Code postal *</span><input value={form.clientPostalCode} onChange={(e) => setForm((f) => ({ ...f, clientPostalCode: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+                <label className="md:col-span-2"><span className="text-xs font-medium text-gray-600">Localité *</span><input value={form.clientCity} onChange={(e) => setForm((f) => ({ ...f, clientCity: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+                <label className="md:col-span-1"><span className="text-xs font-medium text-gray-600">TVA / BCE client</span><input value={form.clientVat} onChange={(e) => setForm((f) => ({ ...f, clientVat: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
+
+                <label className="md:col-span-2"><span className="text-xs font-medium text-gray-600">Date facture (automatique)</span><input type="date" value={form.issueDate} readOnly className="mt-1 w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm text-gray-700" /></label>
+                <label className="md:col-span-2"><span className="text-xs font-medium text-gray-600">Échéance</span><input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" /></label>
               </div>
 
               <div className="space-y-2">
