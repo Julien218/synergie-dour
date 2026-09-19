@@ -210,22 +210,23 @@ export default function InvoicesPage() {
 
   const selectMerchant = (id: string) => {
     const merchant = merchants.find((m: any) => String(m.id) === id) as any;
-    const parsed = parseAddress(merchant?.address || "");
+    const previousInvoice = invoices.find((invoice) => String(invoice.merchantId || "") === id);
+    const parsed = parseAddress(previousInvoice?.clientAddress || merchant?.address || "");
     const contactName = String(merchant?.contactName || merchant?.responsable || "").trim();
     const contactParts = contactName.split(/\s+/).filter(Boolean);
     setForm((prev) => ({
       ...prev,
       merchantId: id,
-      clientName: merchant?.businessName || "",
-      clientFirstName: merchant?.firstName || merchant?.contactFirstName || merchant?.prenom || (contactParts.length > 1 ? contactParts[0] : ""),
-      clientLastName: merchant?.lastName || merchant?.contactLastName || merchant?.nom || (contactParts.length > 1 ? contactParts.slice(1).join(" ") : ""),
-      clientEmail: merchant?.email || "",
-      clientAddress: merchant?.address || "",
-      clientStreet: merchant?.street || merchant?.rue || parsed.street,
-      clientStreetNumber: merchant?.streetNumber || merchant?.numero || merchant?.number || parsed.streetNumber,
-      clientPostalCode: merchant?.postalCode || merchant?.codePostal || parsed.postalCode,
-      clientCity: merchant?.city || merchant?.locality || merchant?.village || parsed.city,
-      clientVat: merchant?.vatNumber || merchant?.bce || "",
+      clientName: previousInvoice?.clientName || merchant?.businessName || "",
+      clientFirstName: previousInvoice?.clientFirstName || merchant?.firstName || merchant?.contactFirstName || merchant?.prenom || (contactParts.length > 1 ? contactParts[0] : ""),
+      clientLastName: previousInvoice?.clientLastName || merchant?.lastName || merchant?.contactLastName || merchant?.nom || (contactParts.length > 1 ? contactParts.slice(1).join(" ") : ""),
+      clientEmail: previousInvoice?.clientEmail || merchant?.email || "",
+      clientAddress: previousInvoice?.clientAddress || merchant?.address || "",
+      clientStreet: previousInvoice?.clientStreet || merchant?.street || merchant?.rue || parsed.street,
+      clientStreetNumber: previousInvoice?.clientStreetNumber || merchant?.streetNumber || merchant?.numero || merchant?.number || parsed.streetNumber,
+      clientPostalCode: previousInvoice?.clientPostalCode || merchant?.postalCode || merchant?.codePostal || parsed.postalCode,
+      clientCity: previousInvoice?.clientCity || merchant?.city || merchant?.locality || merchant?.village || parsed.city,
+      clientVat: previousInvoice?.clientVat || merchant?.vatNumber || merchant?.bce || "",
     }));
   };
 
