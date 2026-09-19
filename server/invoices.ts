@@ -47,8 +47,14 @@ async function ensureInvoiceTables() {
       invoiceNumber varchar(64) NOT NULL UNIQUE,
       merchantId varchar(100) DEFAULT NULL,
       clientName varchar(255) NOT NULL,
+      clientFirstName varchar(120) DEFAULT NULL,
+      clientLastName varchar(120) DEFAULT NULL,
       clientEmail varchar(320) NOT NULL,
       clientAddress varchar(500) DEFAULT NULL,
+      clientStreet varchar(255) DEFAULT NULL,
+      clientStreetNumber varchar(32) DEFAULT NULL,
+      clientPostalCode varchar(20) DEFAULT NULL,
+      clientCity varchar(120) DEFAULT NULL,
       clientVat varchar(64) DEFAULT NULL,
       items json NOT NULL,
       subtotalCents int NOT NULL,
@@ -70,6 +76,22 @@ async function ensureInvoiceTables() {
       INDEX idx_invoice_client (clientEmail)
     )
   `);
+
+  const invoiceExtraColumns = [
+    ["clientFirstName", "varchar(120) DEFAULT NULL"],
+    ["clientLastName", "varchar(120) DEFAULT NULL"],
+    ["clientStreet", "varchar(255) DEFAULT NULL"],
+    ["clientStreetNumber", "varchar(32) DEFAULT NULL"],
+    ["clientPostalCode", "varchar(20) DEFAULT NULL"],
+    ["clientCity", "varchar(120) DEFAULT NULL"],
+  ] as const;
+  for (const [column, definition] of invoiceExtraColumns) {
+    try {
+      await pool.execute(`ALTER TABLE invoices ADD COLUMN \`${column}\` ${definition}`);
+    } catch (error: any) {
+      if (!String(error?.message || "").toLowerCase().includes("duplicate column")) throw error;
+    }
+  }
 
   await pool.execute(`UPDATE billing_settings SET issuerName='SYNERGIE DOUR ASBL', issuerAddress='Grand''Place 9, 7370 Dour', issuerEmail='contact@synergiedour.be', enterpriseNumber='BE 1036.801.623', iban='BE6263068960307808', defaultVatRate=0 WHERE id=1`);
   tablesReady = true;
@@ -156,6 +178,23 @@ function formatBelgianDate(value: unknown) {
 function formatIban(value: unknown) {
   const clean = String(value ?? "").replace(/\s+/g, "").toUpperCase();
   return clean.replace(/(.{4})/g, "$1 ").trim();
+}
+
+function buildClientAddress(input: {
+  street?: unknown;
+  streetNumber?: unknown;
+  postalCode?: unknown;
+  city?: unknown;
+  fallback?: unknown;
+}) {
+  const street = String(input.street ?? "").trim();
+  const number = String(input.streetNumber ?? "").trim();
+  const postalCode = String(input.postalCode ?? "").trim();
+  const city = String(input.city ?? "").trim();
+  const streetLine = [street, number].filter(Boolean).join(" ");
+  const cityLine = [postalCode, city].filter(Boolean).join(" ");
+  const structured = [streetLine, cityLine].filter(Boolean).join(", ");
+  return structured || String(input.fallback ?? "").trim();
 }
 
 function buildPaymentReference(invoiceNumber: string, clientName: string) {
@@ -270,10 +309,25 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   line(50, 620, 545, 620);
   commands.push("0.00 0.10 0.28 rg");
   text(50, 595, 11, "Facture a :", true);
-  text(50, 575, 11, invoice.clientName, true);
-  if (invoice.clientAddress) text(50, 559, 9, invoice.clientAddress);
-  if (invoice.clientVat) text(50, 543, 9, `TVA/BCE : ${invoice.clientVat}`);
-  text(50, 527, 9, invoice.clientEmail);
+  let clientY = 577;
+  const clientLine = (value: unknown, bold = false) => {
+    if (!String(value ?? "").trim()) return;
+    text(50, clientY, bold ? 10 : 8.5, value, bold);
+    clientY -= 14;
+  };
+  clientLine(invoice.clientName, true);
+  const contactName = [invoice.clientFirstName, invoice.clientLastName].filter(Boolean).join(" ").trim();
+  if (contactName) clientLine(contactName);
+  const streetLine = [invoice.clientStreet, invoice.clientStreetNumber].filter(Boolean).join(" ").trim();
+  const cityLine = [invoice.clientPostalCode, invoice.clientCity].filter(Boolean).join(" ").trim();
+  if (streetLine || cityLine) {
+    if (streetLine) clientLine(streetLine);
+    if (cityLine) clientLine(cityLine);
+  } else if (invoice.clientAddress) {
+    clientLine(invoice.clientAddress);
+  }
+  if (invoice.clientVat) clientLine(`TVA/BCE : ${invoice.clientVat}`);
+  clientLine(invoice.clientEmail);
 
   let y = 480;
   commands.push("0.94 0.94 0.94 rg 50 490 495 24 re f");
@@ -482,8 +536,23 @@ invoiceRouter.post("/", async (req, res) => {
     const settings = await getSettings();
     const v = req.body ?? {};
     const clientName = String(v.clientName || "").trim();
+    const clientFirstName = String(v.clientFirstName || "").trim().slice(0, 120);
+    const clientLastName = String(v.clientLastName || "").trim().slice(0, 120);
     const clientEmail = String(v.clientEmail || "").trim().toLowerCase();
-    if (!clientName) return res.status(400).json({ message: "Nom du client requis" });
+    const clientStreet = String(v.clientStreet || "").trim().slice(0, 255);
+    const clientStreetNumber = String(v.clientStreetNumber || "").trim().slice(0, 32);
+    const clientPostalCode = String(v.clientPostalCode || "").trim().slice(0, 20);
+    const clientCity = String(v.clientCity || "").trim().slice(0, 120);
+    const clientAddress = buildClientAddress({
+      street: clientStreet,
+      streetNumber: clientStreetNumber,
+      postalCode: clientPostalCode,
+      city: clientCity,
+      fallback: v.clientAddress,
+    }).slice(0, 500);
+    if (!clientName) return res.status(400).json({ message: "Nom du commerce / société requis" });
+    if (!clientFirstName || !clientLastName) return res.status(400).json({ message: "Nom et prénom du contact requis" });
+    if (!clientStreet || !clientStreetNumber || !clientPostalCode || !clientCity) return res.status(400).json({ message: "Adresse complète requise : rue, numéro, code postal et localité" });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) return res.status(400).json({ message: "Email client invalide" });
 
     const rawItems = Array.isArray(v.items) ? v.items.slice(0, 10) : [];
@@ -522,14 +591,20 @@ invoiceRouter.post("/", async (req, res) => {
 
     const [result] = await pool.execute(`
       INSERT INTO invoices
-        (invoiceNumber, merchantId, clientName, clientEmail, clientAddress, clientVat, items, subtotalCents, vatCents, totalCents, issueDate, dueDate, paymentReference, createdBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (invoiceNumber, merchantId, clientName, clientFirstName, clientLastName, clientEmail, clientAddress, clientStreet, clientStreetNumber, clientPostalCode, clientCity, clientVat, items, subtotalCents, vatCents, totalCents, issueDate, dueDate, paymentReference, createdBy)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       invoiceNumber,
       v.merchantId ? String(v.merchantId).slice(0, 100) : null,
       clientName,
+      clientFirstName || null,
+      clientLastName || null,
       clientEmail,
-      v.clientAddress ? String(v.clientAddress).slice(0, 500) : null,
+      clientAddress || null,
+      clientStreet || null,
+      clientStreetNumber || null,
+      clientPostalCode || null,
+      clientCity || null,
       v.clientVat ? String(v.clientVat).slice(0, 64) : null,
       JSON.stringify(items),
       subtotalCents,
@@ -554,20 +629,51 @@ invoiceRouter.put("/:id", async (req, res) => {
     if (!invoice) return res.status(404).json({ message: "Facture introuvable" });
     if (invoice.status !== "draft") return res.status(409).json({ message: "Seuls les brouillons peuvent être modifiés" });
     const v = req.body ?? {};
-    const clientName = String(v.clientName || invoice.clientName).trim();
-    const clientEmail = String(v.clientEmail || invoice.clientEmail).trim().toLowerCase();
+    const clientName = String(v.clientName ?? invoice.clientName ?? "").trim();
+    const clientFirstName = String(v.clientFirstName ?? invoice.clientFirstName ?? "").trim().slice(0, 120);
+    const clientLastName = String(v.clientLastName ?? invoice.clientLastName ?? "").trim().slice(0, 120);
+    const clientEmail = String(v.clientEmail ?? invoice.clientEmail ?? "").trim().toLowerCase();
+    const clientStreet = String(v.clientStreet ?? invoice.clientStreet ?? "").trim().slice(0, 255);
+    const clientStreetNumber = String(v.clientStreetNumber ?? invoice.clientStreetNumber ?? "").trim().slice(0, 32);
+    const clientPostalCode = String(v.clientPostalCode ?? invoice.clientPostalCode ?? "").trim().slice(0, 20);
+    const clientCity = String(v.clientCity ?? invoice.clientCity ?? "").trim().slice(0, 120);
+    const clientAddress = buildClientAddress({
+      street: clientStreet,
+      streetNumber: clientStreetNumber,
+      postalCode: clientPostalCode,
+      city: clientCity,
+      fallback: v.clientAddress ?? invoice.clientAddress,
+    }).slice(0, 500);
     const items = Array.isArray(v.items) ? v.items.slice(0, 10).map((item: any) => ({
       description: String(item.description || "Service").trim().slice(0, 255),
       quantity: Math.max(0.01, Number(item.quantity || 1)),
       unitPriceCents: Math.max(0, Math.round(Number(item.unitPriceCents || 0))),
       vatRate: Math.max(0, Math.min(100, Number(item.vatRate ?? 21))),
     })) : invoice.items;
-    if (!clientName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail) || !items.length) return res.status(400).json({ message: "Données de facture invalides" });
+    if (!clientName || !clientFirstName || !clientLastName || !clientStreet || !clientStreetNumber || !clientPostalCode || !clientCity || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail) || !items.length) {
+      return res.status(400).json({ message: "Données client incomplètes : nom, prénom, commerce, rue, numéro, code postal, localité et email sont requis" });
+    }
     const subtotalCents = items.reduce((s: number, i: any) => s + Math.round(i.quantity * i.unitPriceCents), 0);
     const vatCents = items.reduce((s: number, i: any) => s + Math.round(i.quantity * i.unitPriceCents * i.vatRate / 100), 0);
-    await (await getPool()).execute("UPDATE invoices SET clientName=?, clientEmail=?, clientAddress=?, clientVat=?, items=?, subtotalCents=?, vatCents=?, totalCents=?, issueDate=?, dueDate=? WHERE id=?", [
-      clientName, clientEmail, v.clientAddress ?? invoice.clientAddress, v.clientVat ?? invoice.clientVat, JSON.stringify(items), subtotalCents, vatCents, subtotalCents + vatCents,
-      v.issueDate || invoice.issueDate, v.dueDate || invoice.dueDate, buildPaymentReference(invoice.invoiceNumber, clientName), invoice.id,
+    await (await getPool()).execute("UPDATE invoices SET clientName=?, clientFirstName=?, clientLastName=?, clientEmail=?, clientAddress=?, clientStreet=?, clientStreetNumber=?, clientPostalCode=?, clientCity=?, clientVat=?, items=?, subtotalCents=?, vatCents=?, totalCents=?, issueDate=?, dueDate=?, paymentReference=? WHERE id=?", [
+      clientName,
+      clientFirstName || null,
+      clientLastName || null,
+      clientEmail,
+      clientAddress || null,
+      clientStreet || null,
+      clientStreetNumber || null,
+      clientPostalCode || null,
+      clientCity || null,
+      v.clientVat ?? invoice.clientVat,
+      JSON.stringify(items),
+      subtotalCents,
+      vatCents,
+      subtotalCents + vatCents,
+      v.issueDate || invoice.issueDate,
+      v.dueDate || invoice.dueDate,
+      buildPaymentReference(invoice.invoiceNumber, clientName),
+      invoice.id,
     ]);
     res.json(await getInvoice(invoice.id));
   } catch (error: any) { res.status(500).json({ message: error.message }); }
