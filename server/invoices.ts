@@ -304,6 +304,12 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   const text = (x: number, y: number, size: number, value: unknown, bold = false) => {
     commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${pdfSafe(value)}) Tj ET`);
   };
+  const textCenter = (y: number, size: number, value: unknown, bold = false) => {
+    const safeValue = pdfSafe(value);
+    const approxWidth = safeValue.length * size * 0.44;
+    const x = Math.max(32, (595 - approxWidth) / 2);
+    commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${safeValue}) Tj ET`);
+  };
   const line = (x1: number, y1: number, x2: number, y2: number) => commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
 
   if (logoBuffer) commands.push("q 100 0 0 100 50 700 cm /Im1 Do Q");
@@ -385,7 +391,8 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   text(385, y, 12, "TOTAL", true);
   text(450, y, 12, money(Number(invoice.totalCents)), true);
 
-  const payY = Math.max(115, y - 95);
+  // Zone de paiement volontairement placée sous le watermark pour éviter toute superposition.
+  const payY = 115;
   commands.push("0.96 0.95 0.88 rg 50 " + (payY - 8) + " 495 72 re f");
   commands.push("0.00 0.10 0.28 rg");
   text(60, payY + 44, 10, acquitted ? "Paiement recu" : "Informations de paiement", true);
@@ -397,8 +404,11 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
     text(60, payY + 20, 9, `Reference : ${invoice.paymentReference}`);
   }
 
-  text(50, 55, 8, "Document genere par le cockpit Synergie Dour. Conservez cette facture pour votre comptabilite.");
-  text(50, 40, 7, `${APP_URL} - ${settings.issuerEmail || "contact@synergiedour.be"}`);
+  // Signature technologique discrète et centrée en pied de page.
+  commands.push("0.00 0.10 0.28 rg");
+  textCenter(62, 7.2, "Solution digitale conçue sur mesure pour Synergie Dour ASBL et mise à disposition par JS-Innov.IA");
+  textCenter(47, 6.2, "Automatisation intelligente · Sites web nouvelle génération · Création visuelle premium · Agents IA · Solutions digitales sur mesure");
+  textCenter(31, 7.2, "JS-Innov.IA — Intelligence Artificielle amplifiée par l'HUMAIN", true);
 
   const logoJpeg = logoBuffer ? await sharp(logoBuffer).flatten({ background: "#ffffff" }).resize(1000, 1000, { fit: "contain", background: "#ffffff" }).jpeg({ quality: 90 }).toBuffer() : null;
   const watermarkJpeg = watermarkBuffer ? await sharp(watermarkBuffer).flatten({ background: "#ffffff" }).resize(1000, 1000, { fit: "contain", background: "#ffffff" }).jpeg({ quality: 75 }).toBuffer() : null;
