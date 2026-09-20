@@ -40,6 +40,7 @@ import {
   Store,
   UserCheck,
   Users,
+  Vote,
   Wrench,
   Zap,
 } from "lucide-react";
@@ -124,7 +125,7 @@ function DashboardLayoutContent({
         { icon: Inbox, label: "Boîte de réception", path: "/dashboard/inbox" },
         { icon: ClipboardList, label: "Demandes", path: "/dashboard/requests" },
         { icon: UserCheck, label: "Adhésions", path: "/dashboard/membership-requests" },
-        { icon: Users, label: "Membres CA", path: "/dashboard/members" },
+        { icon: Vote, label: "Conseil & Votes", path: "/dashboard/board" },
       ],
     },
     {
@@ -153,6 +154,7 @@ function DashboardLayoutContent({
   const merchantMenuItems: MenuItem[] = [
     { icon: LayoutDashboard, label: "Mon profil", path: "/dashboard" },
     { icon: Image, label: "Ma galerie", path: "/dashboard/gallery" },
+    { icon: Vote, label: "Conseil & Votes", path: "/dashboard/board" },
   ];
 
   const allAdminItems = useMemo(
