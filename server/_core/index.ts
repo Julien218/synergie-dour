@@ -22,6 +22,7 @@ import { dropboxRouter } from "../dropbox";
 import { invoiceRouter } from "../invoices";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
 import { cronBackupHandler, isProductionEnvironment } from "../cron/backup";
+import { runBoardMeetingReminders } from "../boardVotesRouter";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -320,6 +321,12 @@ async function startServer() {
       console.log(`[BACKUP CRON] Planifie chaque jour a ${hour}h${String(minute).padStart(2,"0")}`);
     }
     scheduleDaily(2, 0, runDatabaseBackup);
+
+    setTimeout(() => {
+      runBoardMeetingReminders().catch(e => console.error("[BOARD REMINDERS]", e));
+      setInterval(() => runBoardMeetingReminders().catch(e => console.error("[BOARD REMINDERS]", e)), 15 * 60 * 1000);
+    }, 60_000);
+    console.log("[BOARD REMINDERS] Vérification toutes les 15 minutes · envoi J-3 et jour J dès 09:00 Europe/Brussels");
   })();
   else console.log(`[BACKUP CRON] Désactivé hors production (${process.env.RAILWAY_ENVIRONMENT_NAME || process.env.NODE_ENV || "unknown"})`);
   serveStatic(app);
