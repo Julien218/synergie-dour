@@ -20,6 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
+import { trpc } from "@/lib/trpc";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   Building2,
@@ -110,6 +111,8 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const { data: boardAccess } = trpc.board.myAccess.useQuery(undefined, { enabled: !isAdmin });
+  const hasBoardAccess = !!boardAccess?.isBoardMember && !!(boardAccess?.canCalendar || boardAccess?.canVotes || boardAccess?.canMinutes);
 
   const dashboardItem: MenuItem = { icon: LayoutDashboard, label: "Tableau de bord", path: "/dashboard" };
   const billingItem: MenuItem = { icon: CreditCard, label: "Facturation", path: "/dashboard/facturation" };
@@ -154,7 +157,7 @@ function DashboardLayoutContent({
   const merchantMenuItems: MenuItem[] = [
     { icon: LayoutDashboard, label: "Mon profil", path: "/dashboard" },
     { icon: Image, label: "Ma galerie", path: "/dashboard/gallery" },
-    { icon: Vote, label: "Conseil & Votes", path: "/dashboard/board" },
+    ...(hasBoardAccess ? [{ icon: Vote, label: "Conseil & Votes", path: "/dashboard/board" }] : []),
   ];
 
   const allAdminItems = useMemo(
