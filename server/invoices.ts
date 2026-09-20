@@ -313,7 +313,7 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   const line = (x1: number, y1: number, x2: number, y2: number) => commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
 
   if (logoBuffer) commands.push("q 135 0 0 135 32 695 cm /Im1 Do Q");
-  if (watermarkBuffer) commands.push("q /GS1 gs 340 0 0 340 130 190 cm /Im2 Do Q");
+  if (watermarkBuffer) commands.push("q /GS1 gs 190 0 0 190 202 190 cm /Im2 Do Q");
   commands.push("0.00 0.10 0.28 rg");
   // Le nom est intégré au logo officiel. Si l'asset ne peut pas être lu, on garde un en-tête textuel de secours.
   if (!logoBuffer) text(50, 720, 16, settings.issuerName || "SYNERGIE DOUR ASBL", true);
