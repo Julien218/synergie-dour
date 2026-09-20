@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import {
   CalendarDays,
   CheckCircle2,
+  FileText,
   Clock3,
   Gavel,
   Plus,
@@ -22,7 +23,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-type Tab = "meetings" | "members" | "myvotes";
+type Tab = "meetings" | "members" | "myvotes" | "calendar" | "minutes";
 type Choice = "for" | "against" | "abstain";
 
 const choiceLabel: Record<Choice, string> = {
@@ -60,13 +61,26 @@ export default function BoardVotesPage() {
   const utils = trpc.useUtils();
   const [tab, setTab] = useState<Tab>(isAdmin ? "meetings" : "myvotes");
 
+  const access = trpc.board.myAccess.useQuery();
   const snapshot = trpc.board.snapshot.useQuery(undefined, { enabled: isAdmin });
-  const myQueue = trpc.board.myQueue.useQuery();
+  const myQueue = trpc.board.myQueue.useQuery(undefined, { enabled: !isAdmin && !!access.data?.canVotes });
+  const calendar = trpc.board.myCalendar.useQuery(undefined, { enabled: isAdmin || !!access.data?.canCalendar });
+  const minutes = trpc.board.myMinutes.useQuery(undefined, { enabled: isAdmin || !!access.data?.canMinutes });
+
+  useEffect(() => {
+    if (isAdmin || !access.data) return;
+    if (access.data.canVotes) setTab("myvotes");
+    else if (access.data.canCalendar) setTab("calendar");
+    else if (access.data.canMinutes) setTab("minutes");
+  }, [isAdmin, access.data?.canVotes, access.data?.canCalendar, access.data?.canMinutes]);
 
   const refresh = async () => {
     await Promise.all([
       isAdmin ? utils.board.snapshot.invalidate() : Promise.resolve(),
       utils.board.myQueue.invalidate(),
+      utils.board.myAccess.invalidate(),
+      utils.board.myCalendar.invalidate(),
+      utils.board.myMinutes.invalidate(),
     ]);
   };
 
@@ -87,6 +101,7 @@ export default function BoardVotesPage() {
   const closeAgendaVote = trpc.board.closeAgendaVote.useMutation(mutationOptions);
   const recordVote = trpc.board.recordVote.useMutation(mutationOptions);
   const castMyVote = trpc.board.castMyVote.useMutation(mutationOptions);
+  const saveMinutes = trpc.board.saveMinutes.useMutation(mutationOptions);
 
   const [memberForm, setMemberForm] = useState({
     id: 0,
@@ -94,6 +109,16 @@ export default function BoardVotesPage() {
     email: "",
     roleTitle: "",
     isPresident: false,
+    canCalendar: true,
+    canVotes: true,
+    canMinutes: true,
+  });
+
+  const [minutesForm, setMinutesForm] = useState({
+    meetingId: 0,
+    title: "Procès-verbal",
+    content: "",
+    status: "draft",
   });
 
   const [meetingForm, setMeetingForm] = useState({
@@ -124,7 +149,7 @@ export default function BoardVotesPage() {
       id: memberForm.id || undefined,
     });
     toast.success(memberForm.id ? "Membre CA mis à jour" : "Membre CA ajouté");
-    setMemberForm({ id: 0, fullName: "", email: "", roleTitle: "", isPresident: false });
+    setMemberForm({ id: 0, fullName: "", email: "", roleTitle: "", isPresident: false, canCalendar: true, canVotes: true, canMinutes: true });
   };
 
   const submitMeeting = async () => {
@@ -139,6 +164,15 @@ export default function BoardVotesPage() {
     setMeetingForm({ title: "", meetingDate: "", location: "", notes: "" });
   };
 
+  const submitMinutes = async () => {
+    if (!minutesForm.meetingId || !minutesForm.content.trim()) {
+      return toast.error("Sélectionnez une réunion et complétez le PV");
+    }
+    await saveMinutes.mutateAsync(minutesForm);
+    toast.success(minutesForm.status === "published" ? "PV publié" : "PV enregistré en brouillon");
+    setMinutesForm({ meetingId: 0, title: "Procès-verbal", content: "", status: "draft" });
+  };
+
   const submitAgenda = async () => {
     if (!agendaForm.meetingId || !agendaForm.title.trim()) {
       return toast.error("Sélectionnez une réunion et indiquez le point");
@@ -147,6 +181,24 @@ export default function BoardVotesPage() {
     toast.success("Point ajouté à l'ordre du jour");
     setAgendaForm((f) => ({ ...f, title: "", description: "", kind: "discussion" }));
   };
+
+  if (access.isLoading) {
+    return <DashboardLayout><div className="py-16 text-center text-gray-500">Vérification des accès au Conseil…</div></DashboardLayout>;
+  }
+
+  if (!isAdmin && (!access.data?.isBoardMember || (!access.data.canCalendar && !access.data.canVotes && !access.data.canMinutes))) {
+    return (
+      <DashboardLayout>
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="py-12 text-center">
+            <ShieldCheck className="w-10 h-10 mx-auto text-gray-400 mb-3" />
+            <h2 className="text-xl font-bold text-[#001a3d]">Accès non autorisé</h2>
+            <p className="text-sm text-gray-500 mt-2">Votre compte ne dispose d'aucun accès au module du Conseil d'Administration.</p>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -184,9 +236,21 @@ export default function BoardVotesPage() {
               </Button>
             </>
           )}
-          <Button variant={tab === "myvotes" ? "default" : "outline"} onClick={() => setTab("myvotes")}>
-            <Vote className="w-4 h-4 mr-2" /> Mes votes
-          </Button>
+          {(isAdmin || access.data?.canCalendar) && (
+            <Button variant={tab === "calendar" ? "default" : "outline"} onClick={() => setTab("calendar")}>
+              <CalendarDays className="w-4 h-4 mr-2" /> Calendrier
+            </Button>
+          )}
+          {(isAdmin || access.data?.canVotes) && (
+            <Button variant={tab === "myvotes" ? "default" : "outline"} onClick={() => setTab("myvotes")}>
+              <Vote className="w-4 h-4 mr-2" /> Mes votes
+            </Button>
+          )}
+          {(isAdmin || access.data?.canMinutes) && (
+            <Button variant={tab === "minutes" ? "default" : "outline"} onClick={() => setTab("minutes")}>
+              <FileText className="w-4 h-4 mr-2" /> PV
+            </Button>
+          )}
         </div>
 
         {tab === "members" && isAdmin && (
@@ -201,9 +265,16 @@ export default function BoardVotesPage() {
                   <input type="checkbox" checked={memberForm.isPresident} onChange={(e) => setMemberForm((f) => ({ ...f, isPresident: e.target.checked }))} />
                   Président du CA
                 </label>
+                <div className="rounded-lg border bg-slate-50 p-3 space-y-2">
+                  <div className="text-sm font-semibold text-[#001a3d]">Accès autorisés</div>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={memberForm.canCalendar} onChange={(e) => setMemberForm((f) => ({ ...f, canCalendar: e.target.checked }))} /> Calendrier + rappels email</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={memberForm.canVotes} onChange={(e) => setMemberForm((f) => ({ ...f, canVotes: e.target.checked }))} /> Votes en ligne</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={memberForm.canMinutes} onChange={(e) => setMemberForm((f) => ({ ...f, canMinutes: e.target.checked }))} /> PV / comptes-rendus</label>
+                  <p className="text-xs text-gray-500">Ces droits n'ouvrent jamais le CRM commerces, la liste clients ou les adhésions.</p>
+                </div>
                 <div className="flex gap-2">
                   <Button onClick={submitMember} disabled={saveMember.isPending} className="flex-1">Enregistrer</Button>
-                  {memberForm.id > 0 && <Button variant="outline" onClick={() => setMemberForm({ id: 0, fullName: "", email: "", roleTitle: "", isPresident: false })}>Annuler</Button>}
+                  {memberForm.id > 0 && <Button variant="outline" onClick={() => setMemberForm({ id: 0, fullName: "", email: "", roleTitle: "", isPresident: false, canCalendar: true, canVotes: true, canMinutes: true })}>Annuler</Button>}
                 </div>
               </CardContent>
             </Card>
@@ -221,6 +292,11 @@ export default function BoardVotesPage() {
                       </div>
                       <div className="text-xs text-gray-500">{member.roleTitle || "Administrateur"} · {member.email}</div>
                       <div className="text-xs text-gray-400">{member.userId ? "Compte site associé" : "Compte site à associer via le même email"}</div>
+                      <div className="flex gap-1 mt-2 flex-wrap">
+                        {Number(member.canCalendar) === 1 && <Badge variant="outline">Calendrier</Badge>}
+                        {Number(member.canVotes) === 1 && <Badge variant="outline">Votes</Badge>}
+                        {Number(member.canMinutes) === 1 && <Badge variant="outline">PV</Badge>}
+                      </div>
                     </div>
                     {Number(member.active) === 1 && (
                       <div className="flex gap-2">
@@ -230,6 +306,9 @@ export default function BoardVotesPage() {
                           email: member.email || "",
                           roleTitle: member.roleTitle || "",
                           isPresident: Number(member.isPresident) === 1,
+                          canCalendar: Number(member.canCalendar) === 1,
+                          canVotes: Number(member.canVotes) === 1,
+                          canMinutes: Number(member.canMinutes) === 1,
                         })}>Modifier</Button>
                         <Button size="sm" variant="ghost" className="text-red-600" onClick={() => {
                           if (window.confirm("Désactiver " + member.fullName + " du CA ?")) deactivateMember.mutate({ id: member.id });
@@ -429,6 +508,71 @@ export default function BoardVotesPage() {
             {!snapshot.isLoading && (snapshot.data?.meetings || []).length === 0 && (
               <Card><CardContent className="py-14 text-center text-gray-400">Aucune réunion créée.</CardContent></Card>
             )}
+          </div>
+        )}
+
+        {tab === "calendar" && (isAdmin || access.data?.canCalendar) && (
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Calendrier du Conseil</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+                Les réunions de ce calendrier déclenchent automatiquement un rappel email à <strong>J-3</strong> puis <strong>le jour même à partir de 09:00, heure de Bruxelles</strong>. Un journal empêche les doublons.
+              </div>
+              {(calendar.data?.meetings || []).map((meeting: any) => (
+                <div key={meeting.id} className="rounded-xl border p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-[#001a3d]">{meeting.title}</div>
+                    <div className="text-sm text-gray-500 mt-1">{fmt(meeting.meetingDate)}{meeting.location ? " · " + meeting.location : ""}</div>
+                  </div>
+                  <Badge variant="outline">{meeting.status}</Badge>
+                </div>
+              ))}
+              {!calendar.isLoading && (calendar.data?.meetings || []).length === 0 && <div className="py-10 text-center text-gray-400">Aucune réunion au calendrier.</div>}
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === "minutes" && (isAdmin || access.data?.canMinutes) && (
+          <div className="space-y-6">
+            {isAdmin && (
+              <Card>
+                <CardHeader><CardTitle className="text-lg">Rédiger / publier un PV</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <select className="w-full rounded-md border px-3 py-2 text-sm" value={minutesForm.meetingId} onChange={(e) => {
+                    const id = Number(e.target.value);
+                    const existing = (minutes.data || []).find((m: any) => Number(m.meetingId) === id);
+                    setMinutesForm(existing ? { meetingId: id, title: existing.title || "Procès-verbal", content: existing.content || "", status: existing.status || "draft" } : { meetingId: id, title: "Procès-verbal", content: "", status: "draft" });
+                  }}>
+                    <option value={0}>Sélectionner une réunion</option>
+                    {(snapshot.data?.meetings || []).map((meeting: any) => <option key={meeting.id} value={meeting.id}>{meeting.title}</option>)}
+                  </select>
+                  <Input value={minutesForm.title} onChange={(e) => setMinutesForm((f) => ({ ...f, title: e.target.value }))} placeholder="Titre du PV" />
+                  <Textarea className="min-h-[240px]" value={minutesForm.content} onChange={(e) => setMinutesForm((f) => ({ ...f, content: e.target.value }))} placeholder="Présents, ordre du jour, décisions, résultats des votes, observations…" />
+                  <div className="flex gap-2 flex-wrap">
+                    <Button variant="outline" onClick={() => { setMinutesForm((f) => ({ ...f, status: "draft" })); saveMinutes.mutate({ ...minutesForm, status: "draft" }); }}>Enregistrer brouillon</Button>
+                    <Button onClick={() => { setMinutesForm((f) => ({ ...f, status: "published" })); saveMinutes.mutate({ ...minutesForm, status: "published" }); }}>Publier le PV</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <Card>
+              <CardHeader><CardTitle className="text-lg">Procès-verbaux disponibles</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {(minutes.data || []).map((minute: any) => (
+                  <div key={minute.id} className="rounded-xl border p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-[#001a3d]">{minute.title}</div>
+                        <div className="text-xs text-gray-500">{minute.meetingTitle} · {fmt(minute.meetingDate)}</div>
+                      </div>
+                      <Badge className={minute.status === "published" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}>{minute.status === "published" ? "Publié" : "Brouillon"}</Badge>
+                    </div>
+                    <div className="mt-3 whitespace-pre-wrap text-sm text-gray-700">{minute.content}</div>
+                  </div>
+                ))}
+                {!minutes.isLoading && (minutes.data || []).length === 0 && <div className="py-10 text-center text-gray-400">Aucun PV disponible.</div>}
+              </CardContent>
+            </Card>
           </div>
         )}
 
