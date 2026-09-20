@@ -125,7 +125,11 @@ function normalizeInvoice(row: any) {
   if (typeof items === "string") {
     try { items = JSON.parse(items); } catch { items = []; }
   }
-  return { ...row, items: Array.isArray(items) ? items : [] };
+  return {
+    ...row,
+    paymentReference: buildPaymentReference(row.invoiceNumber),
+    items: Array.isArray(items) ? items : [],
+  };
 }
 
 async function getSettings() {
@@ -168,9 +172,19 @@ function money(cents: number) {
   return new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
 
+function dateToIso(value: unknown) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  const text = String(value ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
+}
+
 function formatBelgianDate(value: unknown) {
-  const iso = String(value ?? "").slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return String(value ?? "");
+  const iso = dateToIso(value);
+  if (!iso) return "";
   const [year, month, day] = iso.split("-");
   return `${day}/${month}/${year}`;
 }
@@ -197,19 +211,22 @@ function buildClientAddress(input: {
   return structured || String(input.fallback ?? "").trim();
 }
 
-function buildPaymentReference(invoiceNumber: string, clientName: string) {
-  const cleanName = String(clientName || "Client")
-    .normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g, "")
-    .replace(/[^A-Za-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 55);
-  return `${invoiceNumber}-${cleanName || "Client"}`.slice(0, 100);
+function buildPaymentReference(invoiceNumber: string) {
+  const match = String(invoiceNumber || "").match(/SD-(\d{4})-(\d+)/i);
+  const year = match?.[1] || String(new Date().getUTCFullYear());
+  const sequence = String(match?.[2] || "0").replace(/\D/g, "").padStart(6, "0").slice(-6);
+  const base = `${year}${sequence}`.slice(-10);
+  const numericBase = Number(base);
+  const remainder = numericBase % 97;
+  const control = String(remainder === 0 ? 97 : remainder).padStart(2, "0");
+  const digits = `${base}${control}`;
+  return `+++${digits.slice(0, 3)}/${digits.slice(3, 7)}/${digits.slice(7)}+++`;
 }
 
 function membershipPeriod(issueDate: unknown) {
-  const start = new Date(`${String(issueDate).slice(0, 10)}T12:00:00Z`);
-  if (Number.isNaN(start.getTime())) return "";
+  const iso = dateToIso(issueDate);
+  if (!iso) return "";
+  const start = new Date(`${iso}T12:00:00Z`);
   const end = new Date(start);
   end.setUTCFullYear(end.getUTCFullYear() + 1);
   const format = (date: Date) => date.toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
@@ -587,7 +604,7 @@ invoiceRouter.post("/", async (req, res) => {
       seq += 1;
       invoiceNumber = `SD-${year}-${String(seq).padStart(4, "0")}`;
     }
-    const paymentReference = buildPaymentReference(invoiceNumber, clientName);
+    const paymentReference = buildPaymentReference(invoiceNumber);
 
     const [result] = await pool.execute(`
       INSERT INTO invoices
@@ -672,7 +689,7 @@ invoiceRouter.put("/:id", async (req, res) => {
       subtotalCents + vatCents,
       v.issueDate || invoice.issueDate,
       v.dueDate || invoice.dueDate,
-      buildPaymentReference(invoice.invoiceNumber, clientName),
+      buildPaymentReference(invoice.invoiceNumber),
       invoice.id,
     ]);
     res.json(await getInvoice(invoice.id));
