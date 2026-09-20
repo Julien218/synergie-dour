@@ -42,9 +42,11 @@ import { sendAdminNewMessageNotification, sendInstantAcknowledgement, sendContra
 import { TRPCError } from "@trpc/server";
 import { getChatbotSystemPrompt } from "./chatbotPrompt";
 import { askOpenAI } from "./chatbotClient";
+import { boardVotesRouter } from "./boardVotesRouter";
 
 export const appRouter = router({
   system: systemRouter,
+  board: boardVotesRouter,
   chatbot: router({
     ask: publicProcedure.input((value: unknown) => {
       if (!value || typeof value !== "object") {
