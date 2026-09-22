@@ -6,7 +6,7 @@ import { Loader2, Send, User } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Streamdown } from "streamdown";
 
-const ELYNEA_AVATAR = "https://www.jsinnovia.com/brand/companion/companion-avatar-256.webp";
+const ELYNEA_AVATAR = "https://www.jsinnovia.com/brand/companion/companion-avatar-256.webp?v=1.3.0";
 
 /**
  * Message type matching server-side LLM Message interface
