@@ -2,9 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Loader2, Send, User, Sparkles } from "lucide-react";
+import { Loader2, Send, User } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Streamdown } from "streamdown";
+
+const ELYNEA_AVATAR = "https://www.jsinnovia.com/brand/companion/companion-avatar-256.webp";
 
 /**
  * Message type matching server-side LLM Message interface
@@ -247,9 +249,11 @@ export function AIChatBox({
                     }
                   >
                     {message.role === "assistant" && (
-                      <div className="size-8 shrink-0 mt-1 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Sparkles className="size-4 text-primary" />
-                      </div>
+                      <img
+                        src={ELYNEA_AVATAR}
+                        alt="Elynea"
+                        className="size-8 shrink-0 mt-1 rounded-full border border-primary/20 bg-background object-cover"
+                      />
                     )}
 
                     <div
