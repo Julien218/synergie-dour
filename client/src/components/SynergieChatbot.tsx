@@ -6,6 +6,8 @@ import {
   Mail, Image as ImageIcon, FileText, Share2, Building2
 } from "lucide-react";
 
+const ELYNEA_AVATAR = "https://www.jsinnovia.com/brand/companion/companion-avatar-256.webp?v=1.3.0";
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -273,7 +275,7 @@ export function SynergieChatbot({ context }: { context?: string }) {
                 }}>
                   {msg.role === "user"
                     ? <User size={13} color="#E8C547" />
-                    : <Sparkles size={13} color="#60b0ff" />}
+                    : <img src={ELYNEA_AVATAR} alt="Elynea" style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover" }} />}
                 </div>
 
                 {/* Bulle */}
@@ -312,14 +314,14 @@ export function SynergieChatbot({ context }: { context?: string }) {
             {/* Typing indicator */}
             {isThinking && (
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  background: "rgba(26,59,160,0.50)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <Sparkles size={13} color="#60b0ff" />
-                </div>
+                <img
+                  src={ELYNEA_AVATAR}
+                  alt="Elynea"
+                  style={{
+                    width: 28, height: 28, borderRadius: "50%", objectFit: "cover",
+                    border: "1px solid rgba(255,255,255,0.15)", flexShrink: 0,
+                  }}
+                />
                 <div style={{
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",
