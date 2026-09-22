@@ -6,7 +6,7 @@ import {
   Mail, Image as ImageIcon, FileText, Share2, Building2
 } from "lucide-react";
 
-const ELYNEA_AVATAR = "https://www.jsinnovia.com/brand/companion/companion-avatar-256.webp";
+const ELYNEA_AVATAR = "https://www.jsinnovia.com/brand/companion/companion-avatar-256.webp?v=1.3.0";
 
 interface Message {
   id: string;
