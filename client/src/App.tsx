@@ -9,43 +9,41 @@ import Contact from "@/pages/Contact";
 import Membership from "@/pages/Membership";
 import MembershipSuccess from "@/pages/MembershipSuccess";
 import MembershipCancelled from "@/pages/MembershipCancelled";
-import Dashboard from "@/pages/Dashboard";
-import ManageNews from "@/pages/ManageNews";
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const ManageNews = lazy(() => import("@/pages/ManageNews"));
 import NewsDetail from "@/pages/NewsDetail";
-import ManageEvents from "@/pages/ManageEvents";
-import ManageMerchants from "@/pages/ManageMerchants";
-import ManageRequests from "@/pages/ManageRequests";
-import MembershipRequestsAdmin from "@/pages/MembershipRequestsAdmin";
-import AgentModuleComingSoon from "@/pages/AgentModuleComingSoon";
-import MemberDashboard from "@/pages/MemberDashboard";
-import LeadFinderPage from "@/pages/LeadFinderPage";
-import ListeClients from "@/pages/ListeClients";
-import InboxPage from "@/pages/InboxPage";
+const ManageEvents = lazy(() => import("@/pages/ManageEvents"));
+const ManageMerchants = lazy(() => import("@/pages/ManageMerchants"));
+const ManageRequests = lazy(() => import("@/pages/ManageRequests"));
+const MembershipRequestsAdmin = lazy(() => import("@/pages/MembershipRequestsAdmin"));
+const AgentModuleComingSoon = lazy(() => import("@/pages/AgentModuleComingSoon"));
+const MemberDashboard = lazy(() => import("@/pages/MemberDashboard"));
+const LeadFinderPage = lazy(() => import("@/pages/LeadFinderPage"));
+const ListeClients = lazy(() => import("@/pages/ListeClients"));
+const InboxPage = lazy(() => import("@/pages/InboxPage"));
 import Resources from "@/pages/Resources";
 import Resource from "@/pages/Resource";
 import About from "@/pages/About";
-import Knowledge from "@/pages/Knowledge";
-import AiContext from "@/pages/AiContext";
 import Legal from "@/pages/Legal";
 import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
 import SoumettreLocal from "@/pages/SoumettreLocal";
-import ManageLocaux from "@/pages/ManageLocaux";
+const ManageLocaux = lazy(() => import("@/pages/ManageLocaux"));
 import LocauxCommerciaux from "@/pages/LocauxCommerciaux";
 import LocalDetail from "@/pages/LocalDetail";
-import ManagePosts from "@/pages/ManagePosts";
-import SocialMediaPage from "@/pages/SocialMediaPage";
-import AutopublishPage from "@/pages/AutopublishPage";
-import SuperAdminBrand from "@/pages/SuperAdminBrand";
-import InvoicesPage from "@/pages/InvoicesPage";
+const ManagePosts = lazy(() => import("@/pages/ManagePosts"));
+const SocialMediaPage = lazy(() => import("@/pages/SocialMediaPage"));
+const AutopublishPage = lazy(() => import("@/pages/AutopublishPage"));
+const SuperAdminBrand = lazy(() => import("@/pages/SuperAdminBrand"));
+const InvoicesPage = lazy(() => import("@/pages/InvoicesPage"));
 import { PublicLayout } from "@/components/PublicLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Route, Switch } from "wouter";
+import { lazy, Suspense } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import PostsPage from "@/pages/PostsPage";
-import GalleryPage from "@/pages/GalleryPage";
-import BoardVotesPage from "@/pages/BoardVotesPage";
+const GalleryPage = lazy(() => import("@/pages/GalleryPage"));
+const BoardVotesPage = lazy(() => import("@/pages/BoardVotesPage"));
 
 function Router() {
   return (
@@ -97,13 +95,23 @@ function Router() {
   );
 }
 
+function RouteLoader() {
+  return (
+    <div className="min-h-[40vh] flex items-center justify-center" aria-live="polite">
+      <div className="animate-spin rounded-full h-9 w-9 border-b-2 border-amber-500" />
+    </div>
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <Suspense fallback={<RouteLoader />}>
+            <Router />
+          </Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

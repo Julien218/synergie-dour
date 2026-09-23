@@ -7,7 +7,7 @@ import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 import { getNewsById, getResourceBySlug, getEventById } from "../db";
 
-const BASE_URL = "https://www.synergiedour.be";
+const BASE_URL = (process.env.APP_URL || "https://www.synergiedour.be").replace(/\/+$/, "");
 
 const NAVY  = "#0B2555";
 const STEEL = "#1A3B6B";

@@ -9,7 +9,6 @@ import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { users } from "../../drizzle/schema";
 import { createServer } from "http";
-import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -23,25 +22,6 @@ import { invoiceRouter } from "../invoices";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
 import { cronBackupHandler, isProductionEnvironment } from "../cron/backup";
 import { runBoardMeetingReminders } from "../boardVotesRouter";
-
-function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise(resolve => {
-    const server = net.createServer();
-    server.listen(port, () => {
-      server.close(() => resolve(true));
-    });
-    server.on("error", () => resolve(false));
-  });
-}
-
-async function findAvailablePort(startPort: number = 3000): Promise<number> {
-  for (let port = startPort; port < startPort + 20; port++) {
-    if (await isPortAvailable(port)) {
-      return port;
-    }
-  }
-  throw new Error(`No available port found starting from ${startPort}`);
-}
 
 async function ensureColumn(pool: any, table: string, column: string, addSql: string) {
   try {
@@ -219,6 +199,46 @@ async function startServer() {
   
   app.set("trust proxy", 1);
 
+  const canonicalAppUrl = (process.env.APP_URL || "https://www.synergiedour.be").replace(/\/+$/, "");
+
+  // Canonical domain: bare domain always redirects to the configured public URL.
+  app.use((req, res, next) => {
+    const host = (req.headers.host || "").split(":")[0].toLowerCase();
+    if (host === "synergiedour.be") {
+      return res.redirect(301, `${canonicalAppUrl}${req.originalUrl}`);
+    }
+    next();
+  });
+
+  // Do not let SPA fallback make sensitive probes look successful.
+  app.use((req, res, next) => {
+    const requestPath = req.path.toLowerCase();
+    const blockedExactPaths = new Set([
+      "/package.json",
+      "/pnpm-lock.yaml",
+      "/tsconfig.json",
+      "/vite.config.ts",
+      "/drizzle.config.ts",
+      "/railway.toml",
+      "/nixpacks.toml",
+      "/dockerfile",
+    ]);
+    const blockedPrefix =
+      requestPath.startsWith("/.env") ||
+      requestPath.startsWith("/.git") ||
+      requestPath.startsWith("/server/") ||
+      requestPath.startsWith("/client/");
+
+    if (blockedPrefix || blockedExactPaths.has(requestPath)) {
+      return res.status(404).type("text/plain").send("Not found");
+    }
+    next();
+  });
+
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -332,8 +352,10 @@ async function startServer() {
   serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  const port = Number.parseInt(process.env.PORT || "3000", 10);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid PORT value: ${process.env.PORT}`);
+  }
 
   server.listen(port, "0.0.0.0", () => {
     console.log(`Server running in ${process.env.NODE_ENV} mode on port ${port}`);
