@@ -131,7 +131,7 @@ export async function sendBoardMemberInvitation(memberId: number, actorId: numbe
     const [previous] = await connection.execute("SELECT createdAtMs, status FROM board_invitations WHERE memberId=? ORDER BY id DESC LIMIT 1 FOR UPDATE", [memberId]);
     const last = (previous as any[])[0];
     const now = Date.now();
-    if (last && now - Number(last.createdAtMs) < (last.status === "sending" ? 120_000 : 60_000)) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Un envoi vient d'être demandé. Patientez une à deux minutes avant de renvoyer." });
+    if (last && last.status !== "revoked" && now - Number(last.createdAtMs) < (last.status === "sending" ? 120_000 : 60_000)) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Un envoi vient d'être demandé. Patientez une à deux minutes avant de renvoyer." });
     await revoke(connection, memberId);
     const token = crypto.randomBytes(32).toString("hex");
     const hours = invitationLifetimeHours();
