@@ -9,8 +9,8 @@ const requests = new Map<string, { count: number; until: number }>();
 const WINDOW_MS = 15 * 60_000;
 const publicInvitationProcedure = publicProcedure.use(async ({ ctx, next }) => {
   const now = Date.now();
-  for (const [key, bucket] of requests) if (bucket.until <= now) requests.delete(key);
-  const key = ctx.req.ip || ctx.req.socket.remoteAddress || "unknown";
+  requests.forEach((bucket, key) => { if (bucket.until <= now) requests.delete(key); });
+  const key = ctx.req.ip || ctx.req.socket?.remoteAddress || "unknown";
   const bucket = requests.get(key);
   if ((bucket && bucket.count >= 120) || (!bucket && requests.size >= 10_000)) {
     throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Trop de tentatives. Réessayez dans quelques minutes." });
