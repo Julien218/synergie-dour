@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import BoardInvitationStatus from "@/components/BoardInvitationStatus";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,7 +63,7 @@ export default function BoardVotesPage() {
   const [tab, setTab] = useState<Tab>(isAdmin ? "meetings" : "myvotes");
 
   const access = trpc.board.myAccess.useQuery();
-  const snapshot = trpc.board.snapshot.useQuery(undefined, { enabled: isAdmin });
+  const snapshot = trpc.board.snapshot.useQuery(undefined, { enabled: isAdmin, refetchInterval: isAdmin ? 30000 : false });
   const myQueue = trpc.board.myQueue.useQuery(undefined, { enabled: !isAdmin && !!access.data?.canVotes });
   const calendar = trpc.board.myCalendar.useQuery(undefined, { enabled: isAdmin || !!access.data?.canCalendar });
   const minutes = trpc.board.myMinutes.useQuery(undefined, { enabled: isAdmin || !!access.data?.canMinutes });
@@ -144,12 +145,14 @@ export default function BoardVotesPage() {
     if (!memberForm.fullName.trim() || !memberForm.email.trim()) {
       return toast.error("Nom et email requis");
     }
-    await saveMember.mutateAsync({
-      ...memberForm,
-      id: memberForm.id || undefined,
-    });
-    toast.success(memberForm.id ? "Membre CA mis à jour" : "Membre CA ajouté");
-    setMemberForm({ id: 0, fullName: "", email: "", roleTitle: "", isPresident: false, canCalendar: true, canVotes: true, canMinutes: true });
+    try {
+      const result = await saveMember.mutateAsync({ ...memberForm, id: memberForm.id || undefined });
+      if (result.invitationRequested) {
+        if (result.invitation?.status === "sent") toast.success("Membre enregistré et invitation envoyée au service email.");
+        else toast.error("Membre enregistré, mais invitation non envoyée : " + (result.invitation?.errorMessage || "Vérifiez l'état d'envoi sur sa fiche."));
+      } else toast.success(memberForm.id ? "Membre CA mis à jour" : "Membre déjà existant mis à jour. Utilisez le bouton d'invitation sur sa fiche.");
+      setMemberForm({ id: 0, fullName: "", email: "", roleTitle: "", isPresident: false, canCalendar: true, canVotes: true, canMinutes: true });
+    } catch { /* The mutation error handler reports the failure; retain the form. */ }
   };
 
   const submitMeeting = async () => {
@@ -273,7 +276,7 @@ export default function BoardVotesPage() {
                   <p className="text-xs text-gray-500">Ces droits n'ouvrent jamais le CRM commerces, la liste clients ou les adhésions.</p>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={submitMember} disabled={saveMember.isPending} className="flex-1">Enregistrer</Button>
+                  <Button onClick={submitMember} disabled={saveMember.isPending} className="flex-1 h-auto whitespace-normal">{saveMember.isPending ? "Enregistrement…" : memberForm.id ? "Enregistrer" : "Enregistrer et inviter"}</Button>
                   {memberForm.id > 0 && <Button variant="outline" onClick={() => setMemberForm({ id: 0, fullName: "", email: "", roleTitle: "", isPresident: false, canCalendar: true, canVotes: true, canMinutes: true })}>Annuler</Button>}
                 </div>
               </CardContent>
@@ -283,7 +286,7 @@ export default function BoardVotesPage() {
               <CardHeader><CardTitle className="text-lg">Composition du Conseil</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 {(snapshot.data?.members || []).map((member: any) => (
-                  <div key={member.id} className={"rounded-lg border p-3 flex items-center justify-between gap-3 " + (Number(member.active) ? "bg-white" : "bg-slate-50 opacity-60")}>
+                  <div key={member.id} className={"rounded-lg border p-3 flex flex-col items-stretch sm:flex-row sm:items-start sm:justify-between gap-3 " + (Number(member.active) ? "bg-white" : "bg-slate-50 opacity-60")}>
                     <div>
                       <div className="font-semibold text-[#001a3d] flex items-center gap-2">
                         {member.fullName}
@@ -291,12 +294,13 @@ export default function BoardVotesPage() {
                         {!Number(member.active) && <Badge variant="outline">Inactif</Badge>}
                       </div>
                       <div className="text-xs text-gray-500">{member.roleTitle || "Administrateur"} · {member.email}</div>
-                      <div className="text-xs text-gray-400">{member.userId ? "Compte site associé" : "Compte site à associer via le même email"}</div>
+                      <div className="text-xs text-gray-400">{member.userId ? "Compte site associé" : "Compte à associer après activation de l'invitation"}</div>
                       <div className="flex gap-1 mt-2 flex-wrap">
                         {Number(member.canCalendar) === 1 && <Badge variant="outline">Calendrier</Badge>}
                         {Number(member.canVotes) === 1 && <Badge variant="outline">Votes</Badge>}
                         {Number(member.canMinutes) === 1 && <Badge variant="outline">PV</Badge>}
                       </div>
+                      <BoardInvitationStatus memberId={Number(member.id)} active={Number(member.active) === 1} invitation={member.invitation} />
                     </div>
                     {Number(member.active) === 1 && (
                       <div className="flex gap-2">
