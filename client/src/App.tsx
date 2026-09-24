@@ -44,6 +44,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 const GalleryPage = lazy(() => import("@/pages/GalleryPage"));
 const BoardVotesPage = lazy(() => import("@/pages/BoardVotesPage"));
+const BoardInvitationPage = lazy(() => import("@/pages/BoardInvitationPage"));
 
 function Router() {
   return (
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/about">{() => <PublicLayout><About /></PublicLayout>}</Route>
       <Route path="/legal">{() => <Legal />}</Route>
       <Route path="/privacy">{() => <Privacy />}</Route>
+      <Route path="/board-invitation">{() => <BoardInvitationPage />}</Route>
       <Route path="/login">{() => <Login />}</Route>
 
       <Route path="/dashboard">{() => <ProtectedRoute><Dashboard /></ProtectedRoute>}</Route>

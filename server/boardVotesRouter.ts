@@ -2,6 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { adminProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getPool } from "./db";
 import { Resend } from "resend";
+import { BOARD_INVITATIONS_DDL, saveBoardMember, deactivateBoardMember, getBoardInvitationStates, invitationState } from "./boardInvitations";
+import { createBoardInvitationRouter } from "./boardInvitationRouter";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_MEETINGS = process.env.EMAIL_FROM_MEETINGS ?? "Synergie Dour Réunions <reunions@synergiedour.be>";
@@ -153,6 +155,7 @@ async function ensureBoardTables() {
     }
   }
 
+  await pool.execute(BOARD_INVITATIONS_DDL);
   boardTablesReady = true;
 }
 
@@ -218,9 +221,9 @@ async function findBoardMemberForUser(user: any) {
   const email = String(user?.email || "").trim().toLowerCase();
   const [rows] = await pool.execute(
     `SELECT * FROM board_members
-     WHERE active=1 AND ((userId IS NOT NULL AND userId=?) OR LOWER(email)=?)
-     ORDER BY CASE WHEN userId=? THEN 0 ELSE 1 END, id ASC LIMIT 1`,
-    [user?.id ?? 0, email, user?.id ?? 0],
+     WHERE active=1 AND userId=? AND LOWER(email)=?
+     ORDER BY id ASC LIMIT 1`,
+    [user?.id ?? 0, email],
   );
   return (rows as any[])[0] || null;
 }
@@ -236,7 +239,10 @@ async function boardSnapshot() {
   const [attendanceRows] = await pool.execute("SELECT * FROM board_attendance ORDER BY meetingId DESC, memberId ASC");
   const [voteRows] = await pool.execute("SELECT * FROM board_votes ORDER BY agendaItemId DESC, memberId ASC");
 
-  const members = memberRows as any[];
+  const invitationStates = await getBoardInvitationStates();
+  const members = (memberRows as any[]).map(member => ({
+    ...member, invitation: invitationStates.get(Number(member.id)) ?? invitationState(),
+  }));
   const meetings = meetingRows as any[];
   const items = itemRows as any[];
   const attendance = attendanceRows as any[];
@@ -347,6 +353,7 @@ function votePhaseForAttendance(context: any, allowAdminProxy = false): "officia
 }
 
 export const boardVotesRouter = router({
+  invitations: createBoardInvitationRouter(ensureBoardTables),
   snapshot: adminProcedure.query(async () => boardSnapshot()),
 
   myAccess: protectedProcedure.query(async ({ ctx }) => {
@@ -473,61 +480,14 @@ export const boardVotesRouter = router({
     .input((value: any) => value ?? {})
     .mutation(async ({ input, ctx }) => {
       await ensureBoardTables();
-      const pool = await getPool();
-      if (!pool) throw new Error("Database unavailable");
-
-      const id = input.id ? asId(input.id) : null;
-      const fullName = cleanText(input.fullName, 255);
-      const email = cleanText(input.email, 320).toLowerCase();
-      const roleTitle = cleanText(input.roleTitle, 120) || null;
-      const isPresident = input.isPresident ? 1 : 0;
-      const canCalendar = input.canCalendar === false ? 0 : 1;
-      const canVotes = input.canVotes === false ? 0 : 1;
-      const canMinutes = input.canMinutes === false ? 0 : 1;
-      if (!fullName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Nom et email valides requis" });
-      }
-
-      const [userRows] = await pool.execute("SELECT id FROM users WHERE LOWER(email)=? LIMIT 1", [email]);
-      const userId = Number((userRows as any[])[0]?.id || 0) || null;
-
-      if (isPresident) {
-        await pool.execute("UPDATE board_members SET isPresident=0 WHERE active=1");
-      }
-
-      if (id) {
-        await pool.execute(
-          "UPDATE board_members SET fullName=?, email=?, roleTitle=?, isPresident=?, canCalendar=?, canVotes=?, canMinutes=?, userId=?, active=1 WHERE id=?",
-          [fullName, email, roleTitle, isPresident, canCalendar, canVotes, canMinutes, userId, id],
-        );
-        await audit("member_updated", "board_member", id, ctx.user.id, { fullName, email, roleTitle, isPresident: !!isPresident, canCalendar: !!canCalendar, canVotes: !!canVotes, canMinutes: !!canMinutes });
-        return { id };
-      }
-
-      const [result] = await pool.execute(
-        `INSERT INTO board_members (userId, fullName, email, roleTitle, isPresident, canCalendar, canVotes, canMinutes, active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-         ON DUPLICATE KEY UPDATE
-           userId=VALUES(userId), fullName=VALUES(fullName), roleTitle=VALUES(roleTitle),
-           isPresident=VALUES(isPresident), canCalendar=VALUES(canCalendar), canVotes=VALUES(canVotes),
-           canMinutes=VALUES(canMinutes), active=1`,
-        [userId, fullName, email, roleTitle, isPresident, canCalendar, canVotes, canMinutes],
-      );
-      const insertedId = Number((result as any).insertId || 0);
-      const [row] = await pool.execute("SELECT id FROM board_members WHERE email=? LIMIT 1", [email]);
-      const memberId = insertedId || Number((row as any[])[0]?.id);
-      await audit("member_saved", "board_member", memberId, ctx.user.id, { fullName, email, roleTitle, isPresident: !!isPresident, canCalendar: !!canCalendar, canVotes: !!canVotes, canMinutes: !!canMinutes });
-      return { id: memberId };
+      return saveBoardMember(input, ctx.user.id);
     }),
 
   deactivateMember: adminProcedure
     .input((value: any) => ({ id: asId(value?.id ?? value) }))
     .mutation(async ({ input, ctx }) => {
       await ensureBoardTables();
-      const pool = await getPool();
-      await pool.execute("UPDATE board_members SET active=0, isPresident=0 WHERE id=?", [input.id]);
-      await audit("member_deactivated", "board_member", input.id, ctx.user.id);
-      return { success: true };
+      return deactivateBoardMember(input.id, ctx.user.id);
     }),
 
   createMeeting: adminProcedure
