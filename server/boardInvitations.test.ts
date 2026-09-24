@@ -195,6 +195,22 @@ describe("delivery lifecycle", () => {
   });
   it("keeps the member when email fails and leaves userId unbound", async () => { db.members = []; vi.stubEnv("RESEND_API_KEY", ""); const saved = await saveBoardMember({ fullName: "New", email: EMAIL, canVotes: false }, 99); expect(saved.invitationRequested).toBe(true); expect(saved.invitation?.status).toBe("failed"); expect(db.members).toHaveLength(1); expect(db.members[0].userId).toBeNull(); });
   it("does not invite again for a function-only update", async () => { const saved = await saveBoardMember({ id: 7, fullName: "Updated", email: EMAIL, roleTitle: "Secretary" }, 99); expect(saved.invitationRequested).toBe(false); expect(fetchMock).not.toHaveBeenCalled(); });
+  it("skips cooldown when prior invitation was revoked", async () => {
+    await sendBoardMemberInvitation(7, 99);
+    expect(db.invitations[0].status).toBe("sent");
+    db.invitations[0].status = "revoked";
+    const state2 = await sendBoardMemberInvitation(7, 99);
+    expect(state2.status).toBe("sent");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+  it("allows resend after deactivation and reactivation without cooldown", async () => {
+    await sendBoardMemberInvitation(7, 99);
+    await deactivateBoardMember(7, 99);
+    await saveBoardMember({ id: 7, fullName: "Updated", email: EMAIL }, 99);
+    expect(db.invitations[0].status).toBe("revoked");
+    expect(db.invitations[1].status).toBe("sent");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
   it("invalidates old email invitations on an address change", async () => { seedInvitation(); db.members[0].userId = 42; await saveBoardMember({ id: 7, fullName: "Updated", email: "new@example.test" }, 99); expect(db.invitations[0].status).toBe("revoked"); expect(db.members[0].userId).toBeNull(); await expect(inspectBoardInvitation(TOKEN)).rejects.toThrow(); });
 });
 
