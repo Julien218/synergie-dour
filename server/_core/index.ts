@@ -11,6 +11,11 @@ import { users } from "../../drizzle/schema";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerCockpitSso } from "./cockpit-sso";
+import { getDb } from "../db";
+import { signSession, SESSION_COOKIE } from "../authService";
+import { sdk } from "./sdk";
+import { COOKIE_NAME } from "@shared/const";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite, registerOgImageRoutes } from "./vite";
@@ -301,6 +306,20 @@ async function startServer() {
     next();
   });
 
+  registerCockpitSso(app, {
+    siteId: "synergie-dour", dashboard: "/dashboard",
+    siteOrigins: ["https://synergiedour.be", "https://www.synergiedour.be"],
+    findUser: async email => {
+      const database = await getDb();
+      if (!database) throw new Error("Database unavailable");
+      const rows = await database.select().from(users).where(eq(users.email, email)).limit(2);
+      return rows.length === 1 ? rows[0] : null;
+    },
+    sessionCookies: async user => ({
+      [SESSION_COOKIE]: await signSession(user),
+      [COOKIE_NAME]: await sdk.createSessionToken(user.openId, { name: user.name || user.email || "Utilisateur", expiresInMs: 60_000 }),
+    }),
+  });
   registerOAuthRoutes(app);
   registerOgImageRoutes(app);
 
