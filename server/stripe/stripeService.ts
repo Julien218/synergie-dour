@@ -1,7 +1,13 @@
 /**
- * Service Stripe Connect — paiements ASBL avec commission JS-Innov.IA.
+ * Service Stripe — paiements ASBL.
  *
- * MODÈLE :
+ * MODE PAR DÉFAUT (direct) : la clé STRIPE_SECRET_KEY est celle du compte Stripe de l'ASBL.
+ * Le membre paie 50 € + frais de paiement ; Stripe prélève ses frais sur la ligne de frais,
+ * l'ASBL reçoit exactement 50,00 €. Aucune commission de plateforme.
+ *
+ * MODE CONNECT (optionnel, si ASBL_STRIPE_CONNECT_ACCOUNT_ID est défini) : voir ci-dessous.
+ *
+ * MODÈLE CONNECT :
  *   - JS-Innov.IA = compte Stripe "plateforme" (votre compte principal)
  *   - Synergie Dour ASBL = compte Stripe "Connect" (sous-compte)
  *   - Quand un membre paie 50€, Stripe transfère automatiquement :
@@ -22,13 +28,62 @@
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-11-20.acacia",
+  apiVersion: "2024-11-20.acacia" as any,
   typescript: true,
 });
 
-const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "250", 10);
+const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "0", 10);
 const MEMBERSHIP_PRICE_CENTS = parseInt(process.env.MEMBERSHIP_PRICE_CENTS ?? "5000", 10);
+
+/** Données de transfert Connect : vide en mode direct (pas d'ID Connect configuré). */
+function connectPaymentData(accountId: string | undefined, amounts: { feeCents: number; serviceCents: number }) {
+  if (!accountId) return {};
+  // Mode Connect : la plateforme garde la ligne de frais ; Stripe prélève ses frais réels sur
+  // le compte plateforme. L'ASBL reçoit exactement le net (total - application_fee).
+  return {
+    application_fee_amount: APPLICATION_FEE_CENTS + amounts.feeCents + amounts.serviceCents,
+    transfer_data: { destination: accountId },
+  };
+}
+
 const APP_URL = process.env.APP_URL ?? "https://www.synergiedour.be";
+
+/**
+ * Frais de paiement en ligne, ajoutés EN PLUS du montant net (50 €).
+ * Le membre paie net + frais, de sorte que l'ASBL reçoit bien l'intégralité du net
+ * (hors commission plateforme) et que les frais Stripe ne sont pas supportés par JS-Innov.IA.
+ *
+ * Valeurs à vérifier sur https://stripe.com/be/pricing et à ajuster via les variables
+ * d'environnement (pourcentage en %, partie fixe en centimes).
+ */
+const STRIPE_FEE_PERCENT = parseFloat(process.env.STRIPE_FEE_PERCENT ?? "1.5");
+const STRIPE_FEE_FIXED_CENTS = parseInt(process.env.STRIPE_FEE_FIXED_CENTS ?? "25", 10);
+
+/**
+ * Calcule le total à débiter pour que, après frais Stripe, le net soit intact.
+ * total = (net + fixe) / (1 - pourcentage), arrondi au centime supérieur.
+ */
+/**
+ * Frais de service de la plateforme (centimes), ligne SÉPARÉE des frais de paiement.
+ * Appliqué uniquement en mode Connect (ASBL_STRIPE_CONNECT_ACCOUNT_ID défini). Défaut : 1,00 €.
+ */
+const SERVICE_FEE_CENTS = process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID
+  ? parseInt(process.env.STRIPE_SERVICE_FEE_CENTS ?? "100", 10)
+  : 0;
+
+export function computeOnlinePaymentAmounts(netCents: number): {
+  netCents: number;
+  feeCents: number;
+  serviceCents: number;
+  totalCents: number;
+} {
+  const rate = STRIPE_FEE_PERCENT / 100;
+  const serviceCents = SERVICE_FEE_CENTS;
+  // Les frais Stripe sont prélevés sur le total (net + service + frais) :
+  // frais = (taux × (net + service) + fixe) / (1 − taux)
+  const feeCents = Math.ceil((rate * (netCents + serviceCents) + STRIPE_FEE_FIXED_CENTS) / (1 - rate));
+  return { netCents, feeCents, serviceCents, totalCents: netCents + serviceCents + feeCents };
+}
 
 /* ------------------------------------------------------------------------- */
 /* CONFIGURATION DES PAIEMENTS                                                 */
@@ -46,8 +101,8 @@ export interface CreateCheckoutInput {
     userId?: string;
     businessName: string;
   };
-  /** ID du compte Stripe Connect de l'ASBL */
-  asblConnectAccountId: string;
+  /** ID du compte Stripe Connect de l'ASBL (absent = paiement direct sur le compte de l'ASBL) */
+  asblConnectAccountId?: string;
 }
 
 /**
@@ -78,6 +133,8 @@ async function createOneTimeCheckout(
   input: CreateCheckoutInput,
   base: Stripe.Checkout.SessionCreateParams
 ): Promise<string> {
+  const amounts = computeOnlinePaymentAmounts(MEMBERSHIP_PRICE_CENTS);
+
   const session = await stripe.checkout.sessions.create({
     ...base,
     mode: "payment",
@@ -89,17 +146,96 @@ async function createOneTimeCheckout(
             name: "Adhésion annuelle — Synergie Dour ASBL",
             description: "Adhésion valable un an. Renouvellement manuel via mail de rappel.",
           },
-          unit_amount: MEMBERSHIP_PRICE_CENTS,
+          unit_amount: amounts.netCents,
         },
         quantity: 1,
       },
+      feeLineItem(amounts.feeCents),
+      ...serviceLineItems(amounts.serviceCents),
     ],
     payment_intent_data: {
-      application_fee_amount: APPLICATION_FEE_CENTS,
-      transfer_data: {
-        destination: input.asblConnectAccountId,
-      },
+      ...connectPaymentData(input.asblConnectAccountId, amounts),
       description: `Adhésion ASBL ${input.metadata.businessName}`,
+    },
+  });
+
+  if (!session.url) throw new Error("Stripe n'a pas retourné d'URL de checkout");
+  return session.url;
+}
+
+function feeLineItem(feeCents: number): Stripe.Checkout.SessionCreateParams.LineItem {
+  return {
+    price_data: {
+      currency: "eur",
+      product_data: {
+        name: "Frais de paiement en ligne",
+        description: "Frais de traitement du paiement. Gratuit par virement bancaire.",
+      },
+      unit_amount: feeCents,
+    },
+    quantity: 1,
+  };
+}
+
+function serviceLineItems(serviceCents: number): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  if (serviceCents <= 0) return [];
+  return [
+    {
+      price_data: {
+        currency: "eur",
+        product_data: {
+          name: "Frais de service plateforme",
+          description: "Service de paiement en ligne et de gestion automatique. Gratuit par virement bancaire.",
+        },
+        unit_amount: serviceCents,
+      },
+      quantity: 1,
+    },
+  ];
+}
+
+/* ------------------------------------------------------------------------- */
+/* PAIEMENT D'UNE FACTURE (lien dans les emails de facture et de rappel)       */
+/* ------------------------------------------------------------------------- */
+
+export async function createInvoiceCheckout(input: {
+  invoiceId: number;
+  invoiceNumber: string;
+  clientName: string;
+  clientEmail: string;
+  netCents: number;
+  asblConnectAccountId?: string;
+}): Promise<string> {
+  const amounts = computeOnlinePaymentAmounts(input.netCents);
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    customer_email: input.clientEmail,
+    success_url: `${APP_URL}/membership/success?session={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${APP_URL}/membership/cancelled`,
+    locale: "fr",
+    payment_method_types: ["card", "bancontact"],
+    metadata: {
+      invoiceId: String(input.invoiceId),
+      invoiceNumber: input.invoiceNumber,
+      businessName: input.clientName,
+    },
+    line_items: [
+      {
+        price_data: {
+          currency: "eur",
+          product_data: { name: `Facture ${input.invoiceNumber} — Synergie Dour ASBL` },
+          unit_amount: amounts.netCents,
+        },
+        quantity: 1,
+      },
+      feeLineItem(amounts.feeCents),
+      ...serviceLineItems(amounts.serviceCents),
+    ],
+    payment_intent_data: {
+      ...connectPaymentData(input.asblConnectAccountId, amounts),
+      description: `Facture ${input.invoiceNumber} — ${input.clientName}`,
+      metadata: { invoiceId: String(input.invoiceId) },
     },
   });
 
@@ -125,11 +261,14 @@ async function createSubscriptionCheckout(
     mode: "subscription",
     line_items: [{ price: subscriptionPriceId, quantity: 1 }],
     subscription_data: {
-      application_fee_percent: undefined,
-      transfer_data: {
-        destination: input.asblConnectAccountId,
-        amount_percent: ((MEMBERSHIP_PRICE_CENTS - APPLICATION_FEE_CENTS) / MEMBERSHIP_PRICE_CENTS) * 100,
-      },
+      ...(input.asblConnectAccountId
+        ? {
+            transfer_data: {
+              destination: input.asblConnectAccountId,
+              amount_percent: ((MEMBERSHIP_PRICE_CENTS - APPLICATION_FEE_CENTS) / MEMBERSHIP_PRICE_CENTS) * 100,
+            },
+          }
+        : {}),
       description: `Adhésion ASBL annuelle ${input.metadata.businessName}`,
     },
   });

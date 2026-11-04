@@ -23,13 +23,23 @@
 
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
-import { db } from "../db";
+import { getDb } from "../db";
 import { memberships, payments, membershipRequests } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+
+async function requireDb() {
+  const db = await getDb();
+  if (!db) throw new Error("Base de données indisponible");
+  return db;
+}
 import { constructWebhookEvent } from "./stripeService";
+import { markInvoicePaidFromStripe } from "../invoices";
 import { sendMembershipActivatedEmail, sendPaymentFailedEmail } from "../email/notifications";
 
-const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "250", 10);
+// Commission plateforme : uniquement en mode Connect (ASBL_STRIPE_CONNECT_ACCOUNT_ID défini)
+const APPLICATION_FEE_CENTS = process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID
+  ? parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "0", 10)
+  : 0;
 
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
   const signature = req.headers["stripe-signature"];
@@ -87,15 +97,23 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
   eventId: string
 ): Promise<void> {
+  const db = await requireDb();
+  // Paiement d'une facture (lien envoyé par email) : marquer payée + acquittée automatique
+  const invoiceId = session.metadata?.invoiceId;
+  if (invoiceId) {
+    if (session.payment_status === "paid") {
+      await markInvoicePaidFromStripe(parseInt(invoiceId, 10));
+    }
+    return;
+  }
+
   const membershipRequestId = session.metadata?.membershipRequestId;
   if (!membershipRequestId) {
     console.warn(`Session ${session.id} sans membershipRequestId — ignorée`);
     return;
   }
 
-  const request = await db.query.membershipRequests.findFirst({
-    where: eq(membershipRequests.id, parseInt(membershipRequestId, 10)),
-  });
+  const request = (await db.select().from(membershipRequests).where(eq(membershipRequests.id, parseInt(membershipRequestId, 10))).limit(1))[0];
   if (!request) {
     console.warn(`Membership request ${membershipRequestId} introuvable`);
     return;
@@ -165,11 +183,10 @@ async function handleInvoicePaymentSucceeded(
   invoice: Stripe.Invoice,
   eventId: string
 ): Promise<void> {
-  if (typeof invoice.subscription !== "string") return;
+  const db = await requireDb();
+  if (typeof (invoice as any).subscription !== "string") return;
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.stripeSubscriptionId, invoice.subscription),
-  });
+  const membership = (await db.select().from(memberships).where(eq(memberships.stripeSubscriptionId, (invoice as any).subscription)).limit(1))[0];
   if (!membership) return;
 
   const newExpiresAt = new Date();
@@ -213,9 +230,8 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, eventId: stri
 /* ------------------------------------------------------------------------- */
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.stripeSubscriptionId, subscription.id),
-  });
+  const db = await requireDb();
+  const membership = (await db.select().from(memberships).where(eq(memberships.stripeSubscriptionId, subscription.id)).limit(1))[0];
   if (!membership) return;
 
   await db
