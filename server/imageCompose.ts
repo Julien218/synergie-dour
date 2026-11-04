@@ -136,7 +136,7 @@ export async function composeWithLogos(
 
   // ── Logo JS-Innov.IA — coin bas-droit, discret ───────────────────────────
   if (logoJS) {
-    const js = getLogoPath("logo-jsinnovia.png");
+    const js = getLogoPath("logo-jsinnovia-officiel.png");
     if (js.found) {
       try {
         const fileStat = fs.statSync(js.path);

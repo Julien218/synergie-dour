@@ -14,7 +14,7 @@ export const SYNERGIE_DOUR_BRAND = {
   assets: {
     applicationLogo: "/logo-sd-officiel.png",
     transparentLogo: "/logo-transparent.png",
-    technologyCredit: "/logo-jsinnovia.png",
+    technologyCredit: "/logo-jsinnovia-officiel.png",
   },
   docs: {
     root: "docs/brand-kit/2026",

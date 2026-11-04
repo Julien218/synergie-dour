@@ -18,7 +18,7 @@
   "canonicalAssets": {
     "applicationLogo": "public/logo-sd-officiel.png",
     "transparentLogo": "public/logo-transparent.png",
-    "technologyCredit": "public/logo-jsinnovia.png"
+    "technologyCredit": "public/logo-jsinnovia-officiel.png"
   },
   "canonicalRules": {
     "machineReadable": "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/brand-rules.json",
