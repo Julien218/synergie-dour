@@ -1,26 +1,25 @@
 {
   "brand": "Synergie Dour",
-  "version": "2026.08",
+  "version": "2026.11",
   "status": "production",
   "master_logo": "01_LOGO/SD_Embleme_Master_Transparent_1024.png",
   "signature": "Commerçants & indépendants réunis",
   "institutional_name": "ASBL Synergie Dour",
   "palette": {
-    "navy": "#070A2A",
-    "deep_navy": "#020E61",
-    "royal_blue": "#0942B2",
-    "electric_blue": "#2685E8",
-    "cyan": "#70C7FB",
-    "gold": "#FED613",
-    "amber": "#DA8B01",
-    "cream": "#F7F5EC",
-    "white": "#FFFFFF",
-    "ink": "#101934"
+    "navy": "#001a3d",
+    "navy_deep": "#001533",
+    "gold": "#D4AF37",
+    "gold_light": "#E8C547",
+    "gold_pale": "#F0E68C",
+    "blue": "#003d99",
+    "blue_bright": "#0066CC",
+    "blue_indigo": "#1a3ba0",
+    "white": "#FFFFFF"
   },
   "typography": {
-    "display": "Inter Display / Inter ExtraBold",
-    "body": "Inter Regular",
-    "emphasis": "Inter SemiBold"
+    "display": "Cinzel (titres, serif)",
+    "script": "Dancing Script (accents manuscrits)",
+    "body": "Montserrat (texte, 300-600)"
   },
   "logo_rules": {
     "clear_space": "15% de la largeur de l’emblème sur chaque côté",
@@ -44,12 +43,19 @@
     "grid": "12 colonnes",
     "spacing_unit_px": 8,
     "safe_margin_percent": 6,
-    "corner_radius_px": [18, 24, 34]
+    "corner_radius_px": [
+      18,
+      24,
+      34
+    ]
   },
   "icons": {
     "style": "ligne arrondie, monocolore",
     "stroke_ratio": "3% de la taille",
-    "colors": ["gold on navy", "navy on white"]
+    "colors": [
+      "gold on navy",
+      "navy on white"
+    ]
   },
   "photography": {
     "rules": [
@@ -71,5 +77,6 @@
     "marges de sécurité respectées",
     "export sans pixellisation",
     "données factuelles confirmées"
-  ]
+  ],
+  "reference": "ADN visuel du site : client/src/index.css et client/index.html"
 }
