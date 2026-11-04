@@ -21,7 +21,7 @@ Le module TypeScript partagé est disponible dans `shared/brand/synergie-dour.ts
 
 - Logo Synergie Dour utilisé par l'application : `public/logo-sd-officiel.png`
 - Logo transparent : `public/logo-transparent.png`
-- Crédit JS-Innov.IA : `public/logo-jsinnovia.png`
+- Crédit JS-Innov.IA : `public/logo-jsinnovia-officiel.png`
 
 ## Référence de marque
 
