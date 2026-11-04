@@ -23,7 +23,8 @@ import { socialRouter } from "../social";
 import { seoRouter } from "../seo/router";
 import { autopublishRouter } from "../autopublish/router";
 import { dropboxRouter } from "../dropbox";
-import { invoiceRouter } from "../invoices";
+import { invoiceRouter, invoicePayRouter } from "../invoices";
+import { stripeWebhookHandler } from "../stripe/webhookHandler";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
 import { cronBackupHandler, isProductionEnvironment } from "../cron/backup";
 import { runBoardMeetingReminders } from "../boardVotesRouter";
@@ -292,6 +293,9 @@ async function startServer() {
     message: { message: "Trop de soumissions. Reessayez dans une heure." },
   });
 
+  // Webhook Stripe : corps brut requis pour la signature, à monter AVANT express.json
+  app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
+
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
@@ -330,6 +334,7 @@ async function startServer() {
       createContext,
     })
   );
+  app.use("/api/pay-invoice", invoicePayRouter);
   app.use("/api/invoices", invoiceRouter);
 
   if (process.env.NODE_ENV === "development") {

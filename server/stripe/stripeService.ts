@@ -22,13 +22,38 @@
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-11-20.acacia",
+  apiVersion: "2024-11-20.acacia" as any,
   typescript: true,
 });
 
 const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "250", 10);
 const MEMBERSHIP_PRICE_CENTS = parseInt(process.env.MEMBERSHIP_PRICE_CENTS ?? "5000", 10);
 const APP_URL = process.env.APP_URL ?? "https://www.synergiedour.be";
+
+/**
+ * Frais de paiement en ligne, ajoutés EN PLUS du montant net (50 €).
+ * Le membre paie net + frais, de sorte que l'ASBL reçoit bien l'intégralité du net
+ * (hors commission plateforme) et que les frais Stripe ne sont pas supportés par JS-Innov.IA.
+ *
+ * Valeurs à vérifier sur https://stripe.com/be/pricing et à ajuster via les variables
+ * d'environnement (pourcentage en %, partie fixe en centimes).
+ */
+const STRIPE_FEE_PERCENT = parseFloat(process.env.STRIPE_FEE_PERCENT ?? "1.5");
+const STRIPE_FEE_FIXED_CENTS = parseInt(process.env.STRIPE_FEE_FIXED_CENTS ?? "25", 10);
+
+/**
+ * Calcule le total à débiter pour que, après frais Stripe, le net soit intact.
+ * total = (net + fixe) / (1 - pourcentage), arrondi au centime supérieur.
+ */
+export function computeOnlinePaymentAmounts(netCents: number): {
+  netCents: number;
+  feeCents: number;
+  totalCents: number;
+} {
+  const rate = STRIPE_FEE_PERCENT / 100;
+  const totalCents = Math.ceil((netCents + STRIPE_FEE_FIXED_CENTS) / (1 - rate));
+  return { netCents, feeCents: totalCents - netCents, totalCents };
+}
 
 /* ------------------------------------------------------------------------- */
 /* CONFIGURATION DES PAIEMENTS                                                 */
@@ -78,6 +103,8 @@ async function createOneTimeCheckout(
   input: CreateCheckoutInput,
   base: Stripe.Checkout.SessionCreateParams
 ): Promise<string> {
+  const amounts = computeOnlinePaymentAmounts(MEMBERSHIP_PRICE_CENTS);
+
   const session = await stripe.checkout.sessions.create({
     ...base,
     mode: "payment",
@@ -89,17 +116,82 @@ async function createOneTimeCheckout(
             name: "Adhésion annuelle — Synergie Dour ASBL",
             description: "Adhésion valable un an. Renouvellement manuel via mail de rappel.",
           },
-          unit_amount: MEMBERSHIP_PRICE_CENTS,
+          unit_amount: amounts.netCents,
         },
         quantity: 1,
       },
+      feeLineItem(amounts.feeCents),
     ],
     payment_intent_data: {
-      application_fee_amount: APPLICATION_FEE_CENTS,
+      // Commission plateforme + frais de paiement (couvrent les frais Stripe prélevés sur la plateforme)
+      application_fee_amount: APPLICATION_FEE_CENTS + amounts.feeCents,
       transfer_data: {
         destination: input.asblConnectAccountId,
       },
       description: `Adhésion ASBL ${input.metadata.businessName}`,
+    },
+  });
+
+  if (!session.url) throw new Error("Stripe n'a pas retourné d'URL de checkout");
+  return session.url;
+}
+
+function feeLineItem(feeCents: number): Stripe.Checkout.SessionCreateParams.LineItem {
+  return {
+    price_data: {
+      currency: "eur",
+      product_data: {
+        name: "Frais de paiement en ligne",
+        description: "Frais de traitement du paiement. Gratuit par virement bancaire.",
+      },
+      unit_amount: feeCents,
+    },
+    quantity: 1,
+  };
+}
+
+/* ------------------------------------------------------------------------- */
+/* PAIEMENT D'UNE FACTURE (lien dans les emails de facture et de rappel)       */
+/* ------------------------------------------------------------------------- */
+
+export async function createInvoiceCheckout(input: {
+  invoiceId: number;
+  invoiceNumber: string;
+  clientName: string;
+  clientEmail: string;
+  netCents: number;
+  asblConnectAccountId: string;
+}): Promise<string> {
+  const amounts = computeOnlinePaymentAmounts(input.netCents);
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    customer_email: input.clientEmail,
+    success_url: `${APP_URL}/membership/success?session={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${APP_URL}/membership/cancelled`,
+    locale: "fr",
+    payment_method_types: ["card", "bancontact"],
+    metadata: {
+      invoiceId: String(input.invoiceId),
+      invoiceNumber: input.invoiceNumber,
+      businessName: input.clientName,
+    },
+    line_items: [
+      {
+        price_data: {
+          currency: "eur",
+          product_data: { name: `Facture ${input.invoiceNumber} — Synergie Dour ASBL` },
+          unit_amount: amounts.netCents,
+        },
+        quantity: 1,
+      },
+      feeLineItem(amounts.feeCents),
+    ],
+    payment_intent_data: {
+      application_fee_amount: APPLICATION_FEE_CENTS + amounts.feeCents,
+      transfer_data: { destination: input.asblConnectAccountId },
+      description: `Facture ${input.invoiceNumber} — ${input.clientName}`,
+      metadata: { invoiceId: String(input.invoiceId) },
     },
   });
 

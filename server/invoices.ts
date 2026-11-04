@@ -3,11 +3,15 @@ import { parse as parseCookie } from "cookie";
 import { Resend } from "resend";
 import sharp from "sharp";
 import { readFile } from "node:fs/promises";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { getPool } from "./db";
 import { SESSION_COOKIE, verifySessionToken } from "./authService";
+import { computeOnlinePaymentAmounts, createInvoiceCheckout } from "./stripe/stripeService";
 
 export const invoiceRouter = Router();
+/** Routes publiques (sans session admin) : lien de paiement signé reçu par email. */
+export const invoicePayRouter = Router();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_BILLING = "contact@synergiedour.be";
@@ -84,6 +88,7 @@ async function ensureInvoiceTables() {
     ["clientStreetNumber", "varchar(32) DEFAULT NULL"],
     ["clientPostalCode", "varchar(20) DEFAULT NULL"],
     ["clientCity", "varchar(120) DEFAULT NULL"],
+    ["escalatedAt", "datetime DEFAULT NULL"],
   ] as const;
   for (const [column, definition] of invoiceExtraColumns) {
     try {
@@ -448,6 +453,74 @@ async function createInvoicePdf(invoice: any, settings: any, acquitted = false) 
   return buildPdf(objects);
 }
 
+/* ------------------------------------------------------------------------- */
+/* LIEN DE PAIEMENT EN LIGNE (Stripe) — signé, la session Stripe est créée au clic */
+/* (une session Checkout expire en 24 h, d'où ce lien intermédiaire permanent)   */
+/* ------------------------------------------------------------------------- */
+
+function invoiceLinkSecret() {
+  return process.env.INVOICE_LINK_SECRET || process.env.CRON_SECRET || "";
+}
+
+function signInvoiceLink(invoiceId: number, invoiceNumber: string) {
+  return createHmac("sha256", invoiceLinkSecret()).update(`${invoiceId}:${invoiceNumber}`).digest("hex").slice(0, 32);
+}
+
+function onlinePaymentEnabled() {
+  return Boolean(process.env.STRIPE_SECRET_KEY && process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID && invoiceLinkSecret());
+}
+
+function invoicePaymentUrl(invoice: any) {
+  return `${APP_URL}/api/pay-invoice/${invoice.id}/${signInvoiceLink(invoice.id, invoice.invoiceNumber)}`;
+}
+
+invoicePayRouter.get("/:id/:sig", async (req, res) => {
+  try {
+    if (!onlinePaymentEnabled()) return res.status(503).send("Paiement en ligne indisponible");
+    const id = Number(req.params.id);
+    const invoice = await getInvoice(id);
+    if (!invoice) return res.status(404).send("Facture introuvable");
+
+    const expected = Buffer.from(signInvoiceLink(invoice.id, invoice.invoiceNumber));
+    const given = Buffer.from(String(req.params.sig));
+    if (expected.length !== given.length || !timingSafeEqual(expected, given)) {
+      return res.status(403).send("Lien invalide");
+    }
+    if (invoice.status === "paid") return res.status(200).send("Cette facture est déjà payée. Merci !");
+    if (invoice.status === "cancelled" || invoice.status === "draft") return res.status(409).send("Facture non payable");
+
+    const url = await createInvoiceCheckout({
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientName: invoice.clientName,
+      clientEmail: invoice.clientEmail,
+      netCents: invoice.totalCents,
+      asblConnectAccountId: process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID!,
+    });
+    res.redirect(302, url);
+  } catch (error) {
+    console.error("[Invoices pay link]", error);
+    res.status(500).send("Impossible d'ouvrir le paiement. Utilisez le virement bancaire indiqué dans l'email.");
+  }
+});
+
+/**
+ * Appelée par le webhook Stripe : marque la facture payée et envoie l'acquittée.
+ * Idempotente (un second appel pour une facture déjà payée ne fait rien).
+ */
+export async function markInvoicePaidFromStripe(invoiceId: number) {
+  const invoice = await getInvoice(invoiceId);
+  if (!invoice) { console.warn(`[Invoices stripe] facture ${invoiceId} introuvable`); return; }
+  if (invoice.status === "paid") return;
+  const pool = await getPool();
+  await pool.execute("UPDATE invoices SET status='paid', paidAt=COALESCE(paidAt,NOW()) WHERE id=?", [invoiceId]);
+  try {
+    await sendInvoiceEmail(await getInvoice(invoiceId), "paid");
+  } catch (error) {
+    console.error("[Invoices stripe paid receipt]", error);
+  }
+}
+
 function invoiceEmailLayout(content: string) {
   return `<!doctype html><html lang="fr"><body style="margin:0;background:#f4f6f8;font-family:Arial,sans-serif;color:#1f2937"><div style="max-width:640px;margin:30px auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb"><div style="background:#001a3d;padding:28px 32px"><div style="font-size:24px;font-weight:700;color:#D4AF37">Synergie Dour</div><div style="color:#dbeafe;margin-top:4px">Facturation</div></div><div style="padding:32px">${content}</div><div style="padding:18px 32px;background:#f8fafc;color:#64748b;font-size:12px">Synergie Dour · <a href="${APP_URL}">${APP_URL}</a></div></div></body></html>`;
 }
@@ -461,7 +534,11 @@ async function sendInvoiceEmail(invoice: any, kind: "invoice" | "reminder" | "pa
 
   const isPaid = kind === "paid";
   const pdf = await createInvoicePdf(invoice, settings, isPaid);
-  const paymentBlock = isPaid ? "" : `<div style="background:#f8f4e8;border-left:4px solid #D4AF37;padding:14px 16px;margin:18px 0"><strong>Paiement</strong><br>IBAN : ${htmlEscape(settings.iban ? formatIban(settings.iban) : "À configurer")} ${settings.bic ? `<br>BIC : ${htmlEscape(settings.bic)}` : ""}<br>Communication : <strong>${htmlEscape(invoice.paymentReference)}</strong></div>`;
+  const onlineAmounts = computeOnlinePaymentAmounts(invoice.totalCents);
+  const onlineBlock = !isPaid && onlinePaymentEnabled()
+    ? `<div style="margin:18px 0"><a href="${invoicePaymentUrl(invoice)}" style="display:inline-block;background:#D4AF37;color:#001a3d;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:8px">Payer en ligne (carte / Bancontact)</a><div style="color:#64748b;font-size:12px;margin-top:8px">Paiement en ligne : ${htmlEscape(money(invoice.totalCents))} + ${htmlEscape(money(onlineAmounts.feeCents))} de frais de paiement, soit ${htmlEscape(money(onlineAmounts.totalCents))}. Le virement ci-dessous reste gratuit.</div></div>`
+    : "";
+  const paymentBlock = isPaid ? "" : `${onlineBlock}<div style="background:#f8f4e8;border-left:4px solid #D4AF37;padding:14px 16px;margin:18px 0"><strong>Paiement par virement (sans frais)</strong><br>IBAN : ${htmlEscape(settings.iban ? formatIban(settings.iban) : "À configurer")} ${settings.bic ? `<br>BIC : ${htmlEscape(settings.bic)}` : ""}<br>Communication : <strong>${htmlEscape(invoice.paymentReference)}</strong></div>`;
 
   const membership = isMembershipInvoice(invoice);
   const titles = {
@@ -834,8 +911,44 @@ export async function runAutomatedInvoiceReminders() {
         console.error(`[Invoices auto reminder] ${invoice.invoiceNumber}`, error);
       }
     }
+    await escalateUnpaidInvoices();
   } catch (error) {
     console.error("[Invoices auto reminder cron]", error);
+  }
+}
+
+/**
+ * Après les 3 rappels automatiques (et 7 jours sans paiement), prévient l'ASBL une seule fois
+ * pour qu'un contact personnel (appel / WhatsApp) prenne le relais.
+ */
+async function escalateUnpaidInvoices() {
+  const pool = await getPool();
+  const [rows] = await pool.execute(`
+    SELECT * FROM invoices
+    WHERE status='overdue'
+      AND reminderCount >= 3
+      AND escalatedAt IS NULL
+      AND lastReminderAt < DATE_SUB(NOW(), INTERVAL 7 DAY)
+    ORDER BY dueDate ASC
+    LIMIT 50
+  `);
+  const invoices = (rows as any[]).map(normalizeInvoice);
+  if (invoices.length === 0) return;
+  if (!process.env.RESEND_API_KEY) return;
+
+  const settings = await getSettings();
+  const lines = invoices
+    .map((i) => `<li><strong>${htmlEscape(i.clientName)}</strong> — ${htmlEscape(i.invoiceNumber)} — ${htmlEscape(money(i.totalCents))} — échéance ${htmlEscape(formatBelgianDate(i.dueDate))} — ${htmlEscape(i.clientEmail)}</li>`)
+    .join("");
+  const { error } = await resend.emails.send({
+    from: FROM_BILLING,
+    to: process.env.INVOICE_ALERT_EMAIL || settings.issuerEmail || FROM_BILLING,
+    subject: `${invoices.length} cotisation(s) impayée(s) après 3 rappels — contact personnel à prévoir`,
+    html: invoiceEmailLayout(`<h2 style="color:#001a3d;margin-top:0">Cotisations impayées</h2><p>Ces factures ont reçu 3 rappels automatiques sans paiement. Le système n'enverra plus de rappel : un contact personnel est recommandé.</p><ul style="line-height:1.8">${lines}</ul>`),
+  });
+  if (error) { console.error("[Invoices escalation]", error); return; }
+  for (const i of invoices) {
+    await pool.execute("UPDATE invoices SET escalatedAt=NOW() WHERE id=?", [i.id]);
   }
 }
 
