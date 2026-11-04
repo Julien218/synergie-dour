@@ -198,9 +198,7 @@ export const membershipsRouterDefinition = `
         if (!request) throw new Error("Demande introuvable");
 
         const asblConnectAccountId = process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID;
-        if (!asblConnectAccountId) {
-          throw new Error("Compte Stripe Connect ASBL non configuré");
-        }
+        // Absent = paiement direct sur le compte Stripe de l'ASBL (mode par défaut)
 
         const checkoutUrl = await createMembershipCheckout({
           mode: "one_time",

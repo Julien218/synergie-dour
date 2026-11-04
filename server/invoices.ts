@@ -467,7 +467,7 @@ function signInvoiceLink(invoiceId: number, invoiceNumber: string) {
 }
 
 function onlinePaymentEnabled() {
-  return Boolean(process.env.STRIPE_SECRET_KEY && process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID && invoiceLinkSecret());
+  return Boolean(process.env.STRIPE_SECRET_KEY && invoiceLinkSecret());
 }
 
 function invoicePaymentUrl(invoice: any) {
@@ -495,7 +495,7 @@ invoicePayRouter.get("/:id/:sig", async (req, res) => {
       clientName: invoice.clientName,
       clientEmail: invoice.clientEmail,
       netCents: invoice.totalCents,
-      asblConnectAccountId: process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID!,
+      asblConnectAccountId: process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID || undefined,
     });
     res.redirect(302, url);
   } catch (error) {

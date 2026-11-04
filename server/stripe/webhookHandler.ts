@@ -36,7 +36,10 @@ import { constructWebhookEvent } from "./stripeService";
 import { markInvoicePaidFromStripe } from "../invoices";
 import { sendMembershipActivatedEmail, sendPaymentFailedEmail } from "../email/notifications";
 
-const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "250", 10);
+// Commission plateforme : uniquement en mode Connect (ASBL_STRIPE_CONNECT_ACCOUNT_ID défini)
+const APPLICATION_FEE_CENTS = process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID
+  ? parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "250", 10)
+  : 0;
 
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
   const signature = req.headers["stripe-signature"];
