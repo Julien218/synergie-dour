@@ -36,12 +36,12 @@ const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS 
 const MEMBERSHIP_PRICE_CENTS = parseInt(process.env.MEMBERSHIP_PRICE_CENTS ?? "5000", 10);
 
 /** Données de transfert Connect : vide en mode direct (pas d'ID Connect configuré). */
-function connectPaymentData(accountId: string | undefined, feeCents: number) {
+function connectPaymentData(accountId: string | undefined, amounts: { feeCents: number; serviceCents: number }) {
   if (!accountId) return {};
   // Mode Connect : la plateforme garde la ligne de frais ; Stripe prélève ses frais réels sur
   // le compte plateforme. L'ASBL reçoit exactement le net (total - application_fee).
   return {
-    application_fee_amount: APPLICATION_FEE_CENTS + feeCents,
+    application_fee_amount: APPLICATION_FEE_CENTS + amounts.feeCents + amounts.serviceCents,
     transfer_data: { destination: accountId },
   };
 }
@@ -64,23 +64,25 @@ const STRIPE_FEE_FIXED_CENTS = parseInt(process.env.STRIPE_FEE_FIXED_CENTS ?? "2
  * total = (net + fixe) / (1 - pourcentage), arrondi au centime supérieur.
  */
 /**
- * Multiplicateur de la ligne de frais : 1 = couvre les frais Stripe estimés (mode direct, défaut) ;
- * 2 = la plateforme perçoit le double des frais Stripe estimés (mode Connect, défaut).
+ * Frais de service de la plateforme (centimes), ligne SÉPARÉE des frais de paiement.
+ * Appliqué uniquement en mode Connect (ASBL_STRIPE_CONNECT_ACCOUNT_ID défini). Défaut : 1,00 €.
  */
-const STRIPE_FEE_MULTIPLIER = parseFloat(
-  process.env.STRIPE_FEE_MULTIPLIER ?? (process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID ? "2" : "1")
-);
+const SERVICE_FEE_CENTS = process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID
+  ? parseInt(process.env.STRIPE_SERVICE_FEE_CENTS ?? "100", 10)
+  : 0;
 
 export function computeOnlinePaymentAmounts(netCents: number): {
   netCents: number;
   feeCents: number;
+  serviceCents: number;
   totalCents: number;
 } {
   const rate = STRIPE_FEE_PERCENT / 100;
-  // frais F = m × (rate × (net + F) + fixe)  =>  F = m × (rate × net + fixe) / (1 − m × rate)
-  const m = STRIPE_FEE_MULTIPLIER;
-  const feeCents = Math.ceil((m * (rate * netCents + STRIPE_FEE_FIXED_CENTS)) / (1 - m * rate));
-  return { netCents, feeCents, totalCents: netCents + feeCents };
+  const serviceCents = SERVICE_FEE_CENTS;
+  // Les frais Stripe sont prélevés sur le total (net + service + frais) :
+  // frais = (taux × (net + service) + fixe) / (1 − taux)
+  const feeCents = Math.ceil((rate * (netCents + serviceCents) + STRIPE_FEE_FIXED_CENTS) / (1 - rate));
+  return { netCents, feeCents, serviceCents, totalCents: netCents + serviceCents + feeCents };
 }
 
 /* ------------------------------------------------------------------------- */
@@ -149,9 +151,10 @@ async function createOneTimeCheckout(
         quantity: 1,
       },
       feeLineItem(amounts.feeCents),
+      ...serviceLineItems(amounts.serviceCents),
     ],
     payment_intent_data: {
-      ...connectPaymentData(input.asblConnectAccountId, amounts.feeCents),
+      ...connectPaymentData(input.asblConnectAccountId, amounts),
       description: `Adhésion ASBL ${input.metadata.businessName}`,
     },
   });
@@ -165,13 +168,30 @@ function feeLineItem(feeCents: number): Stripe.Checkout.SessionCreateParams.Line
     price_data: {
       currency: "eur",
       product_data: {
-        name: "Frais de service et de paiement en ligne",
-        description: "Frais de traitement du paiement et de service de la plateforme. Gratuit par virement bancaire.",
+        name: "Frais de paiement en ligne",
+        description: "Frais de traitement du paiement. Gratuit par virement bancaire.",
       },
       unit_amount: feeCents,
     },
     quantity: 1,
   };
+}
+
+function serviceLineItems(serviceCents: number): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  if (serviceCents <= 0) return [];
+  return [
+    {
+      price_data: {
+        currency: "eur",
+        product_data: {
+          name: "Frais de service plateforme",
+          description: "Service de paiement en ligne et de gestion automatique. Gratuit par virement bancaire.",
+        },
+        unit_amount: serviceCents,
+      },
+      quantity: 1,
+    },
+  ];
 }
 
 /* ------------------------------------------------------------------------- */
@@ -210,9 +230,10 @@ export async function createInvoiceCheckout(input: {
         quantity: 1,
       },
       feeLineItem(amounts.feeCents),
+      ...serviceLineItems(amounts.serviceCents),
     ],
     payment_intent_data: {
-      ...connectPaymentData(input.asblConnectAccountId, amounts.feeCents),
+      ...connectPaymentData(input.asblConnectAccountId, amounts),
       description: `Facture ${input.invoiceNumber} — ${input.clientName}`,
       metadata: { invoiceId: String(input.invoiceId) },
     },
