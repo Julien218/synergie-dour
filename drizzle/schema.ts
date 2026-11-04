@@ -152,6 +152,8 @@ export const membershipRequests = mysqlTable("membership_requests", {
   howDidYouHear: varchar("howDidYouHear", { length: 100 }),        // Source de découverte
   acceptsEmailContact: int("acceptsEmailContact").default(0).notNull(),
   rgpdConsent: int("rgpdConsent").default(1).notNull(),
+  // Autorisation d'utiliser logo, photos et vidéos du commerce sur le site et les réseaux de l'ASBL
+  mediaConsent: int("mediaConsent").default(0).notNull(),
   // Statut
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
   paiementStatut: mysqlEnum("paiementStatut", ["en_attente", "paye", "gratuit"]).default("en_attente").notNull(),

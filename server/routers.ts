@@ -339,6 +339,7 @@ export const appRouter = router({
           howDidYouHear:       data.howDidYouHear       || null,
           acceptsEmailContact: data.acceptsEmailContact ? 1 : 0,
           rgpdConsent:         data.rgpdConsent         ? 1 : 0,
+          mediaConsent:        data.mediaConsent        ? 1 : 0,
         });
       } catch (e: any) {
         console.error("[membership.request] Erreur base de données:", e.message);

@@ -79,6 +79,7 @@ async function initDatabase() {
       await ensureColumn(pool, "membership_requests", "howDidYouHear", "ALTER TABLE `membership_requests` ADD COLUMN `howDidYouHear` varchar(100)");
       await ensureColumn(pool, "membership_requests", "acceptsEmailContact", "ALTER TABLE `membership_requests` ADD COLUMN `acceptsEmailContact` int NOT NULL DEFAULT 0");
       await ensureColumn(pool, "membership_requests", "rgpdConsent", "ALTER TABLE `membership_requests` ADD COLUMN `rgpdConsent` int NOT NULL DEFAULT 1");
+      await ensureColumn(pool, "membership_requests", "mediaConsent", "ALTER TABLE `membership_requests` ADD COLUMN `mediaConsent` int NOT NULL DEFAULT 0");
       await ensureColumn(pool, "membership_requests", "paiementStatut", "ALTER TABLE `membership_requests` ADD COLUMN `paiementStatut` VARCHAR(20) NOT NULL DEFAULT 'en_attente'");
       await ensureColumn(pool, "membership_requests", "rgpdConsentAt", "ALTER TABLE `membership_requests` ADD COLUMN `rgpdConsentAt` timestamp NULL");
       await ensureColumn(pool, "membership_requests", "acceptsEmailContactAt", "ALTER TABLE `membership_requests` ADD COLUMN `acceptsEmailContactAt` timestamp NULL");
