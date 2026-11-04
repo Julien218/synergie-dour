@@ -38,7 +38,7 @@ import { sendMembershipActivatedEmail, sendPaymentFailedEmail } from "../email/n
 
 // Commission plateforme : uniquement en mode Connect (ASBL_STRIPE_CONNECT_ACCOUNT_ID défini)
 const APPLICATION_FEE_CENTS = process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID
-  ? parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "250", 10)
+  ? parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "0", 10)
   : 0;
 
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {

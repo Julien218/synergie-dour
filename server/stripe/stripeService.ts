@@ -32,12 +32,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   typescript: true,
 });
 
-const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "250", 10);
+const APPLICATION_FEE_CENTS = parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "0", 10);
 const MEMBERSHIP_PRICE_CENTS = parseInt(process.env.MEMBERSHIP_PRICE_CENTS ?? "5000", 10);
 
 /** Données de transfert Connect : vide en mode direct (pas d'ID Connect configuré). */
 function connectPaymentData(accountId: string | undefined, feeCents: number) {
   if (!accountId) return {};
+  // Mode Connect : la plateforme garde la ligne de frais ; Stripe prélève ses frais réels sur
+  // le compte plateforme. L'ASBL reçoit exactement le net (total - application_fee).
   return {
     application_fee_amount: APPLICATION_FEE_CENTS + feeCents,
     transfer_data: { destination: accountId },
@@ -61,14 +63,24 @@ const STRIPE_FEE_FIXED_CENTS = parseInt(process.env.STRIPE_FEE_FIXED_CENTS ?? "2
  * Calcule le total à débiter pour que, après frais Stripe, le net soit intact.
  * total = (net + fixe) / (1 - pourcentage), arrondi au centime supérieur.
  */
+/**
+ * Multiplicateur de la ligne de frais : 1 = couvre les frais Stripe estimés (mode direct, défaut) ;
+ * 2 = la plateforme perçoit le double des frais Stripe estimés (mode Connect, défaut).
+ */
+const STRIPE_FEE_MULTIPLIER = parseFloat(
+  process.env.STRIPE_FEE_MULTIPLIER ?? (process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID ? "2" : "1")
+);
+
 export function computeOnlinePaymentAmounts(netCents: number): {
   netCents: number;
   feeCents: number;
   totalCents: number;
 } {
   const rate = STRIPE_FEE_PERCENT / 100;
-  const totalCents = Math.ceil((netCents + STRIPE_FEE_FIXED_CENTS) / (1 - rate));
-  return { netCents, feeCents: totalCents - netCents, totalCents };
+  // frais F = m × (rate × (net + F) + fixe)  =>  F = m × (rate × net + fixe) / (1 − m × rate)
+  const m = STRIPE_FEE_MULTIPLIER;
+  const feeCents = Math.ceil((m * (rate * netCents + STRIPE_FEE_FIXED_CENTS)) / (1 - m * rate));
+  return { netCents, feeCents, totalCents: netCents + feeCents };
 }
 
 /* ------------------------------------------------------------------------- */
@@ -153,8 +165,8 @@ function feeLineItem(feeCents: number): Stripe.Checkout.SessionCreateParams.Line
     price_data: {
       currency: "eur",
       product_data: {
-        name: "Frais de paiement en ligne",
-        description: "Frais de traitement du paiement. Gratuit par virement bancaire.",
+        name: "Frais de service et de paiement en ligne",
+        description: "Frais de traitement du paiement et de service de la plateforme. Gratuit par virement bancaire.",
       },
       unit_amount: feeCents,
     },
