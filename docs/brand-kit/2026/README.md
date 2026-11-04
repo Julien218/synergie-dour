@@ -1,6 +1,6 @@
 # ADN visuel Synergie Dour - source de vérité
 
-Version **2026.08.05**.
+Version **2026.11.04**.
 
 Ce dossier est le point d'entrée officiel pour le branding, les agents IA, les automatisations et les développements du dépôt `Julien218/synergie-dour`.
 

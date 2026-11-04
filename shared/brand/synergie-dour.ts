@@ -3,7 +3,7 @@
  * Toute automatisation doit rester alignée avec docs/brand-kit/2026.
  */
 export const SYNERGIE_DOUR_BRAND = {
-  version: "2026.08.05",
+  version: "2026.11.04",
   status: "production",
   locale: "fr-BE",
   identity: {
@@ -25,17 +25,22 @@ export const SYNERGIE_DOUR_BRAND = {
     editorialGuide:
       "docs/brand-kit/2026/06_REGLES_ET_PROMPTS/GUIDE_EDITORIAL.md",
   },
+  // Référence : ADN visuel réel du site (client/src/index.css, client/index.html)
   palette: {
-    navy: "#070A2A",
-    deepNavy: "#020E61",
-    royalBlue: "#0942B2",
-    electricBlue: "#2685E8",
-    cyan: "#70C7FB",
-    gold: "#FED613",
-    amber: "#DA8B01",
-    cream: "#F7F5EC",
+    navy: "#001a3d",
+    navyDeep: "#001533",
+    gold: "#D4AF37",
+    goldLight: "#E8C547",
+    goldPale: "#F0E68C",
+    blue: "#003d99",
+    blueBright: "#0066CC",
+    blueIndigo: "#1a3ba0",
     white: "#FFFFFF",
-    ink: "#101934",
+  },
+  typography: {
+    display: "Cinzel",
+    script: "Dancing Script",
+    body: "Montserrat",
   },
   policy: {
     mode: "fail-closed",
