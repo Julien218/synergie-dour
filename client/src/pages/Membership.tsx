@@ -141,6 +141,7 @@ export default function Membership() {
     // Section 4 — Finalisation
     acceptsEmailContact: false,
     rgpdConsent: false,
+    mediaConsent: false,
   });
   const [gbLoading, setGbLoading] = useState(false);
   const [mainSector, setMainSector] = useState("");
@@ -214,6 +215,7 @@ export default function Membership() {
       paymentMode,
       acceptsEmailContact: form.acceptsEmailContact ? 1 : 0,
       rgpdConsent: form.rgpdConsent ? 1 : 0,
+      mediaConsent: form.mediaConsent ? 1 : 0,
     });
   }
 
@@ -730,6 +732,24 @@ export default function Membership() {
                         </label>
                         <p className="text-xs text-gray-500 mt-0.5">
                           Actualités membres, événements exclusifs, opportunités networking.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Checkbox autorisation médias (facultative) */}
+                    <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50">
+                      <Checkbox
+                        id="mediaConsent"
+                        checked={form.mediaConsent}
+                        onCheckedChange={(v) => set("mediaConsent", !!v)}
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <label htmlFor="mediaConsent" className="text-sm font-medium text-gray-800 cursor-pointer flex items-center gap-1.5">
+                          J'autorise Synergie Dour à utiliser le logo, les photos et les vidéos de mon commerce
+                        </label>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Sur le site et les réseaux sociaux de l'ASBL (vidéo de bienvenue, mise en avant des membres). Retrait possible à tout moment sur simple demande à contact@synergiedour.be.
                         </p>
                       </div>
                     </div>
