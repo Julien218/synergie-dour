@@ -1,0 +1,111 @@
+{
+ "title": "Traiteur Leblanc - humour",
+ "music_start": 4.6,
+ "emphasis": [
+  "CHÉRIE",
+  "CHEF",
+  "LEBLANC",
+  "DOUR",
+  "GRAND",
+  "BIENTÔT",
+  "INNOVATION",
+  "065",
+  "63",
+  "30",
+  "74",
+  "MARDI",
+  "DIMANCHE",
+  "LUNDI",
+  "FÊTES",
+  "INDÉPENDANTS",
+  "RÉUNIS"
+ ],
+ "clips": [
+  {
+   "start": 22.0,
+   "dur": 1.7,
+   "trans": "fade"
+  },
+  {
+   "start": 30.0,
+   "dur": 3.0,
+   "trans": "slideleft"
+  },
+  {
+   "start": 50.0,
+   "dur": 3.0,
+   "trans": "circleopen"
+  },
+  {
+   "start": 8.0,
+   "dur": 2.5,
+   "trans": "smoothup"
+  },
+  {
+   "start": 34.0,
+   "dur": 2.4,
+   "trans": "wipeleft"
+  },
+  {
+   "start": 44.0,
+   "dur": 4.1,
+   "trans": "slideup"
+  },
+  {
+   "start": 14.0,
+   "dur": 2.8,
+   "trans": "slidedown"
+  },
+  {
+   "start": 24.0,
+   "dur": 2.7,
+   "trans": "smoothleft"
+  },
+  {
+   "start": 36.0,
+   "dur": 3.0,
+   "trans": "dissolve"
+  },
+  {
+   "start": 32.0,
+   "dur": 1.7,
+   "trans": "slideleft"
+  },
+  {
+   "start": 52.0,
+   "dur": 3.2,
+   "trans": "circleopen"
+  },
+  {
+   "start": 56.0,
+   "dur": 5.0,
+   "trans": "wipeleft"
+  },
+  {
+   "start": 42.0,
+   "dur": 3.8,
+   "trans": "smoothup"
+  },
+  {
+   "start": 18.0,
+   "dur": 4.0,
+   "trans": "slideup"
+  },
+  {
+   "start": 46.0,
+   "dur": 3.6,
+   "trans": "slidedown"
+  },
+  {
+   "start": 38.0,
+   "dur": 5.1,
+   "trans": "circleopen"
+  },
+  {
+   "start": 62.0,
+   "dur": 2.51,
+   "trans": "fade",
+   "avail": 3.0
+  }
+ ]
+}
