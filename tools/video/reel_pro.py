@@ -90,8 +90,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 k += 1
                 rs, re_ = int((s - a) * 1000), int((e - a) * 1000)
                 parts.append(
-                    "{\\alpha&H80&\\c%s\\fscx100\\fscy100"
-                    "\\t(%d,%d,\\alpha&H00&\\c%s\\fscx114\\fscy114)"
+                    "{\\1a&H80&\\c%s\\fscx100\\fscy100"
+                    "\\t(%d,%d,\\1a&H00&\\c%s\\fscx114\\fscy114)"
                     "\\t(%d,%d,\\c%s\\fscx100\\fscy100)}%s" % (WHITE, rs, rs + 70, GOLD_BGR, re_, re_ + 120, WHITE, w))
             text_lines.append(" ".join(parts))
         y = 1170
