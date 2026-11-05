@@ -1,0 +1,17 @@
+{
+  "title": "Traiteur Leblanc",
+  "cuts": [0, 3.40, 6.17, 11.55, 15.93, 20.25, 25.20, 28.07, 32.52, 36.12],
+  "transitions": ["slideleft", "circleopen", "smoothup", "zoomin", "wipeleft", "slideup", "circleopen", "smoothleft"],
+  "music_start": 4.6,
+  "clips": [
+    {"start": 6.0,  "phrase": [0.00, 3.15],  "lines": ["Traiteur Leblanc", "Place Verte 42, à Dour"]},
+    {"start": 10.0, "phrase": [3.65, 5.94],  "lines": ["Le goût du service,", "l'art de recevoir"]},
+    {"start": 22.0, "phrase": [6.39, 11.31], "lines": ["Un traiteur de confiance :", "produits frais, saveurs", "authentiques, service", "sur mesure"]},
+    {"start": 29.0, "phrase": [11.80, 15.71],"lines": ["Pour les particuliers :", "réceptions, événements", "privés, cocktails, buffets"]},
+    {"start": 45.0, "phrase": [16.15, 19.87],"lines": ["Pour les entreprises :", "repas d'affaires et", "événements professionnels"]},
+    {"start": 40.0, "phrase": [20.62, 24.89],"lines": ["Un savoir-faire artisanal :", "une cuisine généreuse,", "préparée avec passion"]},
+    {"start": 50.0, "phrase": [25.54, 27.72],"lines": ["Mardi au samedi : 10 h - 18 h", "Dimanche : 10 h - 13 h", "Fermé le lundi"]},
+    {"start": 57.0, "avail": 3.9, "phrase": [28.42, 32.27], "lines": ["Commandez :", "065 63 30 74"]},
+    {"start": 61.0, "phrase": [32.77, 35.77],"lines": ["Synergie Dour :", "commerçants et indépendants", "réunis"]}
+  ]
+}
