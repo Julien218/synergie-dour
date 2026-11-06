@@ -48,7 +48,7 @@ def clean(w):
     return re.sub(r"[,:;]$", "", w).upper()
 
 
-def build_ass(words, font, total, path, emphasis):
+def build_ass(words, font, total, path, emphasis, labels=()):
     header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -57,6 +57,7 @@ WrapStyle: 2
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Lab,{font},74,&H0037AFD4,&H0037AFD4,&H00331A00,&H80000000,-1,0,0,0,100,100,2,0,1,8,4,5,65,65,0,1
 Style: Cap,{font},92,&H00FFFFFF,&H00FFFFFF,&H00331A00,&H80000000,-1,0,0,0,100,100,1,0,1,9,4,5,65,65,0,1
 
 [Events]
@@ -78,6 +79,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         text = " ".join(parts)
         tag = "{\\an5\\pos(540,1250)\\fscx70\\fscy70\\alpha&HFF&\\t(0,110,\\fscx100\\fscy100\\alpha&H00&)\\fad(0,70)}"
         ev.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,%s%s" % (ts(a), ts(b), tag, text))
+    for lb in labels:
+        tag = "{\\an5\\pos(540,400)\\fscx85\\fscy85\\alpha&HFF&\\t(0,200,\\fscx100\\fscy100\\alpha&H00&)\\fad(0,200)}"
+        ev.append("Dialogue: 1,%s,%s,Lab,,0,0,0,,%s%s" % (ts(lb["s"]), ts(lb["e"]), tag, lb["text"]))
     open(path, "w", encoding="utf-8").write(header + "\n".join(ev) + "\n")
 
 
@@ -102,14 +106,24 @@ def main():
 
     with tempfile.TemporaryDirectory() as d:
         ass = os.path.join(d, "subs.ass")
-        build_ass(al["words"], a.font, total, ass, emphasis)
+        labels, t0 = [], 0.0
+        for i, c in enumerate(clips):
+            if c.get("label"):
+                labels.append({"text": c["label"], "s": t0 + 0.25, "e": t0 + durs[i] - 0.05})
+            t0 += durs[i]
+        build_ass(al["words"], a.font, total, ass, emphasis, labels)
         inputs, chains = [], []
         for i, c in enumerate(clips):
             length = durs[i] + (T if i < n - 1 else 0)
             speed = c.get("speed", cfg.get("speed", 1.0))          # <1 : ralenti (0.7 = 70 % de la vitesse)
             take_src = min(length * speed, c.get("avail", length * speed))
             take = take_src / speed                               # durée obtenue en sortie
-            inputs += ["-ss", str(c["start"]), "-t", str(round(take_src, 3)), "-i", a.source]
+            if c.get("image"):                                    # photo fixe animée (zoom lent)
+                take = length
+                inputs += ["-loop", "1", "-framerate", "30", "-t", str(round(length, 3)), "-i", c["image"]]
+                speed = 1.0
+            else:
+                inputs += ["-ss", str(c["start"]), "-t", str(round(take_src, 3)), "-i", a.source]
             slow = f"(PTS-STARTPTS)/{speed}" if speed != 1.0 else "PTS-STARTPTS"
             hold = f",tpad=stop_mode=clone:stop_duration={length - take:.3f}" if length - take > 0.01 else ""
             z0, z1 = (1.00, 1.10) if i % 2 == 0 else (1.10, 1.00)      # zoom avant / arrière en alternance
