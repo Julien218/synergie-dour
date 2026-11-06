@@ -106,12 +106,15 @@ def main():
         inputs, chains = [], []
         for i, c in enumerate(clips):
             length = durs[i] + (T if i < n - 1 else 0)
-            take = min(length, c.get("avail", length))
-            inputs += ["-ss", str(c["start"]), "-t", str(round(take, 3)), "-i", a.source]
+            speed = c.get("speed", cfg.get("speed", 1.0))          # <1 : ralenti (0.7 = 70 % de la vitesse)
+            take_src = min(length * speed, c.get("avail", length * speed))
+            take = take_src / speed                               # durée obtenue en sortie
+            inputs += ["-ss", str(c["start"]), "-t", str(round(take_src, 3)), "-i", a.source]
+            slow = f"(PTS-STARTPTS)/{speed}" if speed != 1.0 else "PTS-STARTPTS"
             hold = f",tpad=stop_mode=clone:stop_duration={length - take:.3f}" if length - take > 0.01 else ""
             z0, z1 = (1.00, 1.10) if i % 2 == 0 else (1.10, 1.00)      # zoom avant / arrière en alternance
             chains.append(
-                f"[{i}:v]setpts=PTS-STARTPTS,fps=30{hold},scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
+                f"[{i}:v]setpts={slow},fps=30{hold},scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
                 f"scale='trunc(1080*({z0}+({z1}-{z0})*t/{length})/2)*2':-2:eval=frame,"
                 f"crop=1080:1920,setsar=1,format=yuv420p[v{i}]")
         cur, offset = "v0", 0.0
