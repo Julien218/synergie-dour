@@ -1,11 +1,52 @@
-{"music_start":4.6,"cap_y":1450,
- "emphasis":["INDÉPENDANT","CINQ","TVA","MUTUELLE","SYNERGIE","DOUR.","SYNERGIEDOUR.BE.","SEUL."],
- "clips":[
-  {"image":"cartes/carte_0.png","dur":4.9,"trans":"fade"},
-  {"image":"cartes/carte_1.png","dur":3.9,"trans":"slideleft"},
-  {"image":"cartes/carte_2.png","dur":5.1,"trans":"slideleft"},
-  {"image":"cartes/carte_3.png","dur":2.5,"trans":"slideleft"},
-  {"image":"cartes/carte_4.png","dur":5.4,"trans":"slideleft"},
-  {"image":"cartes/carte_5.png","dur":5.0,"trans":"slideleft"},
-  {"image":"cartes/carte_6.png","dur":4.4,"trans":"circleopen"}
- ]}
+{
+ "music_start": 4.6,
+ "cap_y": 1450,
+ "emphasis": [
+  "INDÉPENDANT",
+  "CINQ",
+  "TVA",
+  "MUTUELLE",
+  "SYNERGIE",
+  "DOUR.",
+  "SYNERGIEDOUR.BE.",
+  "SEUL."
+ ],
+ "clips": [
+  {
+   "image": "cartes/carte_0.png",
+   "dur": 4.9,
+   "trans": "fade"
+  },
+  {
+   "image": "cartes/carte_1.png",
+   "dur": 3.9,
+   "trans": "slideleft"
+  },
+  {
+   "image": "cartes/carte_2.png",
+   "dur": 5.1,
+   "trans": "slideleft"
+  },
+  {
+   "image": "cartes/carte_3.png",
+   "dur": 2.5,
+   "trans": "slideleft"
+  },
+  {
+   "image": "cartes/carte_4.png",
+   "dur": 5.4,
+   "trans": "slideleft"
+  },
+  {
+   "image": "cartes/carte_5.png",
+   "dur": 5.0,
+   "trans": "slideleft"
+  },
+  {
+   "image": "cartes/carte_6.png",
+   "dur": 4.4,
+   "trans": "circleopen"
+  }
+ ],
+ "bg": "bg_serie.mp4"
+}

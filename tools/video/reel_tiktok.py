@@ -94,6 +94,7 @@ def main():
     ap.add_argument("--font", default="Poppins")
     ap.add_argument("--font-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts"))
     ap.add_argument("--logo")
+    ap.add_argument("--credit-font", help="police du crédit texte « JS-Innov.IA » (hologramme sans dessin du logo)")
     ap.add_argument("--preset", default="veryfast")
     ap.add_argument("--credit-script", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "credit_jsinnovia.py"))
     a = ap.parse_args()
@@ -105,6 +106,8 @@ def main():
     durs = [c["dur"] for c in clips]
     total = round(sum(durs), 3)
     emphasis = set(x.upper() for x in cfg.get("emphasis", []))
+    BG = cfg.get("bg")                                        # vidéo de fond déjà composée 1080x1920 ; cartes alors en PNG transparent
+    PF = "yuva420p" if BG else "yuv420p"
 
     with tempfile.TemporaryDirectory() as d:
         ass = os.path.join(d, "subs.ass")
@@ -138,18 +141,25 @@ def main():
             chains.append(
                 f"[{i}:v]setpts={slow},fps=30{hold},scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
                 f"scale='trunc(1080*({z0}+({z1}-{z0})*t/{length})/2)*2':-2:eval=frame,"
-                f"crop=1080:1920,setsar=1,format=yuv420p[v{i}]")
+                f"crop=1080:1920,setsar=1,format={PF}[v{i}]")
         cur, offset = "v0", 0.0
         for i in range(1, n):
             offset += durs[i - 1]
             chains.append(f"[{cur}][v{i}]xfade=transition={clips[i].get('trans', 'fade')}:duration={T}:offset={offset:.3f}[x{i}]")
             cur = f"x{i}"
+        if BG:
+            bgi = n + 2
+            chains.append(f"[{bgi}:v]setpts=PTS-STARTPTS,fps=30,scale=1080:1920,setsar=1,format=yuv420p[bgv];"
+                          f"[bgv][{cur}]overlay=shortest=1:format=auto,format=yuv420p[bgo]")
+            cur = "bgo"
         fontdir = f":fontsdir='{a.font_dir}'" if a.font_dir else ""
         chains.append(
             f"[{cur}]eq=contrast=1.08:saturation=1.18,subtitles='{ass}'{fontdir},"
             f"drawbox=x=0:y=0:w='iw*t/{total}':h=10:color=0xD4AF37@0.95:t=fill,format=yuv420p[vout]")
         vi, mi = n, n + 1
         inputs += ["-i", a.voice, "-ss", str(cfg.get("music_start", 0)), "-t", str(total + 0.5), "-i", a.music]
+        if BG:
+            inputs += ["-stream_loop", "-1", "-i", BG]
         chains.append(
             f"[{vi}:a]aresample=44100,pan=stereo|c0=c0|c1=c0,adelay={int(delay*1000)}|{int(delay*1000)},asplit=2[vo][vsc];"
             f"[{mi}:a]volume=0.45,afade=t=in:d=0.3[mu];"
@@ -161,9 +171,10 @@ def main():
                ["-filter_complex", ";".join(chains), "-map", "[vout]", "-map", "[aout]", "-t", str(total),
                 "-c:v", "libx264", "-preset", a.preset, "-crf", "19", "-c:a", "aac", "-b:a", "192k", raw])
         subprocess.check_call(cmd)
-        if a.logo:
-            subprocess.check_call([sys.executable, a.credit_script, raw, a.output, "--logo", a.logo, "--width-pct", "12"],
-                                  env=dict(os.environ, PRESET=a.preset))
+        if a.logo or a.credit_font:
+            cc = [sys.executable, a.credit_script, raw, a.output, "--width-pct", "12"]
+            cc += ["--logo", a.logo] if a.logo else ["--font", a.credit_font]
+            subprocess.check_call(cc, env=dict(os.environ, PRESET=a.preset))
         else:
             os.replace(raw, a.output)
     print("OK", a.output, total)

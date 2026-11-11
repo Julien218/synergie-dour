@@ -66,8 +66,8 @@ def gold_ring(img, cy, diam, numeral, fdir):
         col = tuple(int(GOLD[j] + (GOLD2[j] - GOLD[j]) * k) for j in range(3)) + (255,)
         d.ellipse((cx - r + i // 2, cy - r + i // 2, cx + r - i // 2, cy + r - i // 2), outline=col, width=2)
     glow = ring.filter(ImageFilter.GaussianBlur(22))
-    img.paste(glow, (0, 0), glow)
-    img.paste(ring, (0, 0), ring)
+    img.alpha_composite(glow)
+    img.alpha_composite(ring)
     d2 = ImageDraw.Draw(img)
     f = font(fdir, 800, int(diam * 0.62))
     bb = d2.textbbox((0, 0), numeral, font=f)
@@ -83,12 +83,17 @@ def dots(d, y, n, total=5):
         d.ellipse((x - r, y - r, x + r, y + r), fill=GOLD if on else None, outline=GOLD if on else (60, 80, 140), width=3)
 
 
-def make(cfg, out, fdir, logo, intro):
+def make(cfg, out, fdir, logo, intro, transparent=False):
     for i, c in enumerate(cfg):
-        img = background()
+        img = Image.new("RGBA", (W, H), (0, 0, 0, 0)) if transparent else background().convert("RGBA")
         d = ImageDraw.Draw(img)
         k = c["kind"]
-        if k == "hook":
+        if k == "hook" and transparent:                       # le logo maître est déjà en grand dans la vidéo de fond
+            f1 = font(fdir, 800, 112)
+            for j, t in enumerate(c["title"].split("|")):
+                centered(d, t, f1, 760 + j * 122, IVORY)
+            centered(d, c["sub"], font(fdir, 600, 54), 1010, GOLD2)
+        elif k == "hook":
             lg = Image.open(logo).convert("RGB").resize((520, 520), Image.LANCZOS)
             frame = Image.new("RGB", (532, 532), GOLD)
             frame.paste(lg, (6, 6))
@@ -105,7 +110,7 @@ def make(cfg, out, fdir, logo, intro):
             y = 870
             for ln in wrap(d, c["title"], ft, 900):
                 centered(d, ln, ft, y, IVORY); y += 90
-            centered(d, c["sub"], font(fdir, 600, 40), y + 22, CYAN)
+            centered(d, c["sub"], font(fdir, 600, 40), y + 22, IVORY if transparent else CYAN)
             dots(d, 1150, c["n"])
         elif k == "end":
             card = Image.open(intro).convert("RGB")
@@ -118,7 +123,7 @@ def make(cfg, out, fdir, logo, intro):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("cards"); ap.add_argument("out")
-    ap.add_argument("--fonts", required=True); ap.add_argument("--logo", required=True); ap.add_argument("--intro", required=True)
+    ap.add_argument("--fonts", required=True); ap.add_argument("--logo", required=True); ap.add_argument("--intro", required=True); ap.add_argument("--transparent", action="store_true")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
-    make(json.load(open(a.cards, encoding="utf-8")), a.out, a.fonts, a.logo, a.intro)
+    make(json.load(open(a.cards, encoding="utf-8")), a.out, a.fonts, a.logo, a.intro, a.transparent)
