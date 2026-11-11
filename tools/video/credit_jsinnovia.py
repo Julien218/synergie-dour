@@ -3,7 +3,7 @@
 
 Usage : credit_jsinnovia.py entree.mp4 sortie.mp4 [--logo logo_jsinnovia_transparent.png] [--font Montserrat-SemiBold.ttf]
 
-Règles de la charte respectées : crédit petit (≤ 12 % de la largeur), en pied de vidéo,
+Règles de la charte respectées : crédit petit (≤ 12 % de la largeur), en bas à droite,
 dans la marge de sécurité (6 %), jamais fusionné avec le logo Synergie Dour.
 Sans --logo, le crédit est un texte « JS-Innov.IA ». Le logo officiel JS-Innov.IA
 (PNG transparent) doit être fourni par le titulaire : il n'est pas redessiné ici.
@@ -85,14 +85,19 @@ def main():
         png = os.path.join(d, "credit.png")
         cw, ch = make_credit_png(target_w, png, a.logo, a.font)
         margin = round(H * 0.06)  # marge de sécurité 6 %
-        # reflet lumineux qui balaie le crédit toutes les 4 s + légère pulsation (effet hologramme)
-        band = ("(X+0.6*Y-(mod(T,4)/4*(W+0.6*H+120)-60))")
-        geq = (f"geq=r='min(255,r(X,Y)+110*exp(-pow({band}/{max(10, cw // 8)},2)))':"
-               f"g='min(255,g(X,Y)+110*exp(-pow({band}/{max(10, cw // 8)},2)))':"
-               f"b='min(255,b(X,Y)+110*exp(-pow({band}/{max(10, cw // 8)},2)))':"
-               f"a='alpha(X,Y)*(0.72+0.18*sin(2*PI*T/2.5))'")
+        mx = round(W * 0.04)      # marge droite
+        # Hologramme discret en bas à droite : très léger au repos (alpha ~0,55, respiration lente),
+        # puis toutes les 6 s une animation de 1,2 s : reflet qui balaie + lignes de balayage + scintillement.
+        P, D = 6, 1.2
+        win = f"lt(mod(T,{P}),{D})"
+        band = f"(X+0.6*Y-(mod(T,{P})/{D}*(W+0.6*H+120)-60))"
+        sw = f"110*exp(-pow({band}/{max(10, cw // 7)},2))"
+        scan = f"(1-0.18*{win}*(0.5+0.5*sin(Y*1.6+T*30)))"
+        flick = f"(1+0.35*{win}*sin(PI*mod(T,{P})/{D}))"
+        geq = (f"geq=r='min(255,r(X,Y)+{sw})':g='min(255,g(X,Y)+{sw})':b='min(255,b(X,Y)+{sw})':"
+               f"a='min(255,alpha(X,Y)*(0.55+0.06*sin(2*PI*T/3))*{scan}*{flick})'")
         fc = (f"[1:v]format=rgba,{geq}[c];"
-              f"[0:v][c]overlay=x=(W-w)/2:y=H-h-{margin}:shortest=1,format=yuv420p[v]")
+              f"[0:v][c]overlay=x=W-w-{mx}:y=H-h-{margin}:shortest=1,format=yuv420p[v]")
         comment = (f"Plateforme JS-Innov.IA - {SITE_1} - VilleConnect OS - {SITE_2}")
         cmd = [
             "ffmpeg", "-y", "-v", "error", "-i", a.input, "-loop", "1", "-i", png,
