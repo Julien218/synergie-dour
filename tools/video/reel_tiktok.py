@@ -108,10 +108,16 @@ def main():
         ass = os.path.join(d, "subs.ass")
         labels, t0 = [], 0.0
         for i, c in enumerate(clips):
-            if c.get("label"):
-                labels.append({"text": c["label"], "s": t0 + 0.25, "e": t0 + durs[i] - 0.05})
+            lb = c.get("label")
+            if isinstance(lb, str):
+                labels.append({"text": lb, "s": t0 + 0.25, "e": t0 + durs[i] - 0.05})
+            elif isinstance(lb, list):                            # plusieurs étiquettes : [{"text","s","e"}] relatifs au plan
+                for x in lb:
+                    labels.append({"text": x["text"], "s": t0 + x["s"], "e": t0 + x["e"]})
             t0 += durs[i]
-        build_ass(al["words"], a.font, total, ass, emphasis, labels)
+        delay = float(cfg.get("voice_delay", 0))               # intro avant la voix : on décale la voix et les sous-titres
+        words = [dict(w, s=w["s"] + delay, e=w["e"] + delay) for w in al["words"]]
+        build_ass(words, a.font, total, ass, emphasis, labels)
         inputs, chains = [], []
         for i, c in enumerate(clips):
             length = durs[i] + (T if i < n - 1 else 0)
@@ -143,7 +149,7 @@ def main():
         vi, mi = n, n + 1
         inputs += ["-i", a.voice, "-ss", str(cfg.get("music_start", 0)), "-t", str(total + 0.5), "-i", a.music]
         chains.append(
-            f"[{vi}:a]aresample=44100,pan=stereo|c0=c0|c1=c0,asplit=2[vo][vsc];"
+            f"[{vi}:a]aresample=44100,pan=stereo|c0=c0|c1=c0,adelay={int(delay*1000)}|{int(delay*1000)},asplit=2[vo][vsc];"
             f"[{mi}:a]volume=0.45,afade=t=in:d=0.3[mu];"
             f"[mu][vsc]sidechaincompress=threshold=0.04:ratio=10:attack=15:release=350[duck];"
             f"[vo][duck]amix=inputs=2:duration=first:normalize=0,apad,atrim=0:{total},afade=t=out:st={total - 1.2:.2f}:d=1.2,"
