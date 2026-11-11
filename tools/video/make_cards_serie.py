@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 W, H = 1080, 1920
 NIGHT, INST, ENERGY, CYAN = (5, 3, 43), (2, 60, 144), (29, 113, 186), (106, 182, 209)
 GOLD, GOLD2, IVORY = (247, 182, 48), (252, 212, 81), (247, 243, 233)
+SW = 0   # contour bleu nuit des textes (activé avec --transparent, pour rester lisible sur fond animé)
 
 
 def font(d, w, size):
@@ -39,10 +40,10 @@ def centered(d, text, f, y, fill, spacing=0):
     x = (W - w) / 2
     if spacing:
         for ch in text:
-            d.text((x, y), ch, font=f, fill=fill)
+            d.text((x, y), ch, font=f, fill=fill, stroke_width=SW, stroke_fill=NIGHT)
             x += d.textlength(ch, font=f) + spacing
     else:
-        d.text((x, y), text, font=f, fill=fill)
+        d.text((x, y), text, font=f, fill=fill, stroke_width=SW, stroke_fill=NIGHT)
 
 
 def wrap(d, text, f, maxw):
@@ -84,6 +85,8 @@ def dots(d, y, n, total=5):
 
 
 def make(cfg, out, fdir, logo, intro, transparent=False):
+    global SW
+    SW = 6 if transparent else 0
     for i, c in enumerate(cfg):
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0)) if transparent else background().convert("RGBA")
         d = ImageDraw.Draw(img)
