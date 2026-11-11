@@ -1,0 +1,9 @@
+[
+ {"kind":"hook","title":"DEVENIR|INDÉPENDANT","sub":"en 5 étapes, à Dour"},
+ {"kind":"step","n":1,"tag":"Je me lance","title":"Métier réglementé ?","sub":"Vérifie les compétences exigées"},
+ {"kind":"step","n":2,"tag":"Je me lance","title":"Inscription à la BCE","sub":"Via un guichet d'entreprises"},
+ {"kind":"step","n":3,"tag":"Je me lance","title":"Activer la TVA","sub":"Régime de franchise possible"},
+ {"kind":"step","n":4,"tag":"Je me lance","title":"Caisse d'assurances sociales","sub":"Au plus tard le 1er jour d'activité"},
+ {"kind":"step","n":5,"tag":"Je me lance","title":"Mutuelle, assurances, compte pro","sub":"Ta protection dès le départ"},
+ {"kind":"end"}
+]

@@ -27,6 +27,8 @@ def ts(t):
 def chunks(words, maxw=3, maxch=20):
     out, cur = [], []
     for w in words:
+        if cur and len(" ".join(x["w"] for x in cur + [w])) > maxch + 2:   # jamais plus large que l'écran
+            out.append(cur); cur = []
         cur.append(w)
         txt = " ".join(x["w"] for x in cur)
         end = bool(re.search(r"[.?!…:,]$", w["w"]))
@@ -48,7 +50,7 @@ def clean(w):
     return re.sub(r"[,:;]$", "", w).upper()
 
 
-def build_ass(words, font, total, path, emphasis, labels=()):
+def build_ass(words, font, total, path, emphasis, labels=(), cap_y=1250):
     header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -77,8 +79,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 "{\\c%s\\fscx100\\fscy100\\t(%d,%d,\\c%s\\fscx118\\fscy118)\\t(%d,%d,\\c%s\\fscx100\\fscy100)}%s"
                 % (WHITE, max(0, rs - 30), rs + 60, GOLD, re_, re_ + 120, col if col == GOLD else WHITE, clean(w["w"])))
         text = " ".join(parts)
-        tag = "{\\an5\\pos(540,1250)\\fscx70\\fscy70\\alpha&HFF&\\t(0,110,\\fscx100\\fscy100\\alpha&H00&)\\fad(0,70)}"
-        ev.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,%s%s" % (ts(a), ts(b), tag, text))
+        tag = "{\\an5\\pos(540,%d)\\fscx70\\fscy70\\alpha&HFF&\\t(0,110,\\fscx100\\fscy100\\alpha&H00&)\\fad(0,70)}"
+        ev.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,%s%s" % (ts(a), ts(b), tag % cap_y, text))
     for lb in labels:
         tag = "{\\an5\\pos(540,400)\\fscx85\\fscy85\\alpha&HFF&\\t(0,200,\\fscx100\\fscy100\\alpha&H00&)\\fad(0,200)}"
         ev.append("Dialogue: 1,%s,%s,Lab,,0,0,0,,%s%s" % (ts(lb["s"]), ts(lb["e"]), tag, lb["text"]))
@@ -117,7 +119,7 @@ def main():
             t0 += durs[i]
         delay = float(cfg.get("voice_delay", 0))               # intro avant la voix : on décale la voix et les sous-titres
         words = [dict(w, s=w["s"] + delay, e=w["e"] + delay) for w in al["words"]]
-        build_ass(words, a.font, total, ass, emphasis, labels)
+        build_ass(words, a.font, total, ass, emphasis, labels, int(cfg.get("cap_y", 1250)))
         inputs, chains = [], []
         for i, c in enumerate(clips):
             length = durs[i] + (T if i < n - 1 else 0)
