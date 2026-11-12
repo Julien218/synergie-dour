@@ -1,31 +1,14 @@
 /**
- * Service Stripe — paiements ASBL.
- *
- * MODE PAR DÉFAUT (direct) : la clé STRIPE_SECRET_KEY est celle du compte Stripe de l'ASBL.
- * Le membre paie 50 € + frais de paiement ; Stripe prélève ses frais sur la ligne de frais,
- * l'ASBL reçoit exactement 50,00 €. Aucune commission de plateforme.
- *
- * MODE CONNECT (optionnel, si ASBL_STRIPE_CONNECT_ACCOUNT_ID est défini) : voir ci-dessous.
- *
- * MODÈLE CONNECT :
- *   - JS-Innov.IA = compte Stripe "plateforme" (votre compte principal)
- *   - Synergie Dour ASBL = compte Stripe "Connect" (sous-compte)
- *   - Quand un membre paie 50€, Stripe transfère automatiquement :
- *       * 47,50€ vers le compte de l'ASBL (montant - application_fee)
- *       * 2,50€ vers JS-Innov.IA (l'application_fee)
- *       * Stripe prélève ses propres frais des 50€ totaux
- *   - L'argent ne TRANSITE JAMAIS par votre compte personnel
- *
- * PRÉALABLE :
- *   1. Vous (JS-Innov.IA) avez un compte Stripe activé
- *   2. Activer Stripe Connect dans Settings > Connect
- *   3. L'ASBL crée son propre compte Stripe Connect (Express recommandé pour ASBL)
- *   4. Stocker l'ID Connect de l'ASBL dans une variable d'env ou en BDD
- *
- * Plateforme conçue par JS-Innov.IA — www.jsinnovia.com
+ * Membership: €50 dues + €2.50 platform service. Stripe's fees are paid by
+ * JS-Innov.IA from its platform share, never added to the customer's total.
+ * Invoice payment pricing remains configured separately.
  */
-
 import Stripe from "stripe";
+import { MEMBERSHIP_DUES_CENTS, MEMBERSHIP_PLATFORM_FEE_CENTS, MEMBERSHIP_TOTAL_CENTS, membershipPaymentSplit } from "./membershipPricing";
+
+type RecipientAccountStatus = {
+  configuration?: { recipient?: { capabilities?: { stripe_balance?: { stripe_transfers?: { status?: string } } } } };
+};
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-11-20.acacia" as any,
@@ -112,11 +95,18 @@ export interface CreateCheckoutInput {
  * Retourne l'URL où rediriger le membre.
  */
 export async function createMembershipCheckout(input: CreateCheckoutInput): Promise<string> {
+  const split = membershipPaymentSplit(input.asblConnectAccountId);
+  const account = await stripe.rawRequest("GET", `/v2/core/accounts/${split.transfer_data.destination}`, {
+    include: ["configuration.recipient"],
+  }, { apiVersion: "2026-10-28.endive" as any }) as unknown as RecipientAccountStatus;
+  if (account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status !== "active") {
+    throw new Error("Le compte Stripe de Synergie Dour n'est pas encore autorisé à recevoir les transferts.");
+  }
   const baseConfig: Stripe.Checkout.SessionCreateParams = {
     customer_email: input.customerEmail,
     success_url: `${APP_URL}/membership/success?session={CHECKOUT_SESSION_ID}`,
     cancel_url: `${APP_URL}/membership/cancelled`,
-    metadata: input.metadata,
+    metadata: { ...input.metadata, service: "synergie_membership", platformFeeCents: String(MEMBERSHIP_PLATFORM_FEE_CENTS) },
     locale: "fr",
 
   };
@@ -135,8 +125,7 @@ async function createOneTimeCheckout(
   input: CreateCheckoutInput,
   base: Stripe.Checkout.SessionCreateParams
 ): Promise<string> {
-  const amounts = computeOnlinePaymentAmounts(MEMBERSHIP_PRICE_CENTS);
-
+  const split = membershipPaymentSplit(input.asblConnectAccountId);
   const session = await stripe.checkout.sessions.create({
     ...base,
     mode: "payment",
@@ -148,15 +137,17 @@ async function createOneTimeCheckout(
             name: "Adhésion annuelle — Synergie Dour ASBL",
             description: "Adhésion valable un an. Renouvellement manuel auprès du bureau.",
           },
-          unit_amount: amounts.netCents,
+          unit_amount: MEMBERSHIP_DUES_CENTS,
         },
         quantity: 1,
       },
-      feeLineItem(amounts.feeCents),
-      ...serviceLineItems(amounts.serviceCents),
+      {
+        price_data: { currency: "eur", product_data: { name: "Frais de plateforme JS-Innov.IA", description: "Les frais Stripe sont supportés par JS-Innov.IA sur cette part." }, unit_amount: MEMBERSHIP_PLATFORM_FEE_CENTS },
+        quantity: 1,
+      },
     ],
     payment_intent_data: {
-      ...connectPaymentData(input.asblConnectAccountId, amounts),
+      ...split,
       description: `Adhésion ASBL ${input.metadata.businessName}`,
     },
   }, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined);
@@ -258,20 +249,24 @@ async function createSubscriptionCheckout(
   if (!subscriptionPriceId) {
     throw new Error("STRIPE_PRICE_ID_SUBSCRIPTION non configuré");
   }
+  const price = await stripe.prices.retrieve(subscriptionPriceId);
+  if (!price.active || price.unit_amount !== MEMBERSHIP_DUES_CENTS || price.currency !== "eur" || price.recurring?.interval !== "year" || price.recurring.interval_count !== 1) {
+    throw new Error("Le tarif Stripe doit correspondre à une cotisation de 50 € par an.");
+  }
 
+  const split = membershipPaymentSplit(input.asblConnectAccountId);
+  // Both recurring prices have the same yearly interval and renew together.
   const session = await stripe.checkout.sessions.create({
     ...base,
     mode: "subscription",
-    line_items: [{ price: subscriptionPriceId, quantity: 1 }],
+    line_items: [
+      { price: subscriptionPriceId, quantity: 1 },
+      { price_data: { currency: "eur", recurring: { interval: "year" }, product_data: { name: "Frais de plateforme JS-Innov.IA" }, unit_amount: MEMBERSHIP_PLATFORM_FEE_CENTS }, quantity: 1 },
+    ],
     subscription_data: {
-      ...(input.asblConnectAccountId
-        ? {
-            transfer_data: {
-              destination: input.asblConnectAccountId,
-              amount_percent: ((MEMBERSHIP_PRICE_CENTS - APPLICATION_FEE_CENTS) / MEMBERSHIP_PRICE_CENTS) * 100,
-            },
-          }
-        : {}),
+      transfer_data: split.transfer_data,
+      application_fee_percent: Math.round(MEMBERSHIP_PLATFORM_FEE_CENTS / MEMBERSHIP_TOTAL_CENTS * 10000) / 100,
+      metadata: { membershipRequestId: input.metadata.membershipRequestId, service: "synergie_membership", platformFeeCents: String(MEMBERSHIP_PLATFORM_FEE_CENTS) },
       description: `Adhésion ASBL annuelle ${input.metadata.businessName}`,
     },
   }, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined);

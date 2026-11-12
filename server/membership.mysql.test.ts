@@ -33,11 +33,11 @@ describe.skipIf(!url)("Membership lifecycle with isolated MySQL", () => {
     for (const table of ["payments", "membership_requests", "memberships", "merchants", "users"]) await pool.query(`DELETE FROM ${table}`);
     await pool.query("INSERT INTO membership_requests (id,businessName,businessCategory,contactName,email,phone,address,message,website,status,paiementStatut) VALUES (1,'Test shop','Services','Test member','member@example.com','0470000000','Dour','','','approved','en_attente')");
   });
-  const payment = { eventId: "evt_test", sessionId: "cs_test_1", amountCents: 5102, currency: "EUR", customerId: "cus_test", subscriptionId: null, paymentIntentId: "pi_test" };
+  const payment = { eventId: "evt_test", sessionId: "cs_test_1", amountCents: 5250, currency: "EUR", customerId: "cus_test", subscriptionId: null, paymentIntentId: "pi_test" };
   it("activates once under concurrent duplicate delivery and records real foreign keys", async () => {
     await Promise.all([activateMembership(1, payment), activateMembership(1, payment)]);
     const [rows]: any = await pool.query("SELECT * FROM memberships"); expect(rows).toHaveLength(1);
-    const [payments]: any = await pool.query("SELECT * FROM payments"); expect(payments).toHaveLength(1);
+    const [payments]: any = await pool.query("SELECT * FROM payments"); expect(payments).toHaveLength(1); expect(payments[0].amountCents).toBe(5250); expect(payments[0].feeJsInnovCents).toBe(250); expect(payments[0].netToAsblCents).toBe(5000);
     const [requests]: any = await pool.query("SELECT * FROM membership_requests"); expect(requests[0].paiementStatut).toBe("paye"); expect(requests[0].membershipId).toBe(rows[0].id);
     expect(rows[0].userId).toBeGreaterThan(0);
     expect((await memberStatus(rows[0].userId, "member@example.com")).status).toBe("active");

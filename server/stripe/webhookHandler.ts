@@ -33,14 +33,10 @@ async function requireDb() {
   if (!db) throw new Error("Base de données indisponible");
   return db;
 }
-import { constructWebhookEvent } from "./stripeService";
+import { constructWebhookEvent, stripe } from "./stripeService";
+import { MEMBERSHIP_PLATFORM_FEE_CENTS, MEMBERSHIP_DUES_CENTS, MEMBERSHIP_TOTAL_CENTS } from "./membershipPricing";
 import { markInvoicePaidFromStripe } from "../invoices";
 import { sendMembershipActivatedEmail, sendPaymentFailedEmail } from "../email/notifications";
-
-// Commission plateforme : uniquement en mode Connect (ASBL_STRIPE_CONNECT_ACCOUNT_ID défini)
-const APPLICATION_FEE_CENTS = process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID
-  ? parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "0", 10)
-  : 0;
 
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
   const signature = req.headers["stripe-signature"];
@@ -69,6 +65,17 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
 
 export async function processWebhookEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
+    case "invoice.created": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = (invoice as any).subscription || (invoice as any).parent?.subscription_details?.subscription;
+      if (invoice.status !== "draft" || typeof subscriptionId !== "string") break;
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      if (subscription.metadata.service !== "synergie_membership") break;
+      if (invoice.total !== MEMBERSHIP_TOTAL_CENTS || invoice.currency !== "eur") throw new Error("Montant de renouvellement inattendu");
+      // Pin the exact cent amount before automatic finalization, including renewals.
+      await stripe.invoices.update(invoice.id!, { application_fee_amount: MEMBERSHIP_PLATFORM_FEE_CENTS });
+      break;
+    }
     case "checkout.session.async_payment_succeeded":
     case "checkout.session.completed":
       await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session, event.id);
@@ -151,8 +158,8 @@ async function handleInvoicePaymentSucceeded(
     stripeInvoiceId: invoice.id,
     amountCents,
     currency: (invoice.currency ?? "eur").toUpperCase(),
-    feeJsInnovCents: APPLICATION_FEE_CENTS,
-    netToAsblCents: amountCents - APPLICATION_FEE_CENTS,
+    feeJsInnovCents: MEMBERSHIP_PLATFORM_FEE_CENTS,
+    netToAsblCents: MEMBERSHIP_DUES_CENTS,
     status: "succeeded",
     paymentMethod: "card",
   });

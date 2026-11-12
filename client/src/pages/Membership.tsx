@@ -287,7 +287,7 @@ export default function Membership() {
             </Badge>
             <h1 className="text-4xl font-bold mb-3 text-[#D4AF37]">Rejoindre Synergie Dour</h1>
             <p className="text-[#F0E68C] text-lg max-w-2xl">
-              50€/an pour accéder à l'ensemble des services membres — annuaire, événements,
+              52,50 €/an (50 € de cotisation + 2,50 € de frais de plateforme JS-Innov.IA) pour accéder à l'ensemble des services membres — annuaire, événements,
               visibilité, outils digitaux.
             </p>
           </div>
@@ -326,7 +326,7 @@ export default function Membership() {
         <section className="py-12 px-4">
           <div className="container mx-auto max-w-4xl">
             <h2 className="text-2xl font-bold text-[#001a3d] mb-2">Choisissez votre formule</h2>
-            <p className="text-gray-600 mb-6">Paiement unique ou renouvellement automatique — annulable à tout moment. Les frais de paiement éventuels sont affichés avant règlement.</p>
+            <p className="text-gray-600 mb-6">Paiement unique ou renouvellement automatique — 52,50 € au total. Les frais Stripe sont inclus dans la part plateforme, sans supplément.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Paiement annuel */}
               <button
@@ -346,7 +346,7 @@ export default function Membership() {
                   )}
                 </div>
                 <h3 className="font-bold text-[#001a3d] text-lg mb-1">Paiement annuel</h3>
-                <p className="text-3xl font-bold text-[#001a3d] mb-2">50€</p>
+                <p className="text-3xl font-bold text-[#001a3d] mb-2">52,50 €</p>
                 <p className="text-sm text-gray-600">
                   Vous payez une seule fois. Renouvellement à demander au bureau.
                 </p>
@@ -371,7 +371,7 @@ export default function Membership() {
                 </div>
                 <h3 className="font-bold text-[#001a3d] text-lg mb-1">Renouvellement automatique</h3>
                 <p className="text-3xl font-bold text-[#001a3d] mb-2">
-                  50€<span className="text-base font-normal text-gray-600">/an</span>
+                  52,50 €<span className="text-base font-normal text-gray-600">/an</span>
                 </p>
                 <p className="text-sm text-gray-600">
                   Renouvelé chaque année. Annulable depuis votre espace membre.
