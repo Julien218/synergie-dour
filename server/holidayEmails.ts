@@ -1,0 +1,67 @@
+// Pure drafts: these helpers never send messages or contact an email provider.
+const escape = (s: string) =>
+  s.replace(
+    /[&<>"']/g,
+    c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ]!
+  );
+function secureUrl(value: string) {
+  const u = new URL(value);
+  if (u.protocol !== "https:" || u.username || u.password)
+    throw new Error("Lien HTTPS requis");
+  return u;
+}
+function draft(subject: string, text: string) {
+  return {
+    subject,
+    text,
+    html: `<div lang="fr" style="font-family:Arial,sans-serif;color:#001a3d;max-width:620px;line-height:1.6">${text
+      .split("\n\n")
+      .map(p => `<p>${escape(p).replace(/\n/g, "<br>")}</p>`)
+      .join("")}</div>`,
+  };
+}
+export function holidayInvitationEmail(
+  businessName: string,
+  privateLink: string
+) {
+  const u = secureUrl(privateLink);
+  if (
+    !["www.synergiedour.be", "synergiedour.be"].includes(u.hostname) ||
+    u.pathname !== "/fetes-2026" ||
+    !/^#[a-f0-9]{64}$/.test(u.hash)
+  )
+    throw new Error("Lien privé de campagne invalide");
+  const mail = draft(
+    "Fêtes 2026 : mettons votre commerce à l’honneur à Dour",
+    `Bonjour ${businessName},\n\nPour les fêtes de fin d’année, Synergie Dour prépare une campagne pour mettre ses commerçants adhérents en lumière.\n\nPartagez vos photos, vidéos, menus, idées cadeaux et offres de fêtes via votre fiche personnelle :\n${u.href}\n\nVous pouvez enregistrer votre fiche et revenir la compléter. Gardez ce lien privé : il donne accès à votre dossier.\n\nÀ partir de vos éléments et avec votre autorisation de diffusion, nous préparerons une vidéo festive avec voix off et une publication adaptée à votre commerce. Julien et Olivier les valideront avant diffusion.\n\nAprès publication, vous recevrez le lien pour repartager le post et identifier deux commerces de Dour de votre choix.\n\nUne question ? Répondez à cet email ou contactez info@synergiedour.be.\n\nL’équipe Synergie Dour\nCommerçants & indépendants réunis`
+  );
+  mail.html = mail.html.replace(
+    escape(u.href),
+    `<a href="${escape(u.href)}">Compléter ma fiche pour les fêtes</a>`
+  );
+  return mail;
+}
+export function holidayPublishedEmail(businessName: string, postUrl: string) {
+  const u = secureUrl(postUrl);
+  if (
+    ![
+      "www.facebook.com",
+      "facebook.com",
+      "www.instagram.com",
+      "instagram.com",
+    ].includes(u.hostname)
+  )
+    throw new Error("Lien de publication sociale invalide");
+  const mail = draft(
+    `${businessName} : votre publication Synergie Dour est en ligne !`,
+    `Bonjour ${businessName},\n\nVotre commerce est à l’honneur sur les réseaux de Synergie Dour !\n\nDécouvrez votre publication :\n${u.href}\n\nPour lui donner encore plus de visibilité, repartagez le post depuis la publication d’origine, sur votre page ou en story selon les possibilités de la plateforme.\n\nVous pouvez aussi identifier deux commerces de Dour de votre choix pour faire vivre cette belle dynamique locale.\n\nMerci de faire rayonner le commerce local avec nous !\n\nL’équipe Synergie Dour\nCommerçants & indépendants réunis\n\nUne correction ou une demande de retrait ? Écrivez à info@synergiedour.be.`
+  );
+  mail.html = mail.html.replace(
+    escape(u.href),
+    `<a href="${escape(u.href)}">Voir et repartager ma publication</a>`
+  );
+  return mail;
+}

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -41,16 +42,19 @@ const InvoicesPage = lazy(() => import("@/pages/InvoicesPage"));
 import { PublicLayout } from "@/components/PublicLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Route, Switch } from "wouter";
-import { lazy, Suspense } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 const GalleryPage = lazy(() => import("@/pages/GalleryPage"));
 const BoardVotesPage = lazy(() => import("@/pages/BoardVotesPage"));
 const BoardInvitationPage = lazy(() => import("@/pages/BoardInvitationPage"));
+const HolidayCampaign = lazy(() => import("@/pages/HolidayCampaign"));
+const HolidayCampaignAdmin = lazy(() => import("@/pages/HolidayCampaignAdmin"));
 
 function Router() {
   return (
     <Switch>
+      <Route path="/fetes-2026">{() => <HolidayCampaign />}</Route>
+      <Route path="/dashboard/fetes-2026">{() => <ProtectedRoute requireAdmin><HolidayCampaignAdmin /></ProtectedRoute>}</Route>
       <Route path="/">{() => <PublicLayout><Home /></PublicLayout>}</Route>
       <Route path="/merchants">{() => <PublicLayout><Merchants /></PublicLayout>}</Route>
       <Route path="/news/:id">{() => <NewsDetail />}</Route>

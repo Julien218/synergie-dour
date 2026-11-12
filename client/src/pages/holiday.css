@@ -1,0 +1,452 @@
+.holiday-page {
+  --navy: #001a3d;
+  --gold: #d4af37;
+  background: #faf9f5;
+  color: var(--navy);
+  font-family: Montserrat, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.holiday-page a {
+  text-decoration: none;
+}
+.holiday-header {
+  max-width: 1200px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 28px;
+  gap: 24px;
+}
+.holiday-header img {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+}
+.holiday-header > span {
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+.holiday-header > a:last-child {
+  font-size: 13px;
+  border-bottom: 1px solid var(--gold);
+}
+.holiday-hero {
+  background: var(--navy);
+  color: white;
+  padding: 75px max(28px, calc((100vw - 1144px) / 2));
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 75px;
+  align-items: center;
+}
+.holiday-eyebrow {
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.holiday-hero .holiday-eyebrow {
+  color: #e8c547;
+}
+.holiday-hero h1 {
+  font-family: Cinzel, Georgia, serif;
+  font-size: clamp(36px, 4.4vw, 61px);
+  line-height: 1.18;
+  margin: 22px 0;
+}
+.holiday-hero h1 em {
+  color: #e8c547;
+  font-style: normal;
+}
+.holiday-hero > div > p:not(.holiday-eyebrow) {
+  max-width: 570px;
+  color: #dce3ef;
+  font-size: 16px;
+}
+.holiday-primary,
+.holiday-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 21px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 48px;
+}
+.holiday-primary {
+  background: #e8c547;
+  color: #001a3d;
+  border: 1px solid #e8c547;
+}
+.holiday-secondary {
+  border: 1px solid #b2bcc8;
+  background: white;
+  color: #001a3d;
+}
+.holiday-hero .holiday-primary {
+  margin-top: 28px;
+}
+.holiday-hero small {
+  display: block;
+  font-size: 11px;
+  color: #dce3ef;
+  margin-top: 12px;
+}
+.holiday-hero aside {
+  border: 1px solid #b39c5a;
+  border-radius: 110px 110px 10px 10px;
+  min-height: 370px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  position: relative;
+  padding: 36px 20px;
+  background: radial-gradient(ellipse at top, #243e56, transparent);
+}
+.holiday-hero aside > svg {
+  color: #e8c547;
+  margin-bottom: 22px;
+}
+.holiday-hero aside > span:not(.holiday-spark) {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #e8c547;
+}
+.holiday-hero aside strong {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 1.3;
+  margin: 18px 0;
+}
+.holiday-hero aside p {
+  font-size: 12px;
+  color: #dce3ef;
+}
+.holiday-spark {
+  position: absolute;
+  right: -13px;
+  top: 65px;
+  font-size: 36px;
+  color: #e8c547;
+  background: var(--navy);
+}
+.holiday-steps {
+  max-width: 1144px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 35px 24px;
+  gap: 30px;
+  border-bottom: 1px solid #ddd8c9;
+}
+.holiday-steps b {
+  font-family: Georgia, serif;
+  font-size: 25px;
+  color: #9b7920;
+}
+.holiday-steps h2 {
+  font-weight: 700;
+  margin: 7px 0;
+}
+.holiday-steps p {
+  font-size: 12px;
+  color: #536175;
+}
+.holiday-form-section {
+  max-width: 860px;
+  margin: auto;
+  padding: 60px 24px;
+}
+.holiday-section-intro {
+  text-align: center;
+  margin-bottom: 34px;
+}
+.holiday-section-intro .holiday-eyebrow {
+  display: block;
+  color: #8a6918;
+}
+.holiday-section-intro h2 {
+  font-family: Georgia, serif;
+  font-size: 34px;
+  margin: 13px 0;
+}
+.holiday-section-intro > p:last-child {
+  font-size: 13px;
+  color: #536175;
+}
+.holiday-card {
+  border: 1px solid #e0e2e5;
+  border-radius: 12px;
+  background: white;
+  padding: 28px;
+  margin-bottom: 20px;
+  box-shadow: 0 3px 15px #001a3d03;
+}
+.holiday-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 19px;
+}
+.holiday-card h3 > span {
+  display: grid;
+  place-items: center;
+  background: #f6f0dc;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.holiday-card > p {
+  font-size: 12px;
+  color: #536175;
+  margin: -6px 0 20px;
+}
+.holiday-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.holiday-grid label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.holiday-grid input,
+.holiday-grid textarea {
+  display: block;
+  width: 100%;
+  border: 1px solid #bcc6d1;
+  background: #fff;
+  border-radius: 5px;
+  padding: 10px 12px;
+  min-height: 45px;
+  margin-top: 7px;
+  color: #001a3d;
+  font-size: 14px;
+  font-weight: 400;
+}
+.holiday-grid input:focus,
+.holiday-grid textarea:focus {
+  outline: 2px solid #b28e26;
+  outline-offset: 2px;
+}
+.holiday-wide {
+  grid-column: 1/-1;
+}
+.holiday-upload {
+  border: 1px dashed #a4b1c1;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 27px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  cursor: pointer;
+}
+.holiday-upload > svg {
+  color: #9b7920;
+}
+.holiday-upload strong {
+  font-size: 13px;
+}
+.holiday-upload span {
+  font-size: 11px;
+  color: #536175;
+}
+.holiday-upload input {
+  max-width: 100%;
+  font-size: 12px;
+  margin-top: 10px;
+}
+.holiday-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 17px 0;
+  font-size: 12px;
+  font-weight: 400;
+}
+.holiday-check input {
+  accent-color: #001a3d;
+  margin-top: 4px;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.holiday-privacy {
+  border-top: 1px solid #e0e2e5;
+  padding-top: 18px;
+  font-size: 11px;
+  color: #536175;
+}
+.holiday-privacy summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+.holiday-privacy p {
+  margin-top: 10px;
+}
+.holiday-privacy a {
+  text-decoration: underline;
+}
+.holiday-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+}
+.holiday-caption {
+  text-align: center;
+  font-size: 11px;
+  color: #536175;
+  margin-top: 14px;
+}
+.holiday-notice {
+  background: #eef3f8;
+  border: 1px solid #c9d6e5;
+  display: flex;
+  gap: 14px;
+  border-radius: 8px;
+  padding: 19px;
+  font-size: 12px;
+  margin-bottom: 25px;
+}
+.holiday-notice > svg {
+  flex-shrink: 0;
+}
+.holiday-notice a {
+  text-decoration: underline;
+}
+.holiday-error,
+.holiday-success {
+  padding: 15px;
+  border-radius: 7px;
+  margin: 15px 0;
+  font-size: 13px;
+}
+.holiday-error {
+  color: #8a1226;
+  background: #fff0f1;
+}
+.holiday-success {
+  display: flex;
+  gap: 10px;
+  color: #18513c;
+  background: #edf8f2;
+}
+.holiday-files li {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid #e0e2e5;
+  font-size: 12px;
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+.holiday-files button {
+  cursor: pointer;
+}
+.holiday-withdraw {
+  display: block;
+  margin: 28px auto 0;
+  text-decoration: underline;
+  font-size: 11px;
+  cursor: pointer;
+}
+.holiday-footer {
+  background: #001a3d;
+  color: #e1e7ed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  padding: 25px;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.holiday-footer img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+.holiday-page fieldset:disabled .holiday-card {
+  opacity: 0.65;
+}
+.holiday-page button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.holiday-page :focus-visible {
+  outline: 2px solid #b28e26;
+  outline-offset: 3px;
+}
+@media (max-width: 800px) {
+  .holiday-header > span {
+    display: none;
+  }
+  .holiday-header {
+    padding: 12px 20px;
+  }
+  .holiday-header img {
+    width: 96px;
+    height: 96px;
+  }
+  .holiday-hero {
+    grid-template-columns: 1fr;
+    padding: 40px 24px;
+    gap: 35px;
+  }
+  .holiday-hero aside {
+    min-height: 250px;
+    border-radius: 70px 70px 8px 8px;
+  }
+  .holiday-hero aside strong {
+    font-size: 26px;
+  }
+  .holiday-hero h1 {
+    font-size: 39px;
+  }
+  .holiday-steps {
+    grid-template-columns: 1fr 1fr;
+    padding: 26px 24px;
+    gap: 24px;
+  }
+  .holiday-form-section {
+    padding: 40px 16px;
+  }
+  .holiday-section-intro h2 {
+    font-size: 28px;
+  }
+  .holiday-card {
+    padding: 20px;
+  }
+  .holiday-grid {
+    grid-template-columns: 1fr;
+  }
+  .holiday-actions {
+    flex-direction: column;
+  }
+  .holiday-actions button {
+    width: 100%;
+  }
+  .holiday-card h3 {
+    font-size: 16px;
+  }
+  .holiday-footer {
+    gap: 15px;
+  }
+}

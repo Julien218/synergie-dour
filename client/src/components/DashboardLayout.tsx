@@ -125,6 +125,7 @@ function DashboardLayoutContent({
       items: [
         { icon: Store, label: "Commerçants", path: "/dashboard/merchants" },
         { icon: Users, label: "Liste clients", path: "/dashboard/clients" },
+        { icon: FileText, label: "Campagne Fêtes 2026", path: "/dashboard/fetes-2026" },
         { icon: Inbox, label: "Boîte de réception", path: "/dashboard/inbox" },
         { icon: ClipboardList, label: "Demandes", path: "/dashboard/requests" },
         { icon: UserCheck, label: "Adhésions", path: "/dashboard/membership-requests" },

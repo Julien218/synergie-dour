@@ -79,8 +79,8 @@ function vitePluginManusDebugCollector(): Plugin {
   return {
     name: "manus-debug-collector",
 
-    transformIndexHtml(html) {
-      if (process.env.NODE_ENV === "production") {
+    transformIndexHtml(html, context) {
+      if (process.env.NODE_ENV === "production" || context.path.startsWith("/fetes-2026") || context.path.startsWith("/dashboard/fetes-2026")) {
         return html;
       }
       return {

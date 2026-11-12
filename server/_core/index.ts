@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { holidayRouter } from "../holidayCampaign";
 import { ensureMembershipSchema } from "../membershipSchema";
 import { membershipCheckout } from "../membershipService";
 import express from "express";
@@ -296,6 +297,7 @@ async function startServer() {
   // Webhook Stripe : corps brut requis pour la signature, à monter AVANT express.json
   app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
 
+  app.use("/api/holiday", holidayRouter);
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
