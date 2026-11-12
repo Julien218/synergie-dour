@@ -138,10 +138,14 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
   const [showReject, setShowReject] = useState(false);
 
   const updateMutation = trpc.membership.update.useMutation({
-    onSuccess: () => { toast.success("Mise à jour effectuée"); onAction(); },
+    onSuccess: (result) => { if (result.emailWarning) toast.warning(result.emailWarning); else toast.success("Mise à jour effectuée"); onAction(); },
     onError:   (e) => toast.error(e.message),
   });
 
+  const resend = trpc.membership.resendContract.useMutation({
+    onSuccess: () => toast.success("Contrat et liens envoyés"),
+    onError: error => toast.error(error.message),
+  });
   const paiementOption = PAIEMENT_OPTIONS.find(
     (p) => p.value === (request.paiementStatut || "en_attente")
   ) ?? PAIEMENT_OPTIONS[0];
@@ -220,6 +224,8 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
               </div>
             </div>
 
+            {request.status === "approved" && <Button size="sm" variant="outline" disabled={resend.isPending} onClick={() => resend.mutate(request.id)}>Renvoyer le contrat et les liens</Button>}
+            {request.note && <p className="text-sm text-gray-600">Motif : {request.note}</p>}
             {/* Statut paiement */}
             <div>
               <p className="text-xs text-gray-500 mb-1 font-medium">Statut paiement</p>
@@ -231,7 +237,7 @@ function RequestCard({ request, onAction }: { request: any; onAction: () => void
                     <button
                       key={opt.value}
                       onClick={() => setPaiement(opt.value)}
-                      disabled={updateMutation.isPending}
+                      disabled={updateMutation.isPending || request.status !== "approved"}
                       className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
                         isActive
                           ? opt.color + " shadow-sm scale-105"

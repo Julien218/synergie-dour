@@ -84,7 +84,7 @@ export default function MemberDashboard() {
                 title="Mon commerce dans l'annuaire"
                 description="Gérez la fiche de votre commerce visible sur le site."
                 ctaLabel="Modifier ma fiche"
-                onClick={() => setLocation("/dashboard/merchant")}
+                onClick={() => setLocation("/dashboard/member-account")}
               />
               <ServiceCard
                 icon={Bell}
@@ -96,16 +96,16 @@ export default function MemberDashboard() {
               <ServiceCard
                 icon={Receipt}
                 title="Mes paiements"
-                description="Historique et téléchargement des reçus."
+                description="Historique de vos règlements et gestion de votre abonnement."
                 ctaLabel="Voir l'historique"
-                onClick={() => setLocation("/dashboard/payments")}
+                onClick={() => setLocation("/dashboard/member-account")}
               />
               <ServiceCard
                 icon={Settings}
                 title="Mes informations"
                 description="Modifier mes coordonnées et préférences."
                 ctaLabel="Modifier"
-                onClick={() => setLocation("/dashboard/profile")}
+                onClick={() => setLocation("/dashboard/member-account")}
               />
             </div>
           </>
@@ -116,7 +116,7 @@ export default function MemberDashboard() {
 }
 
 interface MembershipData {
-  status: "pending_payment" | "active" | "expired" | "cancelled";
+  status: "pending" | "rejected" | "pending_payment" | "active" | "expired" | "cancelled";
   paymentMode: "one_time" | "subscription";
   expiresAt: Date | null;
   amountCents: number;
@@ -156,6 +156,8 @@ function MembershipStatusCard({
   }
 
   const statusConfig = {
+    pending: { icon: AlertCircle, color: "amber", label: "Candidature en cours", desc: "Le bureau examine votre demande. Aucun paiement n'est demandé à ce stade." },
+    rejected: { icon: AlertCircle, color: "red", label: "Candidature refusée", desc: "Contactez le bureau pour toute question sur votre candidature." },
     pending_payment: {
       icon: AlertCircle,
       color: "amber",
@@ -188,7 +190,7 @@ function MembershipStatusCard({
     amber: { bg: "bg-amber-50/70", border: "border-amber-200", text: "text-amber-900", iconBg: "bg-amber-100", iconColor: "text-amber-700" },
     red: { bg: "bg-red-50/70", border: "border-red-200", text: "text-red-900", iconBg: "bg-red-100", iconColor: "text-red-700" },
     gray: { bg: "bg-gray-50/70", border: "border-gray-200", text: "text-gray-900", iconBg: "bg-gray-100", iconColor: "text-gray-700" },
-  }[statusConfig.color];
+  }[statusConfig.color as "green" | "amber" | "red" | "gray"];
 
   return (
     <Card className={`${colorClasses.border} ${colorClasses.bg} border-2`}>

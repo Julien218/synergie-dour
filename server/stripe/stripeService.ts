@@ -92,6 +92,8 @@ export function computeOnlinePaymentAmounts(netCents: number): {
 export type CheckoutMode = "one_time" | "subscription";
 
 export interface CreateCheckoutInput {
+  idempotencyKey?: string;
+  onSession?: (sessionId: string) => Promise<void>;
   mode: CheckoutMode;
   /** Email de l'adhérent — pré-rempli sur la page Stripe */
   customerEmail: string;
@@ -116,7 +118,7 @@ export async function createMembershipCheckout(input: CreateCheckoutInput): Prom
     cancel_url: `${APP_URL}/membership/cancelled`,
     metadata: input.metadata,
     locale: "fr",
-    payment_method_types: ["card", "bancontact"],
+
   };
 
   if (input.mode === "one_time") {
@@ -144,7 +146,7 @@ async function createOneTimeCheckout(
           currency: "eur",
           product_data: {
             name: "Adhésion annuelle — Synergie Dour ASBL",
-            description: "Adhésion valable un an. Renouvellement manuel via mail de rappel.",
+            description: "Adhésion valable un an. Renouvellement manuel auprès du bureau.",
           },
           unit_amount: amounts.netCents,
         },
@@ -157,9 +159,10 @@ async function createOneTimeCheckout(
       ...connectPaymentData(input.asblConnectAccountId, amounts),
       description: `Adhésion ASBL ${input.metadata.businessName}`,
     },
-  });
+  }, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined);
 
   if (!session.url) throw new Error("Stripe n'a pas retourné d'URL de checkout");
+  await input.onSession?.(session.id);
   return session.url;
 }
 
@@ -214,7 +217,7 @@ export async function createInvoiceCheckout(input: {
     success_url: `${APP_URL}/membership/success?session={CHECKOUT_SESSION_ID}`,
     cancel_url: `${APP_URL}/membership/cancelled`,
     locale: "fr",
-    payment_method_types: ["card", "bancontact"],
+
     metadata: {
       invoiceId: String(input.invoiceId),
       invoiceNumber: input.invoiceNumber,
@@ -271,9 +274,10 @@ async function createSubscriptionCheckout(
         : {}),
       description: `Adhésion ASBL annuelle ${input.metadata.businessName}`,
     },
-  });
+  }, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined);
 
   if (!session.url) throw new Error("Stripe n'a pas retourné d'URL de checkout");
+  await input.onSession?.(session.id);
   return session.url;
 }
 

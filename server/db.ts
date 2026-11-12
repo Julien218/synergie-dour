@@ -203,7 +203,11 @@ export async function getMerchants(filter?: { category?: string; search?: string
       } else if (raw.length === 0) {
         console.warn("[getMerchants] Fonction publique Base44 a répondu avec 0 commerçant — bascule sur le fallback MySQL local par sécurité.");
       } else {
-        let result = raw;
+        // Include newly activated local members even when Base44 responds successfully.
+        const local = await getMerchantsFromMySQLFallback();
+        const key = (m: any) => String(m.businessName || "").trim().toLowerCase();
+        const known = new Set(raw.map(key));
+        let result = [...raw, ...local.filter(m => !known.has(key(m)))];
         if (filter?.category) {
           result = result.filter((m: any) =>
             m.businessCategory?.toLowerCase() === filter.category?.toLowerCase()

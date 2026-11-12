@@ -6,6 +6,8 @@ import Merchants from "@/pages/Merchants";
 import News from "@/pages/News";
 import Events from "@/pages/Events";
 import Contact from "@/pages/Contact";
+import MemberAccount from "@/pages/MemberAccount";
+import MembershipAccess from "@/pages/MembershipAccess";
 import Membership from "@/pages/Membership";
 import MembershipSuccess from "@/pages/MembershipSuccess";
 import MembershipCancelled from "@/pages/MembershipCancelled";
@@ -55,6 +57,8 @@ function Router() {
       <Route path="/news">{() => <PublicLayout><News /></PublicLayout>}</Route>
       <Route path="/events">{() => <PublicLayout><Events /></PublicLayout>}</Route>
       <Route path="/contact">{() => <Contact />}</Route>
+      <Route path="/adhesion">{() => <Membership />}</Route>
+      <Route path="/membership/access">{() => <MembershipAccess />}</Route>
       <Route path="/membership">{() => <Membership />}</Route>
       <Route path="/membership/success">{() => <MembershipSuccess />}</Route>
       <Route path="/membership/cancelled">{() => <MembershipCancelled />}</Route>
@@ -81,6 +85,7 @@ function Router() {
       <Route path="/dashboard/social">{() => <ProtectedRoute requireAdmin><SocialMediaPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/autopublish">{() => <ProtectedRoute requireAdmin><AutopublishPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/super-admin">{() => <ProtectedRoute requireSuperAdmin><SuperAdminBrand /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/member-account">{() => <ProtectedRoute><MemberAccount /></ProtectedRoute>}</Route>
       <Route path="/dashboard/members">{() => <ProtectedRoute><MemberDashboard /></ProtectedRoute>}</Route>
       <Route path="/dashboard/gallery">{() => <ProtectedRoute requireAdmin><GalleryPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/leadfinder">{() => <ProtectedRoute requireAdmin><LeadFinderPage /></ProtectedRoute>}</Route>

@@ -22,7 +22,7 @@ export default function MembershipCancelled() {
             Vous avez annulé le paiement avant qu'il ne soit complété.
           </p>
           <p className="text-gray-600 mb-8">
-            Aucun montant n'a été prélevé. Vous pouvez reprendre votre adhésion à tout
+            La page de paiement a été fermée. Vous pouvez reprendre votre adhésion à tout
             moment via le lien envoyé par email.
           </p>
 
