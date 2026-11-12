@@ -173,12 +173,8 @@ async function initDatabase() {
         console.warn("[Seed] seedBiensCommerciaux non disponible:", e.message);
       }
 
-      try {
-        const { patchOlivierEmail } = await import("../seeder/patchOlivierEmail");
-        await patchOlivierEmail(pool);
-      } catch (e: any) {
-        console.warn("[Seed] patchOlivierEmail non disponible:", e.message);
-      }
+      // Preserve existing account addresses at startup. The historical one-shot
+      // email repair remains available in server/seeder for deliberate maintenance.
     } catch (dbErr: any) {
       console.error("[DB] Erreur d'initialisation:", dbErr.message);
     }
@@ -256,7 +252,7 @@ async function startServer() {
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         mediaSrc: ["'self'", "blob:", "https://dl.dropboxusercontent.com", "https://www.dropbox.com"],
         connectSrc: ["'self'", "https://api.openai.com", "https://graph.facebook.com", "https://www.googleapis.com"],
-        frameSrc: ["'self'", "https://www.google.com"],
+        frameSrc: ["'self'", "https://www.google.com", "https://www.facebook.com"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
