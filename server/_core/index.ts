@@ -302,6 +302,10 @@ async function startServer() {
   app.get("/api/membership/pay/:token", formLimiter, async (req, res) => {
     res.setHeader("Referrer-Policy", "no-referrer");
     res.setHeader("Cache-Control", "no-store");
+    if (!process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID) {
+      res.status(503).send("Le paiement de la cotisation sera disponible après confirmation du bénéficiaire. Votre candidature reste enregistrée. Contactez contact@synergiedour.be pour toute question.");
+      return;
+    }
     try { res.redirect(303, await membershipCheckout(req.params.token)); }
     catch (error) {
       console.error("[membership.checkout]", error);

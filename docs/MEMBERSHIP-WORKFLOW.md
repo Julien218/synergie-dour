@@ -32,3 +32,7 @@ La migration au démarrage est additive : localité, URL Google, formule, lien v
 - La réception réelle dans une boîte mail, le paiement par un membre réel et le retour du contrat signé restent à constater lors de la première adhésion réelle.
 
 Déploiement IONOS du 12 novembre : image `olivier-synergie:membership-20261112`, état sain et route `/health` HTTP 200. Clés publique/serveur remises dans leurs variables respectives ; tarif annuel créé, portail configuré et événements de renouvellement ajoutés au webhook existant. Le domaine Resend est vérifié. La demande existante reste approuvée avec paiement en attente. Aucun contrat ni email de relance n’a été envoyé à ce demandeur pendant cette intervention.
+
+## Paiement en attente de Stripe Connect
+
+Le partage confirmé par le titulaire est 52,50 € au total : 50 € à Synergie Dour et 2,50 € de commission brute à JS-Innov.IA, qui supporte les frais Stripe. Aucun compte connecté n’est encore rattaché et le Dashboard JS-Innov.IA affiche les paiements par carte suspendus. Le lien de paiement des adhésions répond temporairement HTTP 503 tant que `ASBL_STRIPE_CONNECT_ACCOUNT_ID` n’est pas configuré. Le formulaire et les candidatures restent ouverts. La nouvelle répartition est préparée dans une branche distincte et ne doit être activée qu’après vérification du bénéficiaire, de ses capacités et des permissions de la clé.
