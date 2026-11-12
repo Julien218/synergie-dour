@@ -24,7 +24,7 @@
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
 import { getDb } from "../db";
-import { activateMembership } from "../membershipService";
+import { activateMembership, recordMembershipRenewal } from "../membershipService";
 import { memberships, payments, membershipRequests } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -33,14 +33,10 @@ async function requireDb() {
   if (!db) throw new Error("Base de données indisponible");
   return db;
 }
-import { constructWebhookEvent } from "./stripeService";
+import { constructWebhookEvent, stripe } from "./stripeService";
+import { MEMBERSHIP_PLATFORM_FEE_CENTS, MEMBERSHIP_DUES_CENTS, MEMBERSHIP_TOTAL_CENTS } from "./membershipPricing";
 import { markInvoicePaidFromStripe } from "../invoices";
 import { sendMembershipActivatedEmail, sendPaymentFailedEmail } from "../email/notifications";
-
-// Commission plateforme : uniquement en mode Connect (ASBL_STRIPE_CONNECT_ACCOUNT_ID défini)
-const APPLICATION_FEE_CENTS = process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID
-  ? parseInt(process.env.STRIPE_APPLICATION_FEE_CENTS ?? "0", 10)
-  : 0;
 
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
   const signature = req.headers["stripe-signature"];
@@ -69,6 +65,17 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
 
 export async function processWebhookEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
+    case "invoice.created": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = (invoice as any).subscription || (invoice as any).parent?.subscription_details?.subscription;
+      if (invoice.status !== "draft" || typeof subscriptionId !== "string") break;
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      if (subscription.metadata.service !== "synergie_membership") break;
+      if (invoice.total !== MEMBERSHIP_TOTAL_CENTS || invoice.currency !== "eur") throw new Error("Montant de renouvellement inattendu");
+      // Pin the exact cent amount before automatic finalization, including renewals.
+      await stripe.invoices.update(invoice.id!, { application_fee_amount: MEMBERSHIP_PLATFORM_FEE_CENTS });
+      break;
+    }
     case "checkout.session.async_payment_succeeded":
     case "checkout.session.completed":
       await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session, event.id);
@@ -124,37 +131,14 @@ async function handleInvoicePaymentSucceeded(
   invoice: Stripe.Invoice,
   eventId: string
 ): Promise<void> {
-  const db = await requireDb();
   if (invoice.billing_reason === "subscription_create") return;
   const subscriptionId = (invoice as any).subscription || (invoice as any).parent?.subscription_details?.subscription;
   if (typeof subscriptionId !== "string") return;
-  const [seen] = await db.select().from(payments).where(eq(payments.stripeEventId, eventId)).limit(1);
-  if (seen) return;
-
-  const membership = (await db.select().from(memberships).where(eq(memberships.stripeSubscriptionId, subscriptionId)).limit(1))[0];
-  if (!membership) return;
-
-  const periodEnd = invoice.lines.data[0]?.period?.end;
-  if (!periodEnd) throw new Error("Période de renouvellement absente");
-  const newExpiresAt = new Date(periodEnd * 1000);
-
-  await db
-    .update(memberships)
-    .set({ status: "active", expiresAt: newExpiresAt, updatedAt: new Date() })
-    .where(eq(memberships.id, membership.id));
-
-  const amountCents = invoice.amount_paid ?? 0;
-  await db.insert(payments).values({
-    membershipId: membership.id,
-    userId: membership.userId,
-    stripeEventId: eventId,
-    stripeInvoiceId: invoice.id,
-    amountCents,
-    currency: (invoice.currency ?? "eur").toUpperCase(),
-    feeJsInnovCents: APPLICATION_FEE_CENTS,
-    netToAsblCents: amountCents - APPLICATION_FEE_CENTS,
-    status: "succeeded",
-    paymentMethod: "card",
+  await recordMembershipRenewal({
+    eventId, invoiceId: invoice.id!, subscriptionId,
+    amountCents: invoice.amount_paid || 0, currency: invoice.currency || "",
+    platformFeeCents: invoice.application_fee_amount ?? null,
+    periodEnd: invoice.lines.data[0]?.period?.end || 0,
   });
 }
 

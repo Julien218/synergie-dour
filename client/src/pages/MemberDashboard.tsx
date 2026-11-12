@@ -148,7 +148,7 @@ function MembershipStatusCard({
             onClick={onJoin}
             className="bg-[#D4AF37] hover:bg-[#F0E68C] text-[#001a3d] font-semibold"
           >
-            Devenir membre — 50€/an
+            Devenir membre — 52,50 €/an
           </Button>
         </CardContent>
       </Card>
@@ -240,9 +240,10 @@ function MembershipStatusCard({
             <div className="flex items-start gap-2">
               <Receipt className="w-4 h-4 text-gray-500 mt-1" />
               <div>
-                <p className="text-xs text-gray-500">Montant</p>
+                <p className="text-xs text-gray-500">Cotisation ASBL</p>
                 <p className="text-sm font-medium text-[#001a3d]">
                   {(membership.amountCents / 100).toFixed(2)} €/an
+                  {membership.amountCents > 0 && <span className="block text-xs text-gray-500">Paiement en ligne : + 2,50 € de plateforme JS-Innov.IA, frais Stripe inclus.</span>}
                 </p>
               </div>
             </div>

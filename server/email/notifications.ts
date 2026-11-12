@@ -580,7 +580,7 @@ export async function sendContractEmail(input: {
       Veuillez le signer et le retourner par email à <a href="mailto:contact@synergiedour.be" style="color:#003d99;">contact@synergiedour.be</a>.
     </p>
     <div style="background:#f0f4fa;border-left:3px solid #003d99;padding:14px 18px;border-radius:0 6px 6px 0;margin:16px 0;">
-      <p style="margin:0;font-size:14px;color:#333;"><strong>Prochaine étape :</strong> règlement de la cotisation de <strong>50 €</strong><br>
+      <p style="margin:0;font-size:14px;color:#333;"><strong>Prochaine étape :</strong> règlement de <strong>52,50 €</strong> : 50 € de cotisation pour Synergie Dour et 2,50 € de frais de plateforme JS-Innov.IA, frais Stripe inclus<br>
       ${input.checkoutUrl ? `<a href="${input.checkoutUrl}">Régler ma cotisation en ligne</a> (les frais éventuels sont affichés avant paiement).` : "Votre cotisation a été enregistrée par le bureau."}<br>
       ${input.accessUrl ? `<a href="${input.accessUrl}">Activer mon accès membre après règlement</a>` : ""}</p>
     </div>
@@ -649,7 +649,7 @@ export async function sendInstantAcknowledgement(input: {
       </tr>
       <tr>
         <td style="vertical-align:top;padding:6px 0;font-size:20px;">3️⃣</td>
-        <td style="padding:6px 0;font-size:14px;color:#333;">Règlement de la cotisation annuelle : <strong>50 €</strong> (lien sécurisé Stripe)</td>
+        <td style="padding:6px 0;font-size:14px;color:#333;">Règlement annuel : <strong>52,50 €</strong> (50 € de cotisation + 2,50 € de frais de plateforme JS-Innov.IA ; frais Stripe inclus)</td>
       </tr>
       <tr>
         <td style="vertical-align:top;padding:6px 0;font-size:20px;">4️⃣</td>

@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual, randomBytes, scryptSync } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { getPool } from "./db";
+import { MEMBERSHIP_PLATFORM_FEE_CENTS, MEMBERSHIP_DUES_CENTS, MEMBERSHIP_TOTAL_CENTS } from "./stripe/membershipPricing";
 import { createMembershipCheckout, stripe } from "./stripe/stripeService";
 import { sendContractEmail, sendMembershipActivatedEmail } from "./email/notifications";
 
@@ -84,7 +85,7 @@ export async function activateMembership(id: number, payment?: {
     const r = rows[0];
     if (!r || r.status !== "approved") throw new Error("Demande non approuvée");
     if (payment) {
-      if (payment.currency !== "EUR" || payment.amountCents < Number(process.env.MEMBERSHIP_PRICE_CENTS || 5000)) throw new Error("Montant ou devise incorrects");
+      if (payment.currency !== "EUR" || payment.amountCents !== MEMBERSHIP_TOTAL_CENTS) throw new Error("Montant ou devise incorrects");
       if (r.checkoutSessionId && r.checkoutSessionId !== payment.sessionId) throw new Error("Session de paiement incorrecte");
       const [events] = await connection.execute("SELECT id FROM payments WHERE stripeEventId=? OR stripePaymentIntentId=? LIMIT 1", [payment.eventId, payment.paymentIntentId]);
       if (events.length || r.membershipId) { await connection.commit(); return; }
@@ -107,10 +108,10 @@ export async function activateMembership(id: number, payment?: {
       await connection.execute("UPDATE merchants SET status='approved', isVerified=1 WHERE id=?", [merchantId]);
     }
     const starts = new Date(); const expires = new Date(starts); expires.setFullYear(expires.getFullYear() + 1);
-    const amount = r.paiementStatut === "gratuit" ? 0 : Number(process.env.MEMBERSHIP_PRICE_CENTS || 5000);
+    const amount = r.paiementStatut === "gratuit" ? 0 : MEMBERSHIP_DUES_CENTS;
     const [membership] = await connection.execute("INSERT INTO memberships (userId,merchantId,paymentMode,status,stripeCustomerId,stripeSubscriptionId,stripePaymentIntentId,startsAt,expiresAt,amountCents,currency) VALUES (?,?,?,'active',?,?,?,?,?,?,?)", [userId, merchantId, r.paymentMode || "one_time", payment?.customerId || null, payment?.subscriptionId || null, payment?.paymentIntentId || null, starts, expires, amount, "EUR"]);
     if (payment) {
-      await connection.execute("INSERT INTO payments (membershipId,userId,stripeEventId,stripePaymentIntentId,amountCents,currency,feeJsInnovCents,netToAsblCents,status) VALUES (?,?,?,?,?,?,?,?, 'succeeded')", [membership.insertId, userId, payment.eventId, payment.paymentIntentId, payment.amountCents, payment.currency, 0, amount]);
+      await connection.execute("INSERT INTO payments (membershipId,userId,stripeEventId,stripePaymentIntentId,amountCents,currency,feeJsInnovCents,netToAsblCents,status) VALUES (?,?,?,?,?,?,?,?, 'succeeded')", [membership.insertId, userId, payment.eventId, payment.paymentIntentId, payment.amountCents, payment.currency, MEMBERSHIP_PLATFORM_FEE_CENTS, amount]);
     }
     await connection.execute("UPDATE membership_requests SET membershipId=?,paiementStatut=?,updatedAt=NOW() WHERE id=?", [membership.insertId, payment ? "paye" : r.paiementStatut, id]);
     await connection.commit();
@@ -138,6 +139,33 @@ export async function memberStatus(userId: number, email: string | null) {
   const [requests] = await p.execute("SELECT status,paiementStatut,paymentMode FROM membership_requests WHERE email=? ORDER BY createdAt DESC,id DESC LIMIT 1", [email]);
   const r = requests[0];
   return r ? { status: r.status === "approved" ? "pending_payment" : r.status, paymentMode: r.paymentMode || "one_time", expiresAt: null, amountCents: 5000 } : null;
+}
+
+/** A renewal receipt and its validity extension must be committed together. */
+export async function recordMembershipRenewal(input: {
+  eventId: string; invoiceId: string; subscriptionId: string;
+  amountCents: number; currency: string; platformFeeCents: number | null;
+  periodEnd: number;
+}) {
+  const connection = await (await pool()).getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute("SELECT * FROM memberships WHERE stripeSubscriptionId=? LIMIT 1 FOR UPDATE", [input.subscriptionId]);
+    const membership = rows[0];
+    if (!membership) { await connection.commit(); return; }
+    const [seen] = await connection.execute("SELECT id FROM payments WHERE stripeEventId=? OR (membershipId=? AND stripeInvoiceId=?) LIMIT 1", [input.eventId, membership.id, input.invoiceId]);
+    if (seen.length) { await connection.commit(); return; }
+    if (input.amountCents !== MEMBERSHIP_TOTAL_CENTS || input.currency.toUpperCase() !== "EUR" || input.platformFeeCents !== MEMBERSHIP_PLATFORM_FEE_CENTS || !Number.isSafeInteger(input.periodEnd) || input.periodEnd <= 0) {
+      throw new Error("La facture de renouvellement ne correspond pas au partage 50 € / 2,50 €.");
+    }
+    const periodEnd = new Date(input.periodEnd * 1000);
+    const expiresAt = membership.expiresAt && new Date(membership.expiresAt) > periodEnd ? new Date(membership.expiresAt) : periodEnd;
+    const status = membership.status === "cancelled" ? "cancelled" : expiresAt > new Date() ? "active" : "expired";
+    await connection.execute("UPDATE memberships SET status=?,expiresAt=?,updatedAt=NOW() WHERE id=?", [status, expiresAt, membership.id]);
+    await connection.execute("INSERT INTO payments (membershipId,userId,stripeEventId,stripeInvoiceId,amountCents,currency,feeJsInnovCents,netToAsblCents,status) VALUES (?,?,?,?,?,'EUR',?,?,'succeeded')", [membership.id, membership.userId, input.eventId, input.invoiceId, input.amountCents, MEMBERSHIP_PLATFORM_FEE_CENTS, MEMBERSHIP_DUES_CENTS]);
+    await connection.commit();
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
 }
 
 export async function activateMemberAccess(token: string, password: string) {
