@@ -203,15 +203,85 @@ export default function HolidayCampaign() {
   return (
     <div className="holiday-page">
       <header className="holiday-header">
-        <Link href="/">
-          <img src="/logo-sd-officiel.png" alt="Synergie Dour — accueil" />
+        <Link href="/" className="holiday-brand">
+          <img
+            src="/logo-fetes-transparent.png"
+            alt="Synergie Dour — accueil"
+          />
+          <span>
+            <strong>Synergie Dour</strong>
+            <small>Commerçants &amp; indépendants réunis</small>
+          </span>
         </Link>
-        <span>Commerçants & indépendants réunis</span>
+        <span className="holiday-header-season">
+          La magie des fêtes, près de chez vous
+        </span>
         <a href="mailto:info@synergiedour.be">Besoin d’aide ?</a>
       </header>
       <main>
         <section className="holiday-hero">
-          <div>
+          <div className="holiday-garland" aria-hidden="true">
+            <svg
+              viewBox="0 0 1200 80"
+              preserveAspectRatio="none"
+              focusable="false"
+            >
+              <defs>
+                <pattern
+                  id="holiday-pine"
+                  width="64"
+                  height="70"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d="M-10 6 L74 15 M6 9 l-18 25 M18 10 l-18 32 M30 11 l-17 36 M42 12 l-13 32 M54 13 l-10 25 M66 14 l-8 20"
+                    fill="none"
+                    stroke="#36594b"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M0 5 L64 12 M16 8 l-12 23 M39 10 l-9 24 M58 12 l-6 18"
+                    fill="none"
+                    stroke="#59735c"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </pattern>
+              </defs>
+              <path d="M0 0H1200V65H0Z" fill="url(#holiday-pine)" />
+              <path
+                d="M0 25Q150 84 300 25T600 25T900 25T1200 25"
+                fill="none"
+                stroke="#b69a53"
+                strokeWidth="1.3"
+              />
+              {[75, 225, 375, 525, 675, 825, 975, 1125].map((x, i) => (
+                <g key={x}>
+                  <circle
+                    cx={x}
+                    cy={i % 2 ? 47 : 48}
+                    r="9"
+                    fill="#e8c547"
+                    opacity=".12"
+                  />
+                  <circle cx={x} cy={i % 2 ? 47 : 48} r="3" fill="#ffe5a3" />
+                </g>
+              ))}
+            </svg>
+          </div>
+          <div className="holiday-baubles" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+          <div className="holiday-snowflakes" aria-hidden="true">
+            <span>❄</span>
+            <span>✦</span>
+            <span>❄</span>
+            <span>✧</span>
+          </div>
+          <div className="holiday-hero-copy">
             <p className="holiday-eyebrow">
               <Sparkles size={16} /> CAMPAGNE DES FÊTES · 2026
             </p>
@@ -231,6 +301,10 @@ export default function HolidayCampaign() {
             <small>Réservé aux commerçants adhérents à Synergie Dour.</small>
           </div>
           <aside>
+            <div className="holiday-card-ribbon" aria-hidden="true">
+              <i />
+              <i />
+            </div>
             <Gift size={50} strokeWidth={1} />
             <span>ACHETONS LOCAL</span>
             <strong>
@@ -570,7 +644,7 @@ export default function HolidayCampaign() {
         </section>
       </main>
       <footer className="holiday-footer">
-        <img src="/logo-sd-officiel.png" alt="Synergie Dour" />
+        <img src="/logo-fetes-transparent.png" alt="Synergie Dour" />
         <p>Ensemble, faisons vivre le commerce local.</p>
         <Link href="/privacy">Confidentialité</Link>
         <a href="mailto:info@synergiedour.be">Nous contacter</a>
