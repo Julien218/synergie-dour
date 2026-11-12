@@ -132,6 +132,14 @@ export type InsertContactRequest = typeof contactRequests.$inferInsert;
  * Migration: 0004_membership_enriched.sql
  */
 export const membershipRequests = mysqlTable("membership_requests", {
+  village: varchar("village", { length: 100 }),
+  googleBusinessUrl: varchar("googleBusinessUrl", { length: 500 }),
+  paymentMode: mysqlEnum("paymentMode", ["one_time", "subscription"]).default("one_time").notNull(),
+  membershipId: int("membershipId"),
+  checkoutSessionId: varchar("checkoutSessionId", { length: 255 }),
+  note: text("note"),
+  rgpdConsentAt: timestamp("rgpdConsentAt"),
+  acceptsEmailContactAt: timestamp("acceptsEmailContactAt"),
   id: int("id").autoincrement().primaryKey(),
   // Informations entreprise
   businessName: varchar("businessName", { length: 255 }).notNull(),

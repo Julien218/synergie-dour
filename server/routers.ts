@@ -44,6 +44,10 @@ import { getChatbotSystemPrompt } from "./chatbotPrompt";
 import { askOpenAI } from "./chatbotClient";
 import { boardVotesRouter } from "./boardVotesRouter";
 
+import { z } from "zod";
+import { membershipInput, membershipUpdateInput } from "../shared/membership";
+import { sendMembershipContract, activateMembership, memberStatus, activateMemberAccess } from "./membershipService";
+
 export const appRouter = router({
   system: systemRouter,
   board: boardVotesRouter,
@@ -157,10 +161,15 @@ export const appRouter = router({
     getMyProfile: protectedProcedure.query(async ({ ctx }) => {
       return getMerchantByUserId(ctx.user.id);
     }),
-    updateMyProfile: protectedProcedure.input((val: unknown) => {
-      if (typeof val === "object" && val !== null) return val;
-      throw new Error("Invalid input");
-    }).mutation(async ({ ctx, input }: any) => {
+    updateMyProfile: protectedProcedure.input(z.object({
+      description: z.string().trim().max(10000).optional(),
+      address: z.string().trim().min(1).max(255).optional(),
+      phone: z.string().trim().max(20).optional(),
+      website: z.string().trim().max(255).optional(),
+      logo: z.string().max(500).nullable().optional(),
+      photos: z.array(z.string().max(2000)).max(100).optional(),
+      videos: z.array(z.string().max(2000)).max(100).optional(),
+    }).strict()).mutation(async ({ ctx, input }: any) => {
       const merchant = await getMerchantByUserId(ctx.user.id);
       if (!merchant) throw new Error("Merchant profile not found");
       return updateMerchant(merchant.id, input);
@@ -307,22 +316,16 @@ export const appRouter = router({
 
   // Membership requests — enrichi (indépendants, PME, ASBL, professions libérales)
   membership: router({
-    request: publicProcedure.input((val: unknown) => {
-      if (typeof val !== "object" || val === null) throw new Error("Invalid input");
-      const v = val as Record<string, unknown>;
-      // Champs obligatoires
-      if (!v.businessName || typeof v.businessName !== "string") throw new Error("businessName requis");
-      if (!v.contactName  || typeof v.contactName  !== "string") throw new Error("contactName requis");
-      if (!v.email        || typeof v.email        !== "string") throw new Error("email requis");
-      if (!v.phone        || typeof v.phone        !== "string") throw new Error("phone requis");
-      if (!v.address      || typeof v.address      !== "string") throw new Error("address requis");
-      if (!v.rgpdConsent) throw new Error("Le consentement RGPD est obligatoire");
-      return v;
-    }).mutation(async ({ input }) => {
+    request: publicProcedure.input(membershipInput).mutation(async ({ input }) => {
       const data = input as any;
       let memberResult;
       try {
         memberResult = await createMembershipRequest({
+          village: data.village,
+          googleBusinessUrl: data.googleBusinessUrl,
+          paymentMode: data.paymentMode,
+          rgpdConsentAt: new Date(),
+          acceptsEmailContactAt: data.acceptsEmailContact ? new Date() : null,
           businessName:        data.businessName,
           businessCategory:    data.businessCategory    || "",
           structureType:       data.structureType       || null,
@@ -357,42 +360,46 @@ export const appRouter = router({
         message: data.message ?? "",
       }).catch(() => {});
       // 2. Accusé de réception immédiat au demandeur
-      sendInstantAcknowledgement({
+      let emailWarning: string | undefined;
+      await sendInstantAcknowledgement({
         to: data.email,
         contactName: data.contactName,
         businessName: data.businessName,
         village: data.village ?? undefined,
-      }).catch(() => {});
-      return memberResult;
+      }).catch(error => { console.error("[membership.acknowledgement]", error); emailWarning = "Demande enregistrée. L’email de confirmation n’a pas pu être envoyé ; contactez le bureau si nécessaire."; });
+      return { success: true, emailWarning };
     }),
     // Admin routes
     listAll: adminProcedure.query(async () => {
       return getMembershipRequests();
     }),
-    update: adminProcedure.input((val: unknown) => {
-      if (typeof val === "object" && val !== null) return val;
-      throw new Error("Invalid input");
-    }).mutation(async ({ input }: any) => {
+    update: adminProcedure.input(membershipUpdateInput).mutation(async ({ input }) => {
       const { id, ...data } = input;
-      const result = await updateMembershipRequest(id, data);
-      // Si la demande vient d'être approuvée → envoyer le contrat automatiquement
-      if (data.status === "approved") {
-        getMembershipRequestById(id).then((req: any) => {
-          if (req && req.email) {
-            sendContractEmail({
-              to: req.email,
-              contactName: req.contactName ?? req.businessName,
-              businessName: req.businessName,
-              address: req.address ?? "",
-              village: req.village ?? undefined,
-              vatNumber: req.vatNumber ?? undefined,
-              structureType: req.structureType ?? undefined,
-            }).catch(() => {});
-          }
-        }).catch(() => {});
+      const previous = await getMembershipRequestById(id);
+      if (!previous) throw new TRPCError({ code: "NOT_FOUND", message: "Demande introuvable" });
+      if (previous.membershipId && (data.status === "rejected" || data.status === "pending" || data.paiementStatut === "en_attente")) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cette adhésion est déjà active. Utilisez la gestion des adhésions pour l'annuler." });
       }
-      return result;
+      const status = data.status || previous.status;
+      const paid = data.paiementStatut || previous.paiementStatut;
+      if (status !== "approved" && paid !== "en_attente") throw new TRPCError({ code: "BAD_REQUEST", message: "Approuvez la demande avant de confirmer le paiement." });
+      await updateMembershipRequest(id, data);
+      if (status === "approved" && paid !== "en_attente") await activateMembership(id);
+      let emailWarning: string | undefined;
+      if (status === "approved" && previous.status !== "approved") {
+        try { await sendMembershipContract(id); }
+        catch (error) {
+          console.error("[membership.contract]", error);
+          emailWarning = "Demande approuvée, mais l'email n'a pas été envoyé. Utilisez Renvoyer le contrat.";
+        }
+      }
+      return { success: true, emailWarning };
     }),
+    resendContract: adminProcedure.input(z.number().int().positive()).mutation(async ({ input }) => {
+      await sendMembershipContract(input);
+      return { success: true };
+    }),
+    activateAccess: publicProcedure.input(z.object({ token: z.string().max(150), password: z.string().min(12).max(128) })).mutation(({ input }) => activateMemberAccess(input.token, input.password)),
     delete: adminProcedure.input((val: unknown) => {
       if (typeof val === "number") return val;
       throw new Error("Invalid input");
@@ -515,22 +522,32 @@ export const appRouter = router({
 
   // Memberships — statut membre pour l'espace membre
   memberships: router({
-    myStatus: protectedProcedure.query(async ({ ctx }) => {
-      try {
-        const mysql2 = await import("mysql2/promise");
-        const dbUrl = process.env.DATABASE_URL;
-        if (!dbUrl) return null;
-        const pool = mysql2.createPool({ uri: dbUrl.split("?")[0], ssl: { rejectUnauthorized: false }, connectionLimit: 2 });
-        const [rows] = await pool.execute(
-          "SELECT * FROM membership_requests WHERE email = ? ORDER BY created_at DESC LIMIT 1",
-          [ctx.user.email]
-        ) as any;
-        await pool.end().catch(() => {});
-        return (rows as any[])[0] ?? null;
-      } catch {
-        return null;
-      }
+    myPayments: protectedProcedure.query(async ({ ctx }) => {
+      const { getPool } = await import("./db");
+      const p = await getPool();
+      if (!p) throw new Error("Base de données indisponible");
+      const [rows] = await p.execute("SELECT id,amountCents,currency,status,paidAt FROM payments WHERE userId=? ORDER BY paidAt DESC,id DESC LIMIT 100", [ctx.user.id]);
+      return rows as Array<{ id: number; amountCents: number; currency: string; status: string; paidAt: Date }>;
     }),
+    billingPortal: protectedProcedure.mutation(async ({ ctx }) => {
+      const { getPool } = await import("./db");
+      const p = await getPool();
+      if (!p) throw new Error("Base de données indisponible");
+      const [rows] = await p.execute("SELECT stripeCustomerId FROM memberships WHERE userId=? AND stripeSubscriptionId IS NOT NULL ORDER BY id DESC LIMIT 1", [ctx.user.id]);
+      const customer = rows[0]?.stripeCustomerId;
+      if (!customer) throw new TRPCError({ code: "BAD_REQUEST", message: "Aucun abonnement Stripe associé à votre compte. Contactez le bureau." });
+      const { stripe } = await import("./stripe/stripeService");
+      const portal = await stripe.billingPortal.sessions.create({ customer, ...(process.env.STRIPE_BILLING_PORTAL_CONFIGURATION ? { configuration: process.env.STRIPE_BILLING_PORTAL_CONFIGURATION } : {}), return_url: `${process.env.APP_URL || "https://www.synergiedour.be"}/dashboard/members` });
+      return { url: portal.url };
+    }),
+    checkoutStatus: publicProcedure.input(z.string().regex(/^cs_(test_|live_)?[A-Za-z0-9_]+$/).max(255)).query(async ({ input }) => {
+      const { stripe } = await import("./stripe/stripeService");
+      const session = await stripe.checkout.sessions.retrieve(input);
+      const id = Number(session.metadata?.membershipRequestId);
+      const request = id ? await getMembershipRequestById(id) : null;
+      return { paid: session.payment_status === "paid", active: Boolean(request?.membershipId && request?.paiementStatut !== "en_attente"), kind: session.metadata?.invoiceId ? "invoice" : "membership" };
+    }),
+    myStatus: protectedProcedure.query(({ ctx }) => memberStatus(ctx.user.id, ctx.user.email)),
   }),
 
   // ── LEADFINDER PRO — Intégration CRM & Campagnes ────────────────────────

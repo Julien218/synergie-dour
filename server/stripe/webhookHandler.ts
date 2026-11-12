@@ -24,6 +24,7 @@
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
 import { getDb } from "../db";
+import { activateMembership } from "../membershipService";
 import { memberships, payments, membershipRequests } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -66,8 +67,9 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
   }
 }
 
-async function processWebhookEvent(event: Stripe.Event): Promise<void> {
+export async function processWebhookEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
+    case "checkout.session.async_payment_succeeded":
     case "checkout.session.completed":
       await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session, event.id);
       break;
@@ -97,82 +99,21 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
   eventId: string
 ): Promise<void> {
-  const db = await requireDb();
-  // Paiement d'une facture (lien envoyé par email) : marquer payée + acquittée automatique
+  if (session.payment_status !== "paid") return;
   const invoiceId = session.metadata?.invoiceId;
   if (invoiceId) {
-    if (session.payment_status === "paid") {
-      await markInvoicePaidFromStripe(parseInt(invoiceId, 10));
-    }
+    await markInvoicePaidFromStripe(Number(invoiceId));
     return;
   }
-
-  const membershipRequestId = session.metadata?.membershipRequestId;
-  if (!membershipRequestId) {
-    console.warn(`Session ${session.id} sans membershipRequestId — ignorée`);
-    return;
-  }
-
-  const request = (await db.select().from(membershipRequests).where(eq(membershipRequests.id, parseInt(membershipRequestId, 10))).limit(1))[0];
-  if (!request) {
-    console.warn(`Membership request ${membershipRequestId} introuvable`);
-    return;
-  }
-
-  const userId = session.metadata?.userId ? parseInt(session.metadata.userId, 10) : null;
-  const amountCents = session.amount_total ?? 0;
-  const isSubscription = session.mode === "subscription";
-
-  const startsAt = new Date();
-  const expiresAt = new Date();
-  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-
-  const [membership] = await db
-    .insert(memberships)
-    .values({
-      userId: userId ?? 0,
-      paymentMode: isSubscription ? "subscription" : "one_time",
-      status: "active",
-      stripeCustomerId: typeof session.customer === "string" ? session.customer : null,
-      stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : null,
-      stripePaymentIntentId:
-        typeof session.payment_intent === "string" ? session.payment_intent : null,
-      startsAt,
-      expiresAt,
-      amountCents,
-      currency: (session.currency ?? "eur").toUpperCase(),
-    })
-    .$returningId();
-
-  await db.insert(payments).values({
-    membershipId: membership.id,
-    userId: userId ?? null,
-    stripeEventId: eventId,
-    stripePaymentIntentId:
-      typeof session.payment_intent === "string" ? session.payment_intent : null,
-    stripeInvoiceId: typeof session.invoice === "string" ? session.invoice : null,
-    amountCents,
-    currency: (session.currency ?? "eur").toUpperCase(),
-    feeJsInnovCents: APPLICATION_FEE_CENTS,
-    netToAsblCents: amountCents - APPLICATION_FEE_CENTS,
-    status: "succeeded",
-    paymentMethod: session.payment_method_types?.[0] ?? null,
+  const id = Number(session.metadata?.membershipRequestId);
+  if (!Number.isSafeInteger(id) || id <= 0) return;
+  await activateMembership(id, {
+    eventId, sessionId: session.id, amountCents: session.amount_total || 0,
+    currency: (session.currency || "eur").toUpperCase(),
+    customerId: typeof session.customer === "string" ? session.customer : null,
+    subscriptionId: typeof session.subscription === "string" ? session.subscription : null,
+    paymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
   });
-
-  await db
-    .update(membershipRequests)
-    .set({ status: "approved", updatedAt: new Date() })
-    .where(eq(membershipRequests.id, request.id));
-
-  await sendMembershipActivatedEmail({
-    to: request.email,
-    contactName: request.contactName,
-    businessName: request.businessName,
-    paymentMode: isSubscription ? "subscription" : "one_time",
-    expiresAt,
-  });
-
-  console.log(`Adhésion ${membership.id} activée pour ${request.businessName}`);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -184,13 +125,18 @@ async function handleInvoicePaymentSucceeded(
   eventId: string
 ): Promise<void> {
   const db = await requireDb();
-  if (typeof (invoice as any).subscription !== "string") return;
+  if (invoice.billing_reason === "subscription_create") return;
+  const subscriptionId = (invoice as any).subscription || (invoice as any).parent?.subscription_details?.subscription;
+  if (typeof subscriptionId !== "string") return;
+  const [seen] = await db.select().from(payments).where(eq(payments.stripeEventId, eventId)).limit(1);
+  if (seen) return;
 
-  const membership = (await db.select().from(memberships).where(eq(memberships.stripeSubscriptionId, (invoice as any).subscription)).limit(1))[0];
+  const membership = (await db.select().from(memberships).where(eq(memberships.stripeSubscriptionId, subscriptionId)).limit(1))[0];
   if (!membership) return;
 
-  const newExpiresAt = new Date();
-  newExpiresAt.setFullYear(newExpiresAt.getFullYear() + 1);
+  const periodEnd = invoice.lines.data[0]?.period?.end;
+  if (!periodEnd) throw new Error("Période de renouvellement absente");
+  const newExpiresAt = new Date(periodEnd * 1000);
 
   await db
     .update(memberships)

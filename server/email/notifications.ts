@@ -23,6 +23,14 @@ const FROM_CONTACT = process.env.EMAIL_FROM_CONTACT ?? "Synergie Dour <contact@s
 const ADMIN_NOTIF = (process.env.EMAIL_ADMIN_NOTIF ?? "").split(",").map((e) => e.trim()).filter(Boolean);
 const APP_URL = process.env.APP_URL ?? "https://www.synergiedour.be";
 
+async function sendChecked(input: Parameters<typeof resend.emails.send>[0]) {
+  const result = await resend.emails.send(input);
+  if (result.error) throw new Error(`Envoi email refusé : ${result.error.message}`);
+  return result;
+}
+
+function escapeHtml(value: string) { return value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!)); }
+
 /* ------------------------------------------------------------------------- */
 /* TEMPLATE DE BASE (réutilisable)                                            */
 /* ------------------------------------------------------------------------- */
@@ -105,7 +113,7 @@ export async function sendApplicationReceivedEmail(input: {
     </p>
   `);
 
-  await resend.emails.send({
+  await sendChecked({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Votre demande d'adhésion à Synergie Dour est bien reçue",
@@ -140,7 +148,7 @@ export async function sendApplicationApprovedEmail(input: {
     </p>
   `, { label: "Procéder au paiement", url: input.checkoutUrl });
 
-  await resend.emails.send({
+  await sendChecked({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Votre adhésion à Synergie Dour est validée — finalisez le paiement",
@@ -153,12 +161,14 @@ export async function sendApplicationApprovedEmail(input: {
 /* ------------------------------------------------------------------------- */
 
 export async function sendMembershipActivatedEmail(input: {
+  accessUrl?: string;
   to: string;
   contactName: string;
   businessName: string;
   paymentMode: "one_time" | "subscription";
   expiresAt: Date;
 }): Promise<void> {
+  input = { ...input, contactName: escapeHtml(input.contactName), businessName: escapeHtml(input.businessName) };
   const expiresLabel = input.expiresAt.toLocaleDateString("fr-BE", {
     day: "numeric",
     month: "long",
@@ -167,7 +177,7 @@ export async function sendMembershipActivatedEmail(input: {
 
   const renewalNote = input.paymentMode === "subscription"
     ? "Votre adhésion se renouvellera automatiquement chaque année. Vous pouvez l'annuler à tout moment depuis votre espace membre."
-    : `Votre adhésion est valable jusqu'au ${expiresLabel}. Nous vous enverrons un mail de rappel un mois avant la fin.`;
+    : `Votre adhésion est valable jusqu'au ${expiresLabel}. Le renouvellement se demande auprès du bureau avant cette date.`;
 
   const html = emailLayout(`
     <h2 style="color: #001a3d; font-size: 22px; margin: 0 0 16px;">Bienvenue dans Synergie Dour !</h2>
@@ -185,9 +195,9 @@ export async function sendMembershipActivatedEmail(input: {
       <li>Nous vous contacterons pour la <strong>mini-vidéo promotionnelle</strong></li>
       <li>Accès à votre <strong>espace membre</strong> sur la plateforme</li>
     </ul>
-  `, { label: "Accéder à mon espace", url: `${APP_URL}/dashboard` });
+  `, { label: "Accéder à mon espace", url: input.accessUrl || `${APP_URL}/dashboard/members` });
 
-  await resend.emails.send({
+  await sendChecked({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Bienvenue dans Synergie Dour — votre adhésion est active",
@@ -214,7 +224,7 @@ export async function sendPaymentFailedEmail(input: {
     </p>
   `, input.invoiceUrl ? { label: "Régulariser le paiement", url: input.invoiceUrl } : undefined);
 
-  await resend.emails.send({
+  await sendChecked({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Synergie Dour — paiement à régulariser",
@@ -263,7 +273,7 @@ export async function sendAgentNotificationEmail(input: {
     url: `${APP_URL}/dashboard/agent/${input.pendingChangeId}`,
   });
 
-  await resend.emails.send({
+  await sendChecked({
     from: FROM_NOREPLY,
     to: ADMIN_NOTIF,
     subject: `[Synergie Dour] Validation ${input.kind === "major" ? "URGENTE" : "requise"} — ${input.resourceTitle}`,
@@ -321,7 +331,7 @@ export async function sendWeeklyAgentReportEmail(input: {
     </table>
   `, { label: "Voir les changements en attente", url: `${APP_URL}/dashboard/agent` });
 
-  await resend.emails.send({
+  await sendChecked({
     from: FROM_NOREPLY,
     to: ADMIN_NOTIF,
     subject: `[Synergie Dour] Rapport hebdomadaire — ${input.minor + input.major} validation(s) requise(s)`,
@@ -399,7 +409,7 @@ export async function sendAdminNewMessageNotification(input: {
     </table>
   `, { label: "Voir dans le dashboard", url: `${APP_URL}/dashboard/inbox` });
 
-  await resend.emails.send({
+  await sendChecked({
     from: FROM_NOREPLY,
     to: ADMIN_NOTIF,
     subject: `${iconEmoji} [Synergie Dour] ${typeLabel} — ${input.name}`,
@@ -413,6 +423,8 @@ export async function sendAdminNewMessageNotification(input: {
 /* ------------------------------------------------------------------------- */
 
 export async function sendContractEmail(input: {
+  checkoutUrl?: string;
+  accessUrl?: string;
   to: string;
   contactName: string;
   businessName: string;
@@ -422,7 +434,9 @@ export async function sendContractEmail(input: {
   structureType?: string;
   requestedAt?: string;
 }): Promise<void> {
+  input = { ...input, contactName: escapeHtml(input.contactName), businessName: escapeHtml(input.businessName) };
   const today = new Date().toLocaleDateString("fr-BE", { day: "numeric", month: "long", year: "numeric" });
+  input = { ...input, address: escapeHtml(input.address), village: input.village ? escapeHtml(input.village) : undefined, vatNumber: input.vatNumber ? escapeHtml(input.vatNumber) : undefined, structureType: input.structureType ? escapeHtml(input.structureType) : undefined };
   const year = new Date().getFullYear();
   const expiresYear = year + 1;
   const address = input.village ? `${input.address}, ${input.village}` : input.address;
@@ -567,7 +581,8 @@ export async function sendContractEmail(input: {
     </p>
     <div style="background:#f0f4fa;border-left:3px solid #003d99;padding:14px 18px;border-radius:0 6px 6px 0;margin:16px 0;">
       <p style="margin:0;font-size:14px;color:#333;"><strong>Prochaine étape :</strong> règlement de la cotisation de <strong>50 €</strong><br>
-      Vous recevrez sous peu le lien de paiement sécurisé (carte bancaire ou Bancontact).</p>
+      ${input.checkoutUrl ? `<a href="${input.checkoutUrl}">Régler ma cotisation en ligne</a> (les frais éventuels sont affichés avant paiement).` : "Votre cotisation a été enregistrée par le bureau."}<br>
+      ${input.accessUrl ? `<a href="${input.accessUrl}">Activer mon accès membre après règlement</a>` : ""}</p>
     </div>
     <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 16px 0 0;">
       Bienvenue dans la famille Synergie Dour !<br>
@@ -578,7 +593,7 @@ export async function sendContractEmail(input: {
   // Encoder le HTML du contrat en base64 pour l'envoyer comme pièce jointe
   const contractBase64 = Buffer.from(contractHtml).toString("base64");
 
-  await resend.emails.send({
+  await sendChecked({
     from: FROM_CONTACT,
     to: input.to,
     subject: `Contrat d'adhésion Synergie Dour ${year} — ${input.businessName}`,
@@ -587,7 +602,7 @@ export async function sendContractEmail(input: {
       {
         filename: `Contrat_Adhesion_SynergieDour_${year}_${input.businessName.replace(/[^a-zA-Z0-9]/g, "_")}.html`,
         content: contractBase64,
-        content_type: "text/html",
+        contentType: "text/html",
       },
     ],
   });
@@ -603,6 +618,7 @@ export async function sendInstantAcknowledgement(input: {
   businessName: string;
   village?: string;
 }): Promise<void> {
+  input = { ...input, contactName: escapeHtml(input.contactName), businessName: escapeHtml(input.businessName) };
   const today = new Date().toLocaleDateString("fr-BE", { day: "numeric", month: "long", year: "numeric" });
   const locationLine = input.village ? `<br>📍 Localité : <strong>${input.village}</strong>` : "";
 
@@ -647,7 +663,7 @@ export async function sendInstantAcknowledgement(input: {
     </p>
   `);
 
-  await resend.emails.send({
+  await sendChecked({
     from: FROM_CONTACT,
     to: input.to,
     subject: "Synergie Dour — Votre demande d'adhésion est bien reçue",

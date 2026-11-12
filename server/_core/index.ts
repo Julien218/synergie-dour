@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { ensureMembershipSchema } from "../membershipSchema";
+import { membershipCheckout } from "../membershipService";
 import express from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -197,6 +199,7 @@ async function initDatabase() {
 
 async function startServer() {
   const { pool, db } = (await initDatabase()) || {};
+  if (pool) await ensureMembershipSchema(pool);
   (globalThis as any).__DB_POOL = pool;
 
   const app = express();
@@ -298,7 +301,25 @@ async function startServer() {
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
+  app.get("/api/membership/pay/:token", formLimiter, async (req, res) => {
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.setHeader("Cache-Control", "no-store");
+    if (!process.env.ASBL_STRIPE_CONNECT_ACCOUNT_ID) {
+      res.status(503).send("Le paiement de la cotisation sera disponible après confirmation du bénéficiaire. Votre candidature reste enregistrée. Contactez contact@synergiedour.be pour toute question.");
+      return;
+    }
+    try { res.redirect(303, await membershipCheckout(req.params.token)); }
+    catch (error) {
+      console.error("[membership.checkout]", error);
+      res.status(400).send("Paiement indisponible ou lien expiré. Contactez contact@synergiedour.be pour recevoir un nouveau lien.");
+    }
+  });
   app.use("/api/", apiLimiter);
+  app.use("/api/trpc", (req, res, next) => {
+    const paths = req.path.slice(1).split(",");
+    if (paths.some(path => ["membership.request", "membership.activateAccess"].includes(path))) return formLimiter(req, res, next);
+    next();
+  });
   app.use("/api/trpc/auth.login", loginLimiter);
   app.use("/api/trpc/auth.register", loginLimiter);
 

@@ -185,8 +185,9 @@ export default function Membership() {
   }
 
   const requestMutation = trpc.membership.request.useMutation({
-    onSuccess: () => {
-      toast.success("Demande envoyée ! Vous recevrez un email de validation sous 7 jours.");
+    onSuccess: (result) => {
+      if (result.emailWarning) toast.warning(result.emailWarning);
+      else toast.success("Demande envoyée ! Le bureau examinera votre candidature sous 7 jours.");
       setLocation("/");
     },
     onError: (err) => {
@@ -325,7 +326,7 @@ export default function Membership() {
         <section className="py-12 px-4">
           <div className="container mx-auto max-w-4xl">
             <h2 className="text-2xl font-bold text-[#001a3d] mb-2">Choisissez votre formule</h2>
-            <p className="text-gray-600 mb-6">Paiement unique ou renouvellement automatique — annulable à tout moment.</p>
+            <p className="text-gray-600 mb-6">Paiement unique ou renouvellement automatique — annulable à tout moment. Les frais de paiement éventuels sont affichés avant règlement.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Paiement annuel */}
               <button
@@ -347,7 +348,7 @@ export default function Membership() {
                 <h3 className="font-bold text-[#001a3d] text-lg mb-1">Paiement annuel</h3>
                 <p className="text-3xl font-bold text-[#001a3d] mb-2">50€</p>
                 <p className="text-sm text-gray-600">
-                  Vous payez une seule fois. Rappel envoyé avant expiration.
+                  Vous payez une seule fois. Renouvellement à demander au bureau.
                 </p>
               </button>
 
@@ -405,7 +406,7 @@ export default function Membership() {
                         <span className="text-xs bg-[#D4AF37] text-[#001a3d] px-2 py-0.5 rounded-full font-normal">Recommandé</span>
                       </h3>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Collez votre lien Google Business — l'IA pré-remplit automatiquement plusieurs champs ci-dessous.
+                        Collez votre lien Google Business — le nom peut être proposé selon les informations présentes dans le lien.
                       </p>
                     </div>
                   </div>
@@ -712,8 +713,8 @@ export default function Membership() {
                       <ol className="list-decimal list-inside space-y-1 text-gray-700">
                         <li>Vous soumettez votre candidature</li>
                         <li>Le bureau de l'ASBL examine et valide</li>
-                        <li>Vous recevez un email avec le lien de paiement</li>
-                        <li>Après paiement, votre adhésion est active immédiatement</li>
+                        <li>Vous recevez le contrat à signer et le lien de paiement</li>
+                        <li>Après confirmation du règlement, votre adhésion est activée et vous recevez votre accès membre</li>
                       </ol>
                     </div>
 
