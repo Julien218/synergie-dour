@@ -23,6 +23,8 @@ import { socialRouter } from "../social";
 import { seoRouter } from "../seo/router";
 import { autopublishRouter } from "../autopublish/router";
 import { dropboxRouter } from "../dropbox";
+import { createMembersRouter } from "../videoFeedMembers";
+import { sql as drizzleSql } from "drizzle-orm";
 import { invoiceRouter, invoicePayRouter } from "../invoices";
 import { stripeWebhookHandler } from "../stripe/webhookHandler";
 import { cronAutopublishHandler } from "../cron/autopublishCron";
@@ -333,6 +335,21 @@ async function startServer() {
   );
   app.use("/api/pay-invoice", invoicePayRouter);
   app.use("/api/invoices", invoiceRouter);
+
+  // Flux « membres » de la fabrique vidéo : monté seulement si VIDEO_FEED_TOKEN existe (sinon aucune route). Lecture en direct, jeton obligatoire.
+  if (process.env.VIDEO_FEED_TOKEN) {
+    const rowsOf = (r: any) => (Array.isArray(r) && Array.isArray(r[0]) ? r[0] : r);
+    app.use("/api/video/members", createMembersRouter({
+      express,
+      token: process.env.VIDEO_FEED_TOKEN,
+      query: async (q: string) => { const db: any = await getDb(); return rowsOf(await db.execute(drizzleSql.raw(q))); },
+      columnsPresent: async () => {
+        const db: any = await getDb();
+        const r = rowsOf(await db.execute(drizzleSql.raw("SELECT COUNT(*) AS n FROM information_schema.columns WHERE table_schema = DATABASE() AND ((table_name = 'merchants' AND column_name = 'membershipRequestId') OR (table_name = 'membership_requests' AND column_name = 'mediaConsentWithdrawnAt'))")));
+        return Number(r?.[0]?.n) === 2;
+      },
+    }));
+  }
 
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
