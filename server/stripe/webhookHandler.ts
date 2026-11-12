@@ -24,7 +24,7 @@
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
 import { getDb } from "../db";
-import { activateMembership } from "../membershipService";
+import { activateMembership, recordMembershipRenewal } from "../membershipService";
 import { memberships, payments, membershipRequests } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -131,37 +131,14 @@ async function handleInvoicePaymentSucceeded(
   invoice: Stripe.Invoice,
   eventId: string
 ): Promise<void> {
-  const db = await requireDb();
   if (invoice.billing_reason === "subscription_create") return;
   const subscriptionId = (invoice as any).subscription || (invoice as any).parent?.subscription_details?.subscription;
   if (typeof subscriptionId !== "string") return;
-  const [seen] = await db.select().from(payments).where(eq(payments.stripeEventId, eventId)).limit(1);
-  if (seen) return;
-
-  const membership = (await db.select().from(memberships).where(eq(memberships.stripeSubscriptionId, subscriptionId)).limit(1))[0];
-  if (!membership) return;
-
-  const periodEnd = invoice.lines.data[0]?.period?.end;
-  if (!periodEnd) throw new Error("Période de renouvellement absente");
-  const newExpiresAt = new Date(periodEnd * 1000);
-
-  await db
-    .update(memberships)
-    .set({ status: "active", expiresAt: newExpiresAt, updatedAt: new Date() })
-    .where(eq(memberships.id, membership.id));
-
-  const amountCents = invoice.amount_paid ?? 0;
-  await db.insert(payments).values({
-    membershipId: membership.id,
-    userId: membership.userId,
-    stripeEventId: eventId,
-    stripeInvoiceId: invoice.id,
-    amountCents,
-    currency: (invoice.currency ?? "eur").toUpperCase(),
-    feeJsInnovCents: MEMBERSHIP_PLATFORM_FEE_CENTS,
-    netToAsblCents: MEMBERSHIP_DUES_CENTS,
-    status: "succeeded",
-    paymentMethod: "card",
+  await recordMembershipRenewal({
+    eventId, invoiceId: invoice.id!, subscriptionId,
+    amountCents: invoice.amount_paid || 0, currency: invoice.currency || "",
+    platformFeeCents: invoice.application_fee_amount ?? null,
+    periodEnd: invoice.lines.data[0]?.period?.end || 0,
   });
 }
 

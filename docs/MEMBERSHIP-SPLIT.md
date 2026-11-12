@@ -24,6 +24,14 @@ Documentation de référence : https://docs.stripe.com/connect/destination-charg
 
 ## Validation et état de publication
 
-35 tests ciblés passent : 15 tests de données/webhooks, 6 tests de routes, 7 tests du partage/contrôles de bénéficiaire et 7 tests MySQL isolés. La compilation de production passe. Ces tests ne prouvent pas un transfert réel à l’ASBL : aucun compte destinataire n’existe encore et aucun paiement ni transfert réel n’a été effectué.
+40 tests ciblés passent : 15 tests de données/webhooks, 6 tests de routes, 7 tests du partage/contrôles de bénéficiaire et 12 tests MySQL isolés. La compilation de production passe. Ces tests ne prouvent pas un transfert réel à l’ASBL : aucun compte destinataire n’existe encore et aucun paiement ni transfert réel n’a été effectué.
 
 Le 12 novembre, un correctif séparé a été déployé pour répondre HTTP 503 sur les liens de paiement d’adhésion sans compte destinataire configuré. Le site et le formulaire répondent HTTP 200. Le code de répartition à 52,50 € reste préparé, non déployé, tant que les étapes Stripe et le rattachement ASBL ne sont pas terminés.
+
+## Compléments préparés pendant le déblocage
+
+Le renouvellement et son écriture comptable sont désormais enregistrés dans une seule transaction. Le verrouillage de l’adhésion et la vérification de la facture empêchent deux écritures pour une même facture, même si Stripe utilise deux identifiants d’événement. Un événement ancien ne réduit pas la date de validité ; un événement retardé ne réactive pas une adhésion annulée. Le montant, la devise et la commission de renouvellement sont vérifiés avant toute prolongation.
+
+Un environnement Stripe sandbox temporaire a été créé séparément du compte réel via la CLI officielle, avec un profil local privé et une échéance au 19 novembre 2026. Sa clé temporaire ne donne pas accès à Accounts v2 ; la création d’un bénéficiaire de test est refusée. Aucun transfert Connect simulé n’a donc été validé auprès de Stripe. Il faudra autoriser le sandbox et vérifier le paiement initial ainsi qu’un renouvellement avant la mise en service. Ne jamais utiliser une clé réelle pour contourner ce blocage de test.
+
+Le contrôle d’affichage de l’espace membre distingue la cotisation ASBL de 50 € des 2,50 € de frais de plateforme pour un paiement en ligne. Les factures commerciales hors adhésion conservent leur propre tarification.

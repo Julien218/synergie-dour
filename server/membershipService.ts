@@ -141,6 +141,33 @@ export async function memberStatus(userId: number, email: string | null) {
   return r ? { status: r.status === "approved" ? "pending_payment" : r.status, paymentMode: r.paymentMode || "one_time", expiresAt: null, amountCents: 5000 } : null;
 }
 
+/** A renewal receipt and its validity extension must be committed together. */
+export async function recordMembershipRenewal(input: {
+  eventId: string; invoiceId: string; subscriptionId: string;
+  amountCents: number; currency: string; platformFeeCents: number | null;
+  periodEnd: number;
+}) {
+  const connection = await (await pool()).getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute("SELECT * FROM memberships WHERE stripeSubscriptionId=? LIMIT 1 FOR UPDATE", [input.subscriptionId]);
+    const membership = rows[0];
+    if (!membership) { await connection.commit(); return; }
+    const [seen] = await connection.execute("SELECT id FROM payments WHERE stripeEventId=? OR (membershipId=? AND stripeInvoiceId=?) LIMIT 1", [input.eventId, membership.id, input.invoiceId]);
+    if (seen.length) { await connection.commit(); return; }
+    if (input.amountCents !== MEMBERSHIP_TOTAL_CENTS || input.currency.toUpperCase() !== "EUR" || input.platformFeeCents !== MEMBERSHIP_PLATFORM_FEE_CENTS || !Number.isSafeInteger(input.periodEnd) || input.periodEnd <= 0) {
+      throw new Error("La facture de renouvellement ne correspond pas au partage 50 € / 2,50 €.");
+    }
+    const periodEnd = new Date(input.periodEnd * 1000);
+    const expiresAt = membership.expiresAt && new Date(membership.expiresAt) > periodEnd ? new Date(membership.expiresAt) : periodEnd;
+    const status = membership.status === "cancelled" ? "cancelled" : expiresAt > new Date() ? "active" : "expired";
+    await connection.execute("UPDATE memberships SET status=?,expiresAt=?,updatedAt=NOW() WHERE id=?", [status, expiresAt, membership.id]);
+    await connection.execute("INSERT INTO payments (membershipId,userId,stripeEventId,stripeInvoiceId,amountCents,currency,feeJsInnovCents,netToAsblCents,status) VALUES (?,?,?,?,?,'EUR',?,?,'succeeded')", [membership.id, membership.userId, input.eventId, input.invoiceId, input.amountCents, MEMBERSHIP_PLATFORM_FEE_CENTS, MEMBERSHIP_DUES_CENTS]);
+    await connection.commit();
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
+}
+
 export async function activateMemberAccess(token: string, password: string) {
   const r = await requestForToken(token);
   if (r.status !== "approved" || !r.membershipId) throw new TRPCError({ code: "BAD_REQUEST", message: "L'accès sera disponible après activation de l'adhésion." });
