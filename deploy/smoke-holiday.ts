@@ -24,11 +24,14 @@ try {
   const ddl = await readFile("/app/holiday-schema.sql", "utf8");
   for (const statement of ddl.split(";").filter(v => v.trim()))
     await pool.query(statement);
+  const publicDDL = await readFile("/app/holiday-public-schema.sql", "utf8");
+  for (const statement of publicDDL.split(";").filter(v => v.trim()))
+    await pool.query(statement);
   await pool.query(
     "INSERT INTO users (id,openId,name,email,role) VALUES (110011,'smoke-julien','Smoke Julien','julien@example.invalid','super_admin'),(110022,'smoke-olivier','Smoke Olivier','olivier@example.invalid','admin'),(110033,'smoke-user','Smoke User','user@example.invalid','user')"
   );
   await pool.query(
-    "INSERT INTO merchants (id,userId,businessName,businessCategory,address,status) VALUES (110001,110011,'Commerce fictif de test','Test','Adresse fictive','approved')"
+    "INSERT INTO merchants (id,userId,businessName,businessCategory,address,status) VALUES (110001,110011,'Commerce fictif de test','Test','Adresse fictive','approved'),(110002,110011,'Commerce public fictif','Test','Adresse fictive','approved')"
   );
   const julien = await signSession({
     id: 110011,
@@ -100,6 +103,63 @@ try {
     rightsConfirmed: true,
     publicationConsent: false,
   };
+  const publicKey = "b".repeat(64),
+    publicForm = {
+      ...form,
+      businessName: "Commerce public fictif",
+      publicationConsent: true,
+    };
+  const start = await request(
+    "/start",
+    "POST",
+    { payload: publicForm },
+    publicKey
+  );
+  assert.equal(start.revision, 1);
+  const retry = await request(
+    "/start",
+    "POST",
+    { payload: { ...publicForm, businessName: "Ne pas écraser" } },
+    publicKey
+  );
+  assert.equal(retry.revision, 1);
+  const publicDossier = await request("/dossier", "GET", undefined, publicKey);
+  assert.equal(publicDossier.merchant, null);
+  assert.equal(publicDossier.payload.businessName, "Commerce public fictif");
+  await request("/submit", "POST", {}, publicKey);
+  const [beforeVerification] = await pool.query("SELECT * FROM holiday_jobs");
+  assert.equal(beforeVerification.length, 0);
+  const adminList = await request("/admin/dossiers", "GET", undefined, julien);
+  const publicRow = adminList.dossiers.find(
+    (r: any) => r.payload?.businessName === "Commerce public fictif"
+  );
+  assert.equal(publicRow.status, "membership_pending");
+  await request(
+    `/admin/dossiers/${publicRow.id}/attach`,
+    "POST",
+    {
+      merchantId: 110002,
+      membershipConfirmed: true,
+      revision: publicRow.revision,
+    },
+    member,
+    403
+  );
+  await request(
+    `/admin/dossiers/${publicRow.id}/attach`,
+    "POST",
+    {
+      merchantId: 110002,
+      membershipConfirmed: true,
+      revision: publicRow.revision,
+    },
+    julien
+  );
+  const [afterVerification] = await pool.query("SELECT * FROM holiday_jobs");
+  assert.equal(afterVerification.length, 1);
+  await request("/withdraw", "POST", {}, publicKey);
+  await pool.execute("DELETE FROM holiday_dossiers WHERE id=?", [publicRow.id]);
+  console.log("PUBLIC_ENTRY_PRIVATE_OWNERSHIP_MEMBERSHIP_REVIEW_PASSED");
   await request(
     "/dossier",
     "PUT",

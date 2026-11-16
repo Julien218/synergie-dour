@@ -89,8 +89,8 @@ async function resetReview(db: any, row: any, action: string) {
     [row.id]
   );
   await db.execute(
-    "UPDATE holiday_dossiers SET status='draft',revision=revision+1,reviewedBy=NULL,reviewedAtMs=NULL,updatedAtMs=? WHERE id=?",
-    [Date.now(), row.id]
+    "UPDATE holiday_dossiers SET status=?,revision=revision+1,reviewedBy=NULL,reviewedAtMs=NULL,updatedAtMs=? WHERE id=?",
+    [row.merchantId ? "draft" : "unverified_draft", Date.now(), row.id]
   );
   await event(db, { ...row, revision: row.revision + 1 }, action);
 }
@@ -138,6 +138,66 @@ holidayRouter.use((req, res, next) => {
   next();
 });
 holidayRouter.use(express.json({ limit: "40kb" }));
+holidayRouter.post(
+  "/start",
+  rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      message:
+        "Trop de nouvelles fiches. Réessayez plus tard ou contactez Synergie Dour.",
+    },
+  }),
+  wrap(async (req, res) => {
+    collectionOpen();
+    const input = holidayInput.parse(req.body.payload);
+    const tokenHash = token(req);
+    const result = await transaction(async db => {
+      const [existing] = await db.execute(
+        "SELECT id,revision,status FROM holiday_dossiers WHERE tokenHash=? FOR UPDATE",
+        [tokenHash]
+      );
+      if (existing[0]) {
+        if (existing[0].status === "withdrawn")
+          fail("Ce dossier a été retiré. Commencez une nouvelle fiche.", 409);
+        return { revision: existing[0].revision };
+      }
+      const [counts] = await db.execute(
+        "SELECT COUNT(*) AS count FROM holiday_dossiers WHERE merchantId IS NULL AND status!='withdrawn'"
+      );
+      if (Number(counts[0].count) >= 200)
+        fail(
+          "La réception de nouvelles fiches est momentanément suspendue. Contactez Synergie Dour.",
+          429
+        );
+      const id = randomUUID(),
+        now = Date.now();
+      await db.execute(
+        "INSERT INTO holiday_dossiers (id,merchantId,tokenHash,expiresAtMs,status,payload,revision,consentVersion,consentAtMs,invitedBy,membershipConfirmedAtMs,createdAtMs,updatedAtMs) VALUES (?,NULL,?,?, 'unverified_draft',?,1,?,?,NULL,NULL,?,?)",
+        [
+          id,
+          tokenHash,
+          PURGE_AT,
+          JSON.stringify(input),
+          NOTICE_VERSION,
+          now,
+          now,
+          now,
+        ]
+      );
+      await event(db, { id, revision: 1 }, "public_dossier_created", null, {
+        version: NOTICE_VERSION,
+        processing: true,
+        rights: true,
+        publication: input.publicationConsent,
+      });
+      return { revision: 1 };
+    });
+    res.json({ ok: true, ...result });
+  })
+);
 holidayRouter.get(
   "/dossier",
   wrap(async (req, res) => {
@@ -153,7 +213,7 @@ holidayRouter.get(
     );
     res.json({
       payload: parseJson(row.payload),
-      merchant: m[0],
+      merchant: m[0] ?? null,
       files,
       status: row.status,
       revision: row.revision,
@@ -201,16 +261,23 @@ holidayRouter.post(
     await transaction(async db => {
       const row = await dossier(db, req, true);
       holidayInput.parse(parseJson(row.payload));
-      if (row.status === "submitted") return;
-      if (row.status !== "draft" && row.status !== "changes_requested")
+      if (row.status === "submitted" || row.status === "membership_pending")
+        return;
+      if (
+        !["draft", "changes_requested", "unverified_draft"].includes(row.status)
+      )
         fail("Dossier déjà en cours de traitement.", 409);
       await db.execute(
-        "UPDATE holiday_dossiers SET status='submitted',updatedAtMs=? WHERE id=?",
-        [Date.now(), row.id]
+        "UPDATE holiday_dossiers SET status=?,updatedAtMs=? WHERE id=?",
+        [
+          row.merchantId ? "submitted" : "membership_pending",
+          Date.now(),
+          row.id,
+        ]
       );
       await event(db, row, "submitted");
       // Durable Elynea outbox; no external call or publication in the collection request.
-      if (parseJson(row.payload).publicationConsent)
+      if (row.merchantId && parseJson(row.payload).publicationConsent)
         await db.execute(
           "INSERT IGNORE INTO holiday_jobs (dossierId,revision,status) VALUES (?,?,'awaiting_elynea')",
           [row.id, row.revision]
@@ -443,11 +510,80 @@ holidayRouter.get(
     const [rows] = await (
       await pool()
     ).execute(
-      "SELECT d.id,d.merchantId,d.status,d.revision,d.payload,d.updatedAtMs,m.businessName FROM holiday_dossiers d JOIN merchants m ON m.id=d.merchantId ORDER BY d.updatedAtMs DESC LIMIT 500"
+      "SELECT d.id,d.merchantId,d.status,d.revision,d.payload,d.updatedAtMs,m.businessName FROM holiday_dossiers d LEFT JOIN merchants m ON m.id=d.merchantId ORDER BY d.updatedAtMs DESC LIMIT 500"
     );
     res.json({
-      dossiers: rows.map((r: any) => ({ ...r, payload: parseJson(r.payload) })),
+      dossiers: rows.map((r: any) => ({
+        ...r,
+        payload: parseJson(r.payload),
+        businessName:
+          r.businessName ||
+          parseJson(r.payload)?.businessName ||
+          "Fiche à vérifier",
+      })),
     });
+  })
+);
+holidayRouter.post(
+  "/admin/dossiers/:id/attach",
+  wrap(async (req, res) => {
+    collectionOpen();
+    const id = z.uuid().parse(req.params.id);
+    const input = z
+      .object({
+        merchantId: z.number().int().positive(),
+        membershipConfirmed: z.literal(true),
+        revision: z.number().int().nonnegative(),
+      })
+      .parse(req.body);
+    await transaction(async db => {
+      const [rows] = await db.execute(
+        "SELECT * FROM holiday_dossiers WHERE id=? FOR UPDATE",
+        [id]
+      );
+      const row = rows[0];
+      if (
+        !row ||
+        row.merchantId ||
+        !["unverified_draft", "membership_pending"].includes(row.status) ||
+        row.revision !== input.revision
+      )
+        fail("La fiche a changé ou son adhésion est déjà vérifiée.", 409);
+      const [merchants] = await db.execute(
+        "SELECT id FROM merchants WHERE id=? AND status='approved' FOR UPDATE",
+        [input.merchantId]
+      );
+      if (!merchants[0])
+        fail("Choisissez un commerce approuvé et vérifiez son adhésion.");
+      const [duplicates] = await db.execute(
+        "SELECT id FROM holiday_dossiers WHERE merchantId=? AND campaign=?",
+        [input.merchantId, CAMPAIGN]
+      );
+      if (duplicates[0])
+        fail(
+          "Ce commerce possède déjà un dossier privé. Vérifiez les deux fiches avant de les regrouper ; aucune donnée n’a été écrasée.",
+          409
+        );
+      const status =
+          row.status === "membership_pending" ? "submitted" : "draft",
+        now = Date.now();
+      await db.execute(
+        "UPDATE holiday_dossiers SET merchantId=?,membershipConfirmedAtMs=?,invitedBy=?,status=?,updatedAtMs=? WHERE id=?",
+        [input.merchantId, now, (req as any).user.id, status, now, id]
+      );
+      await event(db, row, "membership_confirmed", (req as any).user.id, {
+        merchantId: input.merchantId,
+      });
+      if (
+        status === "submitted" &&
+        holidayInput.parse(parseJson(row.payload)).publicationConsent
+      )
+        await db.execute(
+          "INSERT IGNORE INTO holiday_jobs (dossierId,revision,status) VALUES (?,?,'awaiting_elynea')",
+          [id, row.revision]
+        );
+    });
+    res.json({ ok: true });
   })
 );
 holidayRouter.post(

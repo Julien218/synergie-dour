@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -13,6 +13,7 @@ import {
   emptyHoliday,
   holidayConsentText,
   NOTICE_VERSION,
+  holidayInput,
   type HolidayInput,
 } from "@shared/holidayCampaign";
 import "./holiday.css";
@@ -39,21 +40,30 @@ export async function holidayApi(
   return data;
 }
 export default function HolidayCampaign() {
-  const [token] = useState(() => {
+  const [token, setToken] = useState(() => {
     const fragment = window.location.hash.slice(1);
     if (/^[a-f0-9]{64}$/.test(fragment)) {
-      sessionStorage.setItem("holiday-private-link", fragment);
+      try {
+        sessionStorage.setItem("holiday-private-link", fragment);
+      } catch {
+        /* The private link can still be copied. */
+      }
       history.replaceState(null, "", window.location.pathname);
       return fragment;
     }
-    return sessionStorage.getItem("holiday-private-link") || "";
+    try {
+      return sessionStorage.getItem("holiday-private-link") || "";
+    } catch {
+      return "";
+    }
   });
+  const creationKey = useRef("");
   const [form, setForm] = useState<HolidayInput>({ ...emptyHoliday });
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [revision, setRevision] = useState(0);
   const [status, setStatus] = useState("draft");
   const [busy, setBusy] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(!token);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
@@ -68,8 +78,8 @@ export default function HolidayCampaign() {
       document.title = old;
     };
   }, []);
-  async function load() {
-    const d = await holidayApi("/dossier", "GET", undefined, token);
+  async function load(access = token) {
+    const d = await holidayApi("/dossier", "GET", undefined, access);
     setRevision(d.revision);
     setFiles(d.files);
     setStatus(d.status);
@@ -96,6 +106,34 @@ export default function HolidayCampaign() {
         })
         .catch(e => setError(e.message));
   }, [token]);
+  async function ensureAccess() {
+    if (token) return { access: token, currentRevision: revision };
+    const validation = holidayInput.safeParse(form);
+    if (!validation.success)
+      throw new Error(
+        "Complétez les coordonnées du commerce et cochez les accords de traitement et de droits avant d’enregistrer ou d’ajouter des fichiers."
+      );
+    if (!creationKey.current)
+      creationKey.current = Array.from(
+        crypto.getRandomValues(new Uint8Array(32)),
+        b => b.toString(16).padStart(2, "0")
+      ).join("");
+    const access = creationKey.current;
+    const created = await holidayApi(
+      "/start",
+      "POST",
+      { payload: validation.data },
+      access
+    );
+    try {
+      sessionStorage.setItem("holiday-private-link", access);
+    } catch {
+      /* Copyable link below. */
+    }
+    setToken(access);
+    setRevision(created.revision);
+    return { access, currentRevision: created.revision };
+  }
   const field = (
     key: keyof HolidayInput,
     label: string,
@@ -146,15 +184,21 @@ export default function HolidayCampaign() {
     setError("");
     setMessage("");
     try {
-      await holidayApi("/dossier", "PUT", { payload: form, revision }, token);
-      await load();
+      const { access, currentRevision } = await ensureAccess();
+      await holidayApi(
+        "/dossier",
+        "PUT",
+        { payload: form, revision: currentRevision },
+        access
+      );
+      await load(access);
       if (submit) {
-        await holidayApi("/submit", "POST", {}, token);
-        await load();
+        await holidayApi("/submit", "POST", {}, access);
+        await load(access);
       }
       setMessage(
         submit
-          ? "Merci ! Votre dossier a été transmis à l’équipe. Aucune publication n’a encore lieu."
+          ? "Merci ! Votre dossier a été transmis à l’équipe. Votre adhésion sera vérifiée avant toute promotion. Aucune publication n’a encore lieu."
           : "Votre fiche est enregistrée. Revenez avec votre lien privé pour la compléter."
       );
     } catch (e: any) {
@@ -174,13 +218,14 @@ export default function HolidayCampaign() {
     setBusy(true);
     setError("");
     try {
+      const { access } = await ensureAccess();
       for (const file of Array.from(list)) {
         if (file.size > 50 * 1024 * 1024)
           throw new Error(`${file.name} dépasse 50 Mo.`);
         const r = await fetch("/api/holiday/files", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${access}`,
             "Content-Type": "application/octet-stream",
             "X-File-Name": encodeURIComponent(file.name),
             "X-Processing-Consent": NOTICE_VERSION,
@@ -189,7 +234,7 @@ export default function HolidayCampaign() {
         });
         if (!r.ok)
           throw new Error((await r.json()).message || "Envoi interrompu.");
-        await load();
+        await load(access);
       }
       setMessage(
         "Fichiers reçus. Pensez à transmettre votre dossier lorsque tout est prêt."
@@ -360,15 +405,51 @@ export default function HolidayCampaign() {
             <div className="holiday-notice">
               <ShieldCheck />
               <div>
-                <strong>
-                  Votre invitation personnelle vous donne accès au formulaire.
-                </strong>
+                <strong>Remplissez votre fiche directement ci-dessous.</strong>
                 <p>
-                  Utilisez votre lien personnel Synergie Dour pour enregistrer
-                  votre fiche et vos fichiers pour les fêtes 2026. Vous n’avez
-                  pas de lien ?{" "}
+                  Après enregistrement, vous recevrez ici un lien privé pour
+                  revenir compléter votre fiche. Synergie Dour vérifiera votre
+                  adhésion avant de vous promouvoir. Une question ?{" "}
                   <a href="mailto:info@synergiedour.be">Contactez-nous</a>.
                 </p>
+              </div>
+            </div>
+          ) : null}
+          {token && ready && status !== "withdrawn" ? (
+            <div className="holiday-notice">
+              <ShieldCheck />
+              <div>
+                <strong>
+                  Conservez votre lien privé pour revenir compléter la fiche.
+                </strong>
+                <p>Ce lien donne accès à votre dossier. Gardez-le pour vous.</p>
+                <button
+                  type="button"
+                  className="holiday-secondary"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        `${window.location.origin}/fetes-2026#${token}`
+                      );
+                      setMessage(
+                        "Votre lien privé est copié. Conservez-le pour revenir sur votre fiche."
+                      );
+                    } catch {
+                      setError(
+                        "Copiez le lien affiché ci-dessous pour le conserver."
+                      );
+                    }
+                  }}
+                >
+                  Copier mon lien privé
+                </button>
+                <input
+                  className="holiday-private-link"
+                  aria-label="Mon lien privé à conserver"
+                  readOnly
+                  value={`${window.location.origin}/fetes-2026#${token}`}
+                  onFocus={e => e.currentTarget.select()}
+                />
               </div>
             </div>
           ) : null}
@@ -610,7 +691,7 @@ export default function HolidayCampaign() {
               </p>
             </fieldset>
           </form>
-          {ready && status !== "withdrawn" ? (
+          {token && ready && status !== "withdrawn" ? (
             <button
               className="holiday-withdraw"
               disabled={busy}
@@ -624,7 +705,11 @@ export default function HolidayCampaign() {
                 setBusy(true);
                 try {
                   await holidayApi("/withdraw", "POST", {}, token);
-                  sessionStorage.removeItem("holiday-private-link");
+                  try {
+                    sessionStorage.removeItem("holiday-private-link");
+                  } catch {
+                    /* Withdrawal remains effective on the server. */
+                  }
                   setStatus("withdrawn");
                   setReady(false);
                   setMessage(

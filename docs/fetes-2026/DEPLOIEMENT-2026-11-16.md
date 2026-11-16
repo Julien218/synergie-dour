@@ -1,5 +1,7 @@
 # Collecte publiée le 16 novembre 2026
 
+> Correctif ultérieur le même jour : le lien général permet désormais de remplir et transmettre une nouvelle fiche sans invitation préalable, avec vérification d’adhésion avant production. Voir [la correction de saisie](CORRECTION-SAISIE-2026-11-16.md). L’invitation préalable décrite ci-dessous correspond à la première version.
+
 Page : https://www.synergiedour.be/fetes-2026
 Gestion : https://www.synergiedour.be/dashboard/fetes-2026
 

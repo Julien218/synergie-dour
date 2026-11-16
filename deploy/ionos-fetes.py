@@ -4,12 +4,12 @@ from pathlib import Path
 from urllib.parse import urlparse, unquote
 import yaml
 
-ROOT=Path('/srv/olivier/releases/synergie-fetes-20261116')
+ROOT=Path(os.environ.get('FETES_RELEASE_DIR','/srv/olivier/releases/synergie-fetes-public-20261116'))
 COMPOSE=Path('/data/coolify/services/q2ayjdb1br2ndkjgsxefwiql/docker-compose.yml')
 UUID='q2ayjdb1br2ndkjgsxefwiql'
 CONTAINER='synergie-'+UUID
-IMAGE='olivier-synergie:fetes-20261116'
-OLD_IMAGE='olivier-synergie:membership-connect-hold-20261112'
+IMAGE=os.environ.get('FETES_IMAGE','olivier-synergie:fetes-public-form-20261116')
+OLD_IMAGE=os.environ.get('FETES_OLD_IMAGE','olivier-synergie:fetes-20261116')
 PRIVATE=Path('/srv/olivier/data/synergie-holiday/uploads')
 BACKUP=ROOT/'backup-before-launch'
 
@@ -30,7 +30,8 @@ def changes(spec):
     e.update(HOLIDAY_CAMPAIGN_ENABLED='true',HOLIDAY_UPLOAD_DIR='/var/lib/synergie-holiday/uploads',HOLIDAY_CLAMSCAN='/usr/local/bin/holiday-scan',HOLIDAY_JULIEN_USER_ID='2',HOLIDAY_OLIVIER_USER_ID='3')
     s['environment']=e
     volumes=s.get('volumes') or []
-    volumes.append({'type':'bind','source':str(PRIVATE),'target':'/var/lib/synergie-holiday/uploads','read_only':False})
+    if not any(isinstance(v,dict) and v.get('target')=='/var/lib/synergie-holiday/uploads' for v in volumes):
+        volumes.append({'type':'bind','source':str(PRIVATE),'target':'/var/lib/synergie-holiday/uploads','read_only':False})
     s['volumes']=volumes
     return spec
 

@@ -68,6 +68,90 @@ const valid = {
   publicationConsent: false,
 };
 describe("confidentialité et validation de collecte", () => {
+  it("exige une clé privée aléatoire pour créer une nouvelle fiche", async () => {
+    const r = await fetch(base + "/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payload: valid }),
+    });
+    expect(r.status).toBe(401);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+  it("crée seulement un nouveau dossier non vérifié, sans chercher un adhérent par email", async () => {
+    mocks.execute.mockImplementation(async (sql: string) =>
+      sql.startsWith("SELECT COUNT") ? [[{ count: 0 }]] : [[]]
+    );
+    const r = await fetch(base + "/start", {
+      method: "POST",
+      headers: { ...auth, "Content-Type": "application/json" },
+      body: JSON.stringify({ payload: valid }),
+    });
+    expect(r.status).toBe(200);
+    expect((await r.json()).revision).toBe(1);
+    const inserts = mocks.execute.mock.calls.filter(([sql]) =>
+      sql.startsWith("INSERT INTO holiday_dossiers")
+    );
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0][0]).toContain("unverified_draft");
+    expect(
+      mocks.execute.mock.calls.some(([sql]) => sql.includes("FROM merchants"))
+    ).toBe(false);
+  });
+  it("ne recrée ni n’écrase une fiche lors d’une nouvelle tentative avec la même clé", async () => {
+    mocks.execute.mockResolvedValue([
+      [{ id: "own", revision: 7, status: "unverified_draft" }],
+    ]);
+    const r = await fetch(base + "/start", {
+      method: "POST",
+      headers: { ...auth, "Content-Type": "application/json" },
+      body: JSON.stringify({ payload: valid }),
+    });
+    expect(r.status).toBe(200);
+    expect((await r.json()).revision).toBe(7);
+    expect(
+      mocks.execute.mock.calls.some(([sql]) => sql.startsWith("INSERT"))
+    ).toBe(false);
+  });
+  it("n’envoie pas en production une fiche publique dont l’adhésion n’est pas vérifiée", async () => {
+    mocks.execute.mockResolvedValue([
+      [
+        {
+          id: "own",
+          merchantId: null,
+          revision: 1,
+          status: "unverified_draft",
+          payload: { ...valid, publicationConsent: true },
+        },
+      ],
+    ]);
+    const r = await fetch(base + "/submit", {
+      method: "POST",
+      headers: { ...auth, "Content-Type": "application/json" },
+      body: "{}",
+    });
+    expect(r.status).toBe(200);
+    expect(
+      mocks.execute.mock.calls.some(([, p]) =>
+        p?.includes("membership_pending")
+      )
+    ).toBe(true);
+    expect(
+      mocks.execute.mock.calls.some(([sql]) =>
+        sql.includes("INSERT IGNORE INTO holiday_jobs")
+      )
+    ).toBe(false);
+  });
+  it("réserve le rattachement au CRM aux administrateurs", async () => {
+    const r = await fetch(
+      base + "/admin/dossiers/00000000-0000-4000-8000-000000000000/attach",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }
+    );
+    expect(r.status).toBe(401);
+  });
   it("reste fermé par défaut sans toucher la base", async () => {
     vi.stubEnv("HOLIDAY_CAMPAIGN_ENABLED", "");
     expect((await fetch(base + "/dossier")).status).toBe(503);

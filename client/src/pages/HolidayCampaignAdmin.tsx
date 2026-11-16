@@ -5,6 +5,8 @@ import { holidayApi } from "./HolidayCampaign";
 
 const labels: Record<string, string> = {
   draft: "À compléter",
+  unverified_draft: "Brouillon · adhésion à vérifier",
+  membership_pending: "Reçu · adhésion à vérifier",
   submitted: "Reçu",
   approved: "Dossier validé",
   changes_requested: "À corriger",
@@ -26,6 +28,10 @@ export default function HolidayCampaignAdmin() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Record<number, string>>({});
+  const [attachments, setAttachments] = useState<Record<string, string>>({});
+  const [membershipChecks, setMembershipChecks] = useState<
+    Record<string, boolean>
+  >({});
   async function refresh() {
     const d = await holidayApi("/admin/dossiers");
     setDossiers(d.dossiers);
@@ -55,8 +61,10 @@ export default function HolidayCampaignAdmin() {
         </h1>
         <p className="rounded-lg bg-amber-50 border border-amber-200 p-4">
           Collecte des adhérents pour les fêtes, jusqu’au 31 décembre 2026. Les
-          invitations sont préparées ici, sans envoi automatique. Les vidéos et
-          publications restent soumises aux validations de Julien puis Olivier.
+          fiches reçues depuis le lien général attendent une vérification
+          d’adhésion. Les invitations sont préparées ici, sans envoi
+          automatique. Les vidéos et publications restent soumises aux
+          validations de Julien puis Olivier.
         </p>
         {error && (
           <p role="alert" className="text-red-800 bg-red-50 p-4">
@@ -137,7 +145,10 @@ export default function HolidayCampaignAdmin() {
             <article key={d.id} className="border rounded-xl p-5 space-y-3">
               <div className="flex flex-wrap justify-between gap-3">
                 <h3 className="font-bold">
-                  {d.businessName} · CRM #{d.merchantId}
+                  {d.businessName}
+                  {d.merchantId
+                    ? ` · CRM #${d.merchantId}`
+                    : " · adhésion à vérifier"}
                 </h3>
                 <span>
                   {labels[d.status] || d.status} · version {d.revision}
@@ -177,6 +188,82 @@ export default function HolidayCampaignAdmin() {
                   ))}
                 </dl>
               )}
+              {!d.merchantId &&
+                ["unverified_draft", "membership_pending"].includes(
+                  d.status
+                ) && (
+                  <section className="rounded-lg bg-amber-50 p-4 space-y-3">
+                    <h4 className="font-bold">
+                      Vérifier l’adhésion et rattacher le commerce
+                    </h4>
+                    <p>
+                      Aucune production ni diffusion ne démarre avant ce
+                      contrôle. Vérifiez les coordonnées auprès de votre liste
+                      d’adhérents ; si nécessaire, créez d’abord sa fiche dans
+                      la gestion des commerçants.
+                    </p>
+                    <label className="block">
+                      Commerce adhérent du CRM
+                      <select
+                        className="block border rounded p-3 w-full"
+                        value={attachments[d.id] || ""}
+                        onChange={e => {
+                          setAttachments({
+                            ...attachments,
+                            [d.id]: e.target.value,
+                          });
+                          setMembershipChecks({
+                            ...membershipChecks,
+                            [d.id]: false,
+                          });
+                        }}
+                      >
+                        <option value="">Choisir le commerce confirmé</option>
+                        {(merchants.data || [])
+                          .filter(m => m.status === "approved")
+                          .map(m => (
+                            <option key={m.id} value={m.id}>
+                              {m.businessName}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <label className="flex gap-2">
+                      <input
+                        type="checkbox"
+                        checked={membershipChecks[d.id] || false}
+                        onChange={e =>
+                          setMembershipChecks({
+                            ...membershipChecks,
+                            [d.id]: e.target.checked,
+                          })
+                        }
+                      />
+                      J’ai vérifié l’adhésion et l’identité du contact.
+                    </label>
+                    <button
+                      className="bg-blue-950 text-white px-4 py-2 rounded disabled:opacity-40"
+                      disabled={
+                        busy || !attachments[d.id] || !membershipChecks[d.id]
+                      }
+                      onClick={() =>
+                        void run(async () => {
+                          await holidayApi(
+                            `/admin/dossiers/${d.id}/attach`,
+                            "POST",
+                            {
+                              merchantId: Number(attachments[d.id]),
+                              membershipConfirmed: true,
+                              revision: d.revision,
+                            }
+                          );
+                        })
+                      }
+                    >
+                      Confirmer l’adhésion et rattacher la fiche
+                    </button>
+                  </section>
+                )}
               <button
                 className="underline"
                 disabled={busy}

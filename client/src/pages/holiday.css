@@ -472,6 +472,21 @@
 .holiday-notice a {
   text-decoration: underline;
 }
+.holiday-private-link {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #b2bcc8;
+  border-radius: 5px;
+  background: white;
+  font-size: 11px;
+}
+.holiday-notice > div {
+  min-width: 0;
+  width: 100%;
+}
 .holiday-error,
 .holiday-success {
   padding: 15px;
