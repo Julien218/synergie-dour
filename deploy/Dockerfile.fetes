@@ -1,0 +1,6 @@
+FROM olivier-synergie:membership-connect-hold-20261112
+RUN apk add --no-cache clamav-clamdscan
+COPY dist /app/dist
+COPY deploy/holiday-scan /usr/local/bin/holiday-scan
+COPY deploy/holiday-clamd.conf /etc/clamav/holiday-clamd.conf
+RUN chmod 755 /usr/local/bin/holiday-scan

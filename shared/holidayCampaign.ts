@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const CAMPAIGN = "fetes-2026";
 export const NOTICE_VERSION = "fetes-2026-v1";
-export const CAMPAIGN_END = Date.parse("2027-01-16T00:00:00+01:00");
+export const CAMPAIGN_END = Date.parse("2027-01-01T00:00:00+01:00");
 export const PURGE_AT = Date.parse("2027-03-31T00:00:00+02:00");
 const short = z.string().trim().max(255);
 const link = z.union([

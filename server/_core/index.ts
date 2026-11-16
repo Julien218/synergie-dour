@@ -205,6 +205,10 @@ async function startServer() {
   const server = createServer(app);
   
   app.set("trust proxy", 1);
+  app.use(["/fetes-2026", "/dashboard/fetes-2026"], (_req, res, next) => {
+    res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow" });
+    next();
+  });
 
   const canonicalAppUrl = (process.env.APP_URL || "https://www.synergiedour.be").replace(/\/+$/, "");
 

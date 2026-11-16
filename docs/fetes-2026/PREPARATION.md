@@ -1,5 +1,7 @@
 # Campagne des fêtes 2026 — préparation à valider
 
+> Mise à jour du 16 novembre : la collecte est publiée jusqu’au 31 décembre 2026. Voir [le rapport de mise en ligne](DEPLOIEMENT-2026-11-16.md). Les notes ci-dessous décrivent la préparation initiale du 12 novembre ; les anciennes dates et les points de déploiement non effectués sont remplacés par ce rapport.
+
 ## État livré
 
 Travail local sur `feat/fetes-2026-collecte`, à partir de `f8a858d`. Aucun déploiement, aucune migration de production, aucun email, aucune génération payante et aucune publication effectués.

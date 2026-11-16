@@ -364,9 +364,9 @@ export default function HolidayCampaign() {
                   Votre invitation personnelle vous donne accès au formulaire.
                 </strong>
                 <p>
-                  Cette page est en préparation. Utilisez le lien privé reçu de
-                  Synergie Dour pour enregistrer votre fiche et vos fichiers.
-                  Vous n’avez pas de lien ?{" "}
+                  Utilisez votre lien personnel Synergie Dour pour enregistrer
+                  votre fiche et vos fichiers pour les fêtes 2026. Vous n’avez
+                  pas de lien ?{" "}
                   <a href="mailto:info@synergiedour.be">Contactez-nous</a>.
                 </p>
               </div>
@@ -503,12 +503,11 @@ export default function HolidayCampaign() {
                     génération pendant cette préparation.
                   </p>
                   <p>
-                    Dates proposées, à confirmer avant ouverture : clôture le 15
-                    janvier 2027. Suppression prévue des dossiers et fichiers de
-                    campagne au plus tard le 31 mars 2027. Les publications et
-                    repartages déjà diffusés peuvent subsister sur les
-                    plateformes : contactez-nous pour demander leur retrait des
-                    comptes que nous gérons.
+                    Collecte et campagne jusqu’au 31 décembre 2026. Suppression
+                    prévue des dossiers et fichiers de campagne au plus tard le
+                    31 mars 2027. Les publications et repartages déjà diffusés
+                    peuvent subsister sur les plateformes : contactez-nous pour
+                    demander leur retrait des comptes que nous gérons.
                   </p>
                   <p>
                     Vous pouvez demander l’accès, la rectification,

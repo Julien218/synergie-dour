@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/bin/clamdscan --config-file=/etc/clamav/holiday-clamd.conf --stream "$@"

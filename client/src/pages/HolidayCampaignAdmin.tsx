@@ -54,9 +54,9 @@ export default function HolidayCampaignAdmin() {
           Campagne des fêtes 2026
         </h1>
         <p className="rounded-lg bg-amber-50 border border-amber-200 p-4">
-          Préparation : aucun email envoyé, aucune génération payante ni
-          publication déclenchée. Parcours : commerçant → Elynea → Julien →
-          Olivier → publication → email de partage.
+          Collecte des adhérents pour les fêtes, jusqu’au 31 décembre 2026. Les
+          invitations sont préparées ici, sans envoi automatique. Les vidéos et
+          publications restent soumises aux validations de Julien puis Olivier.
         </p>
         {error && (
           <p role="alert" className="text-red-800 bg-red-50 p-4">
