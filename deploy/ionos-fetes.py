@@ -4,12 +4,12 @@ from pathlib import Path
 from urllib.parse import urlparse, unquote
 import yaml
 
-ROOT=Path(os.environ.get('FETES_RELEASE_DIR','/srv/olivier/releases/synergie-fetes-public-20261116'))
+ROOT=Path(os.environ.get('FETES_RELEASE_DIR','/srv/olivier/releases/synergie-fetes-links-20261116'))
 COMPOSE=Path('/data/coolify/services/q2ayjdb1br2ndkjgsxefwiql/docker-compose.yml')
 UUID='q2ayjdb1br2ndkjgsxefwiql'
 CONTAINER='synergie-'+UUID
-IMAGE=os.environ.get('FETES_IMAGE','olivier-synergie:fetes-public-form-20261116')
-OLD_IMAGE=os.environ.get('FETES_OLD_IMAGE','olivier-synergie:fetes-20261116')
+IMAGE=os.environ.get('FETES_IMAGE','olivier-synergie:fetes-links-20261116')
+OLD_IMAGE=os.environ.get('FETES_OLD_IMAGE','olivier-synergie:fetes-public-form-20261116b')
 PRIVATE=Path('/srv/olivier/data/synergie-holiday/uploads')
 BACKUP=ROOT/'backup-before-launch'
 
@@ -29,6 +29,7 @@ def changes(spec):
     if isinstance(e,list):e=dict(v.split('=',1) for v in e)
     e.update(HOLIDAY_CAMPAIGN_ENABLED='true',HOLIDAY_UPLOAD_DIR='/var/lib/synergie-holiday/uploads',HOLIDAY_CLAMSCAN='/usr/local/bin/holiday-scan',HOLIDAY_JULIEN_USER_ID='2',HOLIDAY_OLIVIER_USER_ID='3')
     s['environment']=e
+    e.update(HOLIDAY_RECEIPT_EMAIL_ENABLED='true',HOLIDAY_RECEIPT_EMAIL_TO='julien.pagin.pv@gmail.com,olivier.trevis@outlook.be',HOLIDAY_CUSTOMER_RECEIPT_ENABLED='true',HOLIDAY_RECEIPT_EMAIL_FROM='Synergie Dour <contact@synergiedour.be>')
     volumes=s.get('volumes') or []
     if not any(isinstance(v,dict) and v.get('target')=='/var/lib/synergie-holiday/uploads' for v in volumes):
         volumes.append({'type':'bind','source':str(PRIVATE),'target':'/var/lib/synergie-holiday/uploads','read_only':False})

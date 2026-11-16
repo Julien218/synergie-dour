@@ -14,6 +14,7 @@ import {
   holidayConsentText,
   NOTICE_VERSION,
   holidayInput,
+  normalizeHolidayLink,
   type HolidayInput,
 } from "@shared/holidayCampaign";
 import "./holiday.css";
@@ -146,7 +147,17 @@ export default function HolidayCampaign() {
       {required ? " *" : ""}
       <input
         name={key}
-        type={type}
+        type={type === "url" ? "text" : type}
+        inputMode={type === "url" ? "url" : undefined}
+        autoCapitalize={type === "url" ? "none" : undefined}
+        spellCheck={type === "url" ? false : undefined}
+        placeholder={
+          type === "url"
+            ? key === "website"
+              ? "www.moncommerce.be (facultatif)"
+              : `${key}.com/moncommerce (facultatif)`
+            : undefined
+        }
         required={required}
         maxLength={
           key === "phone"
@@ -159,6 +170,15 @@ export default function HolidayCampaign() {
         }
         value={String(form[key])}
         onChange={e => setForm({ ...form, [key]: e.target.value })}
+        onBlur={
+          type === "url"
+            ? () =>
+                setForm(current => ({
+                  ...current,
+                  [key]: normalizeHolidayLink(current[key]) as string,
+                }))
+            : undefined
+        }
       />
     </label>
   );
@@ -184,6 +204,7 @@ export default function HolidayCampaign() {
     setError("");
     setMessage("");
     try {
+      let emailNotice = "";
       const { access, currentRevision } = await ensureAccess();
       await holidayApi(
         "/dossier",
@@ -193,12 +214,18 @@ export default function HolidayCampaign() {
       );
       await load(access);
       if (submit) {
-        await holidayApi("/submit", "POST", {}, access);
+        const sent = await holidayApi("/submit", "POST", {}, access);
+        if (sent.customerNotification === "accepted")
+          emailNotice = ` Un email contenant votre lien privé a été envoyé à ${form.email}. Vérifiez aussi vos courriers indésirables.`;
+        else if (sent.customerNotification === "unavailable")
+          emailNotice =
+            " Votre fiche est enregistrée, mais l’envoi de l’email n’a pas pu être confirmé. Conservez le lien privé affiché sur cette page.";
         await load(access);
       }
       setMessage(
         submit
-          ? "Merci ! Votre dossier a été transmis à l’équipe. Votre adhésion sera vérifiée avant toute promotion. Aucune publication n’a encore lieu."
+          ? "Merci ! Votre dossier a été transmis à l’équipe. Votre adhésion sera vérifiée avant toute promotion. Aucune publication n’a encore lieu." +
+              emailNotice
           : "Votre fiche est enregistrée. Revenez avec votre lien privé pour la compléter."
       );
     } catch (e: any) {
@@ -377,7 +404,7 @@ export default function HolidayCampaign() {
             [
               "03",
               "Nous validons",
-              "Julien, puis Olivier, relisent avant diffusion.",
+              "Julien ou Olivier relit et valide avant diffusion.",
             ],
             [
               "04",
@@ -487,7 +514,7 @@ export default function HolidayCampaign() {
                   {field("contactName", "Personne de contact (privé)", true)}
                   {field("email", "Email de contact (privé)", true, "email")}
                   {field("phone", "Téléphone professionnel", true, "tel")}
-                  {field("website", "Site internet", false, "url")}
+                  {field("website", "Site internet (facultatif)", false, "url")}
                 </div>
               </section>
               <section className="holiday-card">
@@ -495,8 +522,10 @@ export default function HolidayCampaign() {
                   <span>2</span> Restons connectés
                 </h3>
                 <p>
-                  Les liens de vos pages professionnelles, en commençant par
-                  https://
+                  Tous ces liens sont facultatifs. Vous pouvez saisir simplement
+                  www.moncommerce.be ou facebook.com/moncommerce : le préfixe
+                  https:// est ajouté automatiquement. Laissez vide si vous
+                  n’avez pas de page.
                 </p>
                 <div className="holiday-grid">
                   {field("facebook", "Facebook", false, "url")}
@@ -572,6 +601,12 @@ export default function HolidayCampaign() {
                     consentement permet de traiter votre dossier pour les fêtes
                     2026. L’autorisation de diffusion est facultative ; la
                     refuser n’empêche pas de transmettre votre dossier.
+                  </p>
+                  <p>
+                    Après transmission de la fiche, un email contenant son lien
+                    privé est envoyé à votre adresse de contact. L’équipe reçoit
+                    une notification avec un accès à son tableau de bord
+                    sécurisé, sans votre lien privé.
                   </p>
                   <p>
                     Accès réservé à l’équipe habilitée et à ses prestataires de

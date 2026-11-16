@@ -6,6 +6,10 @@ import { getPool } from "../server/db";
 import { signSession } from "../server/authService";
 import { emptyHoliday, NOTICE_VERSION } from "../shared/holidayCampaign";
 import { scanAndStore, privateFilePath } from "../server/holidayFiles";
+import {
+  notifyHolidaySubmission,
+  notifyHolidayCustomerSubmission,
+} from "../server/holidayNotifications";
 
 const pool = await getPool();
 if (
@@ -134,6 +138,52 @@ try {
     (r: any) => r.payload?.businessName === "Commerce public fictif"
   );
   assert.equal(publicRow.status, "membership_pending");
+  let mailCalls = 0;
+  const fakeMail = async () => {
+    mailCalls++;
+    return new Response(JSON.stringify({ id: "smoke_only_no_email_sent" }), {
+      status: 200,
+    });
+  };
+  const mockEnv = {
+    HOLIDAY_CUSTOMER_RECEIPT_ENABLED: "true",
+    HOLIDAY_RECEIPT_EMAIL_ENABLED: "true",
+    HOLIDAY_RECEIPT_EMAIL_TO: "staff@example.invalid",
+    RESEND_API_KEY: "re_fake_no_network",
+    APP_URL: "https://www.synergiedour.be",
+  };
+  const receiptRow = {
+    id: publicRow.id,
+    revision: publicRow.revision,
+    payload: publicForm,
+  };
+  assert.equal(
+    await notifyHolidayCustomerSubmission(receiptRow, publicKey, {
+      pool,
+      env: mockEnv,
+      fetcher: fakeMail,
+    }),
+    "accepted"
+  );
+  assert.equal(
+    await notifyHolidayCustomerSubmission(receiptRow, publicKey, {
+      pool,
+      env: mockEnv,
+      fetcher: fakeMail,
+    }),
+    "accepted"
+  );
+  assert.equal(mailCalls, 1);
+  assert.equal(
+    await notifyHolidaySubmission(receiptRow, {
+      pool,
+      env: mockEnv,
+      fetcher: fakeMail,
+    }),
+    "accepted"
+  );
+  assert.equal(mailCalls, 2);
+  console.log("REAL_SQL_EMAIL_DEDUPLICATION_MOCK_PROVIDER_PASSED");
   await request(
     `/admin/dossiers/${publicRow.id}/attach`,
     "POST",
@@ -231,23 +281,10 @@ try {
     },
     julien
   );
-  await request(
-    `/admin/jobs/${jobs[0].id}/approve`,
-    "POST",
-    { stage: "olivier" },
-    olivier,
-    409
-  );
-  await request(
-    `/admin/jobs/${jobs[0].id}/approve`,
-    "POST",
-    { stage: "julien" },
-    julien
-  );
   const approval = await request(
     `/admin/jobs/${jobs[0].id}/approve`,
     "POST",
-    { stage: "olivier" },
+    { stage: "approve" },
     olivier
   );
   assert.equal(approval.publication, "disabled_until_launch_validation");

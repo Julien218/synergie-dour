@@ -20,6 +20,7 @@ import {
   emptyHoliday,
   holidayInput,
   NOTICE_VERSION,
+  normalizeHolidayLink,
 } from "../shared/holidayCampaign";
 
 const mocks = vi.hoisted(() => ({
@@ -68,6 +69,32 @@ const valid = {
   publicationConsent: false,
 };
 describe("confidentialité et validation de collecte", () => {
+  it("laisse tous les liens facultatifs vides sans inventer d’adresse", () => {
+    const { website, facebook, instagram, tiktok, ...withoutLinks } = valid;
+    const parsed = holidayInput.parse(withoutLinks);
+    for (const key of ["website", "facebook", "instagram", "tiktok"] as const)
+      expect(parsed[key]).toBe("");
+  });
+  it("ajoute automatiquement HTTPS aux adresses saisies sans préfixe", () => {
+    const parsed = holidayInput.parse({
+      ...valid,
+      website: " www.test.com ",
+      facebook: "facebook.com/moncommerce",
+      instagram: "HTTPS//instagram.com/commerce",
+    });
+    expect(parsed.website).toBe("https://www.test.com/");
+    expect(parsed.facebook).toBe("https://facebook.com/moncommerce");
+    expect(parsed.instagram).toBe("https://instagram.com/commerce");
+    expect(normalizeHolidayLink("")).toBe("");
+  });
+  it("refuse les liens dangereux et les identifiants intégrés dans un lien", () => {
+    for (const website of [
+      "javascript:alert(1)",
+      "https://user:pass@example.com",
+      "https://example.com\\secret",
+    ])
+      expect(holidayInput.safeParse({ ...valid, website }).success).toBe(false);
+  });
   it("exige une clé privée aléatoire pour créer une nouvelle fiche", async () => {
     const r = await fetch(base + "/start", {
       method: "POST",
@@ -284,7 +311,7 @@ describe("fichiers privés", () => {
     );
   });
 });
-describe("Julien puis Olivier, sur la même version", () => {
+describe("Validation par Julien ou Olivier, sur la version actuelle", () => {
   const env = { HOLIDAY_JULIEN_USER_ID: "11", HOLIDAY_OLIVIER_USER_ID: "22" };
   const result = {
     videoUrl: "https://media.example/video.mp4",
@@ -300,9 +327,9 @@ describe("Julien puis Olivier, sur la même version", () => {
     payload: { publicationConsent: true },
   };
   const job = { status: "julien_review", revision: 2, result };
-  it("autorise Julien puis Olivier", () => {
+  it("autorise Julien ou Olivier sans imposer deux validations", () => {
     expect(holidayApproval(job, dossier, 11, "julien", env)).toBe(
-      "olivier_review"
+      "ready_to_publish"
     );
     expect(
       holidayApproval(
@@ -314,9 +341,12 @@ describe("Julien puis Olivier, sur la même version", () => {
       )
     ).toBe("ready_to_publish");
   });
-  it("bloque un autre admin, l’inversion et une version modifiée", () => {
+  it("bloque un autre admin, l’usurpation et une version modifiée", () => {
     expect(() => holidayApproval(job, dossier, 22, "julien", env)).toThrow();
-    expect(() => holidayApproval(job, dossier, 22, "olivier", env)).toThrow();
+    expect(holidayApproval(job, dossier, 22, "olivier", env)).toBe(
+      "ready_to_publish"
+    );
+    expect(() => holidayApproval(job, dossier, 99, "olivier", env)).toThrow();
     expect(() =>
       holidayApproval(job, { ...dossier, revision: 3 }, 11, "julien", env)
     ).toThrow();

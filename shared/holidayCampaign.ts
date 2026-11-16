@@ -5,13 +5,40 @@ export const NOTICE_VERSION = "fetes-2026-v1";
 export const CAMPAIGN_END = Date.parse("2027-01-01T00:00:00+01:00");
 export const PURGE_AT = Date.parse("2027-03-31T00:00:00+02:00");
 const short = z.string().trim().max(255);
-const link = z.union([
-  z.literal(""),
-  z
-    .url()
-    .max(500)
-    .refine(v => new URL(v).protocol === "https:", "Utilisez un lien https://"),
-]);
+export function normalizeHolidayLink(value: unknown): unknown {
+  if (value == null) return "";
+  if (typeof value !== "string") return value;
+  let input = value.trim();
+  if (!input) return "";
+  if (/[\\\r\n]/.test(input)) return input;
+  input = input.replace(/^(https?)\/\//i, "$1://");
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(input)) input = "https://" + input;
+  try {
+    const url = new URL(input);
+    if (url.protocol === "http:") url.protocol = "https:";
+    return url.href;
+  } catch {
+    return input;
+  }
+}
+const link = z.preprocess(
+  normalizeHolidayLink,
+  z.union([
+    z.literal(""),
+    z
+      .url()
+      .max(500)
+      .refine(v => {
+        const u = new URL(v);
+        return (
+          u.protocol === "https:" &&
+          !u.username &&
+          !u.password &&
+          !/[\\\r\n]/.test(v)
+        );
+      }, "Indiquez une adresse de site valide ou laissez le champ vide."),
+  ])
+);
 export const holidayInput = z
   .object({
     businessName: short.min(1),

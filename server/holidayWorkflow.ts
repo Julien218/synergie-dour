@@ -39,12 +39,11 @@ export function holidayApproval(
   if (!dossier.payload?.publicationConsent)
     throw new Error("Autorisation de diffusion absente.");
   holidayProductionResult.parse(job.result);
-  if (stage === "julien" && job.status !== "julien_review")
-    throw new Error("La vidéo doit être prête pour Julien.");
   if (
-    stage === "olivier" &&
-    (job.status !== "olivier_review" || !job.julienApprovedAtMs)
+    !["awaiting_approval", "julien_review", "olivier_review"].includes(
+      job.status
+    )
   )
-    throw new Error("La validation de Julien est nécessaire.");
-  return stage === "julien" ? "olivier_review" : "ready_to_publish";
+    throw new Error("La vidéo doit être prête et en attente de validation.");
+  return "ready_to_publish";
 }

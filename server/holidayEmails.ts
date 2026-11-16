@@ -36,7 +36,7 @@ export function holidayInvitationEmail(
     throw new Error("Lien privé de campagne invalide");
   const mail = draft(
     "Fêtes 2026 : mettons votre commerce à l’honneur à Dour",
-    `Bonjour ${businessName},\n\nPour les fêtes de fin d’année, Synergie Dour prépare une campagne pour mettre ses commerçants adhérents en lumière.\n\nPartagez vos photos, vidéos, menus, idées cadeaux et offres de fêtes via votre fiche personnelle :\n${u.href}\n\nVous pouvez enregistrer votre fiche et revenir la compléter. Gardez ce lien privé : il donne accès à votre dossier.\n\nÀ partir de vos éléments et avec votre autorisation de diffusion, nous préparerons une vidéo festive avec voix off et une publication adaptée à votre commerce. Julien et Olivier les valideront avant diffusion.\n\nAprès publication, vous recevrez le lien pour repartager le post et identifier deux commerces de Dour de votre choix.\n\nUne question ? Répondez à cet email ou contactez info@synergiedour.be.\n\nL’équipe Synergie Dour\nCommerçants & indépendants réunis`
+    `Bonjour ${businessName},\n\nPour les fêtes de fin d’année, Synergie Dour prépare une campagne pour mettre ses commerçants adhérents en lumière.\n\nPartagez vos photos, vidéos, menus, idées cadeaux et offres de fêtes via votre fiche personnelle :\n${u.href}\n\nVous pouvez enregistrer votre fiche et revenir la compléter. Gardez ce lien privé : il donne accès à votre dossier.\n\nÀ partir de vos éléments et avec votre autorisation de diffusion, nous préparerons une vidéo festive avec voix off et une publication adaptée à votre commerce. Julien ou Olivier les validera avant diffusion.\n\nAprès publication, vous recevrez le lien pour repartager le post et identifier deux commerces de Dour de votre choix.\n\nUne question ? Répondez à cet email ou contactez info@synergiedour.be.\n\nL’équipe Synergie Dour\nCommerçants & indépendants réunis`
   );
   mail.html = mail.html.replace(
     escape(u.href),
@@ -62,6 +62,46 @@ export function holidayPublishedEmail(businessName: string, postUrl: string) {
   mail.html = mail.html.replace(
     escape(u.href),
     `<a href="${escape(u.href)}">Voir et repartager ma publication</a>`
+  );
+  return mail;
+}
+
+export function holidaySubmissionEmail(businessName: string, appUrl: string) {
+  const base = secureUrl(appUrl);
+  if (!["www.synergiedour.be", "synergiedour.be"].includes(base.hostname))
+    throw new Error("Adresse de campagne invalide");
+  const link = new URL("/dashboard/fetes-2026", base).href;
+  const name = businessName.replace(/[\r\n]/g, " ");
+  const mail = draft(
+    `Fêtes 2026 : nouveau dossier — ${name}`,
+    `Bonjour,\n\nLe commerce « ${name} » vient de transmettre sa fiche pour la campagne des fêtes 2026.\n\nConsultez ses informations et ses fichiers dans le tableau de bord sécurisé :\n${link}\n\nVérifiez l’adhésion et les éléments transmis avant la production. Aucune publication n’a été déclenchée.\n\nSynergie Dour\nCommerçants & indépendants réunis`
+  );
+  mail.html = mail.html.replace(
+    escape(link),
+    `<a href="${escape(link)}">Consulter les dossiers reçus</a>`
+  );
+  return mail;
+}
+
+export function holidayCustomerReceiptEmail(
+  businessName: string,
+  contactName: string,
+  privateLink: string
+) {
+  const u = secureUrl(privateLink);
+  if (
+    !["www.synergiedour.be", "synergiedour.be"].includes(u.hostname) ||
+    u.pathname !== "/fetes-2026" ||
+    !/^#[a-f0-9]{64}$/.test(u.hash)
+  )
+    throw new Error("Lien privé de campagne invalide");
+  const mail = draft(
+    `Votre fiche Fêtes 2026 est bien enregistrée — ${businessName.replace(/[\r\n]/g, " ")}`,
+    `Bonjour ${contactName},\n\nNous avons bien reçu la fiche de votre commerce « ${businessName} » pour la campagne des fêtes 2026 de Synergie Dour.\n\nConservez votre lien personnel pour consulter et compléter vos informations, photos, vidéos, menus et offres :\n${u.href}\n\nCe lien donne accès à votre dossier : gardez-le privé et ne le partagez pas sur les réseaux sociaux.\n\nL’équipe vérifiera votre adhésion et les éléments transmis avant la promotion de votre commerce. Cet email confirme l’enregistrement de votre fiche ; il ne confirme pas une publication.\n\nUne question ? Répondez à cet email ou écrivez à contact@synergiedour.be.\n\nL’équipe Synergie Dour\nCommerçants & indépendants réunis`
+  );
+  mail.html = mail.html.replace(
+    escape(u.href),
+    `<a href="${escape(u.href)}">Retrouver et compléter ma fiche</a>`
   );
   return mail;
 }

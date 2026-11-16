@@ -24,6 +24,10 @@ import {
   scanAndStore,
 } from "./holidayFiles";
 import { holidayApproval, holidayProductionResult } from "./holidayWorkflow";
+import {
+  notifyHolidaySubmission,
+  notifyHolidayCustomerSubmission,
+} from "./holidayNotifications";
 
 export const holidayRouter = express.Router();
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -258,11 +262,11 @@ holidayRouter.post(
   "/submit",
   wrap(async (req, res) => {
     collectionOpen();
-    await transaction(async db => {
+    const submission = await transaction(async db => {
       const row = await dossier(db, req, true);
       holidayInput.parse(parseJson(row.payload));
       if (row.status === "submitted" || row.status === "membership_pending")
-        return;
+        return row;
       if (
         !["draft", "changes_requested", "unverified_draft"].includes(row.status)
       )
@@ -282,8 +286,17 @@ holidayRouter.post(
           "INSERT IGNORE INTO holiday_jobs (dossierId,revision,status) VALUES (?,?,'awaiting_elynea')",
           [row.id, row.revision]
         );
+      return row;
     });
-    res.json({ ok: true });
+    const notification = await notifyHolidaySubmission({
+      ...submission,
+      payload: parseJson(submission.payload),
+    });
+    const customerNotification = await notifyHolidayCustomerSubmission(
+      { ...submission, payload: parseJson(submission.payload) },
+      req.headers.authorization?.replace(/^Bearer /, "") ?? ""
+    );
+    res.json({ ok: true, notification, customerNotification });
   })
 );
 // Authenticate BEFORE allocating a raw upload buffer. Quotas are rechecked under a row lock.
@@ -453,12 +466,13 @@ holidayRouter.post(
           "awaiting_elynea",
           "julien_review",
           "olivier_review",
+          "awaiting_approval",
           "ready_to_publish",
         ].includes(job.status)
       )
         fail("Cette production ne peut plus être modifiée.", 409);
       await db.execute(
-        "UPDATE holiday_jobs SET result=?,status='julien_review',julienApprovedAtMs=NULL,olivierApprovedAtMs=NULL WHERE id=?",
+        "UPDATE holiday_jobs SET result=?,status='awaiting_approval',julienApprovedAtMs=NULL,olivierApprovedAtMs=NULL WHERE id=?",
         [JSON.stringify(result), job.id]
       );
       await event(db, d, "elynea_result_prepared", (req as any).user.id);
@@ -469,7 +483,17 @@ holidayRouter.post(
 holidayRouter.post(
   "/admin/jobs/:id/approve",
   wrap(async (req, res) => {
-    const stage = z.enum(["julien", "olivier"]).parse(req.body.stage);
+    const requestedStage = z
+      .enum(["julien", "olivier", "approve"])
+      .parse(req.body.stage);
+    const stage =
+      requestedStage === "approve"
+        ? (req as any).user.id === Number(process.env.HOLIDAY_JULIEN_USER_ID)
+          ? "julien"
+          : (req as any).user.id === Number(process.env.HOLIDAY_OLIVIER_USER_ID)
+            ? "olivier"
+            : fail("Seuls Julien ou Olivier peuvent valider cette vidéo.", 403)
+        : requestedStage;
     await transaction(async db => {
       const [rows] = await db.execute(
         "SELECT * FROM holiday_jobs WHERE id=? FOR UPDATE",
@@ -510,7 +534,7 @@ holidayRouter.get(
     const [rows] = await (
       await pool()
     ).execute(
-      "SELECT d.id,d.merchantId,d.status,d.revision,d.payload,d.updatedAtMs,m.businessName FROM holiday_dossiers d LEFT JOIN merchants m ON m.id=d.merchantId ORDER BY d.updatedAtMs DESC LIMIT 500"
+      "SELECT d.id,d.merchantId,d.status,d.revision,d.payload,d.updatedAtMs,m.businessName,(SELECT e.action FROM holiday_events e WHERE e.dossierId=d.id AND e.revision=d.revision AND e.action LIKE 'receipt_%' ORDER BY e.id DESC LIMIT 1) AS receiptAction FROM holiday_dossiers d LEFT JOIN merchants m ON m.id=d.merchantId ORDER BY d.updatedAtMs DESC LIMIT 500"
     );
     res.json({
       dossiers: rows.map((r: any) => ({

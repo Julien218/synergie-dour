@@ -7,7 +7,7 @@ describe("emails de campagne sans envoi", () => {
     expect(mail.html).not.toContain("<img");
     expect(mail.html).toContain("&lt;img");
     expect(mail.html).toContain(`href="${link}"`);
-    expect(mail.text).toContain("Julien et Olivier");
+    expect(mail.text).toContain("Julien ou Olivier");
   });
   it("rejette les liens d’invitation étrangers, sans secret ou avec mot de passe", () => {
     for (const link of [

@@ -12,8 +12,9 @@ const labels: Record<string, string> = {
   changes_requested: "À corriger",
   withdrawn: "Accords retirés",
   awaiting_elynea: "À transmettre à Elynea",
-  julien_review: "Validation Julien",
-  olivier_review: "Validation Olivier",
+  julien_review: "Validation Julien ou Olivier",
+  awaiting_approval: "Validation Julien ou Olivier",
+  olivier_review: "Validation Julien ou Olivier",
   ready_to_publish: "Validé · publication désactivée",
   cancelled: "Annulé",
 };
@@ -64,7 +65,7 @@ export default function HolidayCampaignAdmin() {
           fiches reçues depuis le lien général attendent une vérification
           d’adhésion. Les invitations sont préparées ici, sans envoi
           automatique. Les vidéos et publications restent soumises aux
-          validations de Julien puis Olivier.
+          validation de Julien ou Olivier.
         </p>
         {error && (
           <p role="alert" className="text-red-800 bg-red-50 p-4">
@@ -154,6 +155,21 @@ export default function HolidayCampaignAdmin() {
                   {labels[d.status] || d.status} · version {d.revision}
                 </span>
               </div>
+              {["submitted", "membership_pending", "approved"].includes(
+                d.status
+              ) && (
+                <p className="text-sm text-gray-700">
+                  Alerte email :{" "}
+                  {d.receiptAction === "receipt_accepted"
+                    ? "acceptée par le service d’envoi (livraison en boîte à vérifier)"
+                    : d.receiptAction === "receipt_failed"
+                      ? "échec de l’envoi"
+                      : d.receiptAction === "receipt_started"
+                        ? "résultat à vérifier"
+                        : "aucun email de réception envoyé"}
+                  .
+                </p>
+              )}
               {d.payload && (
                 <dl className="grid sm:grid-cols-2 gap-3">
                   {Object.entries(d.payload).map(([k, v]) => (
@@ -361,25 +377,28 @@ export default function HolidayCampaignAdmin() {
                   </p>
                 </>
               )}
-              {["julien_review", "olivier_review"].includes(j.status) && (
+              {[
+                "julien_review",
+                "olivier_review",
+                "awaiting_approval",
+              ].includes(j.status) && (
                 <button
                   className="bg-blue-950 text-white rounded px-4 py-2"
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
                       await holidayApi(`/admin/jobs/${j.id}/approve`, "POST", {
-                        stage:
-                          j.status === "julien_review" ? "julien" : "olivier",
+                        stage: "approve",
                       });
                     })
                   }
                 >
-                  Valider en tant que{" "}
-                  {j.status === "julien_review" ? "Julien" : "Olivier"}
+                  Valider cette vidéo (Julien ou Olivier)
                 </button>
               )}
               {[
                 "awaiting_elynea",
+                "awaiting_approval",
                 "julien_review",
                 "olivier_review",
                 "ready_to_publish",
@@ -416,7 +435,7 @@ export default function HolidayCampaignAdmin() {
                       })
                     }
                   >
-                    Enregistrer pour validation Julien
+                    Enregistrer pour validation
                   </button>
                 </details>
               )}
