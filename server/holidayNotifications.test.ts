@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   notifyHolidaySubmission,
   notifyHolidayCustomerSubmission,
+  notifyHolidayPublished, notifyHolidayReview,
 } from "./holidayNotifications";
 import {
   holidaySubmissionEmail,
@@ -185,5 +186,31 @@ describe("notification de réception, sans envoi réel", () => {
     expect(mail.html).toContain("&lt;script&gt;");
     expect(mail.text).toContain("/dashboard/fetes-2026");
     expect(mail.text).not.toContain("#");
+  });
+});
+
+describe("notifications de vidéo et de publication, prestataire simulé", () => {
+  it("avertit les validateurs uniquement lorsqu’une vidéo attend une validation", async () => {
+    const f=fixture();const initial=f.db.execute.getMockImplementation()!;
+    f.db.execute.mockImplementation(async(sql:string)=>sql.includes("FROM holiday_jobs")?[[{id:1}]]:initial(sql));
+    expect(await notifyHolidayReview(row,{...f,env})).toBe("accepted");
+    const body=JSON.parse((f.fetcher.mock.calls[0] as any)[1].body);
+    expect(body.to).toEqual(["staff@example.invalid"]);
+    expect(body.text).toContain("Julien OU Olivier");
+    expect(body.text).toContain("/dashboard/fetes-2026");
+  });
+  it("n’envoie aucun email de repartage sans reçu de publication", async () => {
+    const f=fixture();
+    expect(await notifyHolidayPublished({...row,payload:{...row.payload,email:"shop@example.invalid"}},{...f,env:{...env,HOLIDAY_CUSTOMER_RECEIPT_ENABLED:"true"}})).toBe("unavailable");
+    expect(f.fetcher).not.toHaveBeenCalled();
+  });
+  it("envoie au commerce le lien vérifié et la demande d’identifier deux commerces", async () => {
+    const f=fixture();const initial=f.db.execute.getMockImplementation()!;
+    f.db.execute.mockImplementation(async(sql:string)=>sql.includes("FROM holiday_automation")?[[{postUrl:"https://www.facebook.com/123456789"}]]:initial(sql));
+    expect(await notifyHolidayPublished({...row,payload:{...row.payload,email:"shop@example.invalid"}},{...f,env:{...env,HOLIDAY_CUSTOMER_RECEIPT_ENABLED:"true"}})).toBe("accepted");
+    const body=JSON.parse((f.fetcher.mock.calls[0] as any)[1].body);
+    expect(body.to).toEqual(["shop@example.invalid"]);
+    expect(body.text).toContain("https://www.facebook.com/123456789");
+    expect(body.text).toContain("deux commerces");
   });
 });

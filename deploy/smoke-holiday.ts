@@ -28,6 +28,12 @@ try {
   const ddl = await readFile("/app/holiday-schema.sql", "utf8");
   for (const statement of ddl.split(";").filter(v => v.trim()))
     await pool.query(statement);
+  const automationDDL = await readFile(
+    "/app/holiday-automation-schema.sql",
+    "utf8"
+  );
+  for (const statement of automationDDL.split(";").filter(v => v.trim()))
+    await pool.query(statement);
   const publicDDL = await readFile("/app/holiday-public-schema.sql", "utf8");
   for (const statement of publicDDL.split(";").filter(v => v.trim()))
     await pool.query(statement);
@@ -281,13 +287,16 @@ try {
     },
     julien
   );
+  const approvalHash = (
+    await request("/admin/jobs", "GET", undefined, julien)
+  ).jobs.find((j: any) => j.id === jobs[0].id).resultHash;
   const approval = await request(
     `/admin/jobs/${jobs[0].id}/approve`,
     "POST",
-    { stage: "approve" },
+    { stage: "approve", reviewedVideoAndSound: true, resultHash: approvalHash },
     olivier
   );
-  assert.equal(approval.publication, "disabled_until_launch_validation");
+  assert.equal(approval.publication, "disabled");
   d = await request("/dossier", "GET", undefined, secret);
   await request(
     "/dossier",

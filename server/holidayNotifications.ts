@@ -3,6 +3,8 @@ import { getPool } from "./db";
 import {
   holidaySubmissionEmail,
   holidayCustomerReceiptEmail,
+  holidayPublishedEmail,
+  holidayReviewEmail,
 } from "./holidayEmails";
 import { createHash } from "node:crypto";
 
@@ -24,21 +26,29 @@ export function notifyHolidayCustomerSubmission(
 ) {
   return notify(row, "customer", privateToken, options);
 }
+export function notifyHolidayReview(row: Submission, options: Options = {}) {
+  return notify(row, "review", "", options);
+}
+export function notifyHolidayPublished(row: Submission, options: Options = {}) {
+  return notify(row, "published", "", options);
+}
 async function notify(
   row: Submission,
-  kind: "admin" | "customer",
+  kind: "admin" | "customer" | "published" | "review",
   privateToken: string,
   options: Options
 ): Promise<Result> {
   const env = options.env ?? process.env;
-  const customer = kind === "customer";
+  const published = kind === "published";
+  const customer = kind === "customer" || published;
   if (
     (customer
       ? env.HOLIDAY_CUSTOMER_RECEIPT_ENABLED
       : env.HOLIDAY_RECEIPT_EMAIL_ENABLED) !== "true"
   )
     return "disabled";
-  if (customer && !/^[a-f0-9]{64}$/.test(privateToken)) return "unavailable";
+  if (customer && !published && !/^[a-f0-9]{64}$/.test(privateToken))
+    return "unavailable";
   const to = (
     customer
       ? String(row.payload?.email ?? "")
@@ -60,8 +70,15 @@ async function notify(
     return "unavailable";
   let db: any,
     locked = false;
-  const lock = `hmail:${customer ? "c" : "a"}:${row.id}:${row.revision}`;
-  const prefix = customer ? "customer_receipt" : "receipt";
+  const lock = `hmail:${published ? "p" : customer ? "c" : "a"}:${row.id}:${row.revision}`;
+  const prefix =
+    kind === "review"
+      ? "review_email"
+      : published
+        ? "published_email"
+        : customer
+          ? "customer_receipt"
+          : "receipt";
   try {
     const pool = options.pool ?? (await getPool());
     if (!pool) return "unavailable";
@@ -85,6 +102,7 @@ async function notify(
       return "unavailable";
     if (
       customer &&
+      !published &&
       records[0].tokenHash !==
         createHash("sha256").update(privateToken).digest("hex")
     )
@@ -97,16 +115,37 @@ async function notify(
       return events[0].action === `${prefix}_accepted`
         ? "accepted"
         : "unavailable";
-    const mail = customer
-      ? holidayCustomerReceiptEmail(
-          row.payload.businessName,
-          row.payload.contactName,
-          `${new URL("/fetes-2026", env.APP_URL ?? "https://www.synergiedour.be").href}#${privateToken}`
-        )
-      : holidaySubmissionEmail(
-          row.payload.businessName,
-          env.APP_URL ?? "https://www.synergiedour.be"
-        );
+    if (kind === "review") {
+      const [js] = await db.execute(
+        "SELECT id FROM holiday_jobs WHERE dossierId=? AND revision=? AND status='awaiting_approval' LIMIT 1",
+        [row.id, row.revision]
+      );
+      if (!js[0]) return "unavailable";
+    }
+    let postUrl = "";
+    if (published) {
+      const [ps] = await db.execute(
+        "SELECT a.postUrl FROM holiday_automation a JOIN holiday_jobs j ON j.id=a.jobId WHERE j.dossierId=? AND j.revision=? AND j.status='published' AND a.publicationState='published' LIMIT 1",
+        [row.id, row.revision]
+      );
+      if (!ps[0]?.postUrl) return "unavailable";
+      postUrl = ps[0].postUrl;
+    }
+    const mail =
+      kind === "review"
+        ? holidayReviewEmail(row.payload.businessName)
+        : published
+          ? holidayPublishedEmail(row.payload.businessName, postUrl)
+          : customer
+            ? holidayCustomerReceiptEmail(
+                row.payload.businessName,
+                row.payload.contactName,
+                `${new URL("/fetes-2026", env.APP_URL ?? "https://www.synergiedour.be").href}#${privateToken}`
+              )
+            : holidaySubmissionEmail(
+                row.payload.businessName,
+                env.APP_URL ?? "https://www.synergiedour.be"
+              );
     await db.execute(
       "INSERT INTO holiday_events (dossierId,action,actorId,revision,atMs,details) VALUES (?,?,NULL,?,?,?)",
       [

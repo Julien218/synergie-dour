@@ -4,12 +4,12 @@ from pathlib import Path
 from urllib.parse import urlparse, unquote
 import yaml
 
-ROOT=Path(os.environ.get('FETES_RELEASE_DIR','/srv/olivier/releases/synergie-fetes-links-20261116'))
+ROOT=Path(os.environ.get('FETES_RELEASE_DIR','/srv/olivier/releases/synergie-fetes-automation-20261116'))
 COMPOSE=Path('/data/coolify/services/q2ayjdb1br2ndkjgsxefwiql/docker-compose.yml')
 UUID='q2ayjdb1br2ndkjgsxefwiql'
 CONTAINER='synergie-'+UUID
-IMAGE=os.environ.get('FETES_IMAGE','olivier-synergie:fetes-links-20261116')
-OLD_IMAGE=os.environ.get('FETES_OLD_IMAGE','olivier-synergie:fetes-public-form-20261116b')
+IMAGE=os.environ.get('FETES_IMAGE','olivier-synergie:fetes-automation-20261116')
+OLD_IMAGE=os.environ.get('FETES_OLD_IMAGE','olivier-synergie:fetes-links-20261116')
 PRIVATE=Path('/srv/olivier/data/synergie-holiday/uploads')
 BACKUP=ROOT/'backup-before-launch'
 
@@ -28,6 +28,8 @@ def changes(spec):
     e=s.get('environment',{})
     if isinstance(e,list):e=dict(v.split('=',1) for v in e)
     e.update(HOLIDAY_CAMPAIGN_ENABLED='true',HOLIDAY_UPLOAD_DIR='/var/lib/synergie-holiday/uploads',HOLIDAY_CLAMSCAN='/usr/local/bin/holiday-scan',HOLIDAY_JULIEN_USER_ID='2',HOLIDAY_OLIVIER_USER_ID='3')
+    credentials=json.loads((ROOT/'holiday-agent-credentials.json').read_text())
+    e.update(HOLIDAY_AUTOMATION_ENABLED='true',HOLIDAY_PUBLISH_ENABLED='true',HOLIDAY_AGENT_TOKEN=credentials['token'])
     s['environment']=e
     e.update(HOLIDAY_RECEIPT_EMAIL_ENABLED='true',HOLIDAY_RECEIPT_EMAIL_TO='julien.pagin.pv@gmail.com,olivier.trevis@outlook.be',HOLIDAY_CUSTOMER_RECEIPT_ENABLED='true',HOLIDAY_RECEIPT_EMAIL_FROM='Synergie Dour <contact@synergiedour.be>')
     volumes=s.get('volumes') or []
@@ -59,11 +61,11 @@ def prepare():
 
 def activate():
     assert inspect()['Config']['Image']==OLD_IMAGE, 'Live version changed; stop.'
-    assert (ROOT/'smoke-result.txt').read_text().count('_PASSED')>=2,'Real tests required.'
+    assert 'REAL_SQL_AUTOMATION_APPROVAL_REVOCATION_DEDUP_MOCK_PUBLISH_PASSED' in (ROOT/'smoke-result.txt').read_text(),'Complete isolated workflow tests required.'
     assert (BACKUP/'mysql-before-launch.sql').stat().st_size>100
     ddl=(ROOT/'holiday-schema.sql').read_text()
     # The migration is additive. Existing membership and merchant data are preserved.
-    js="""import mysql from 'mysql2/promise';const db=await mysql.createConnection({uri:process.env.DATABASE_URL.split('?')[0],ssl:{rejectUnauthorized:false}});try{const sql=Buffer.from(process.argv[1],'base64').toString();for(const q of sql.split(';').filter(s=>s.trim()))await db.query(q);const [r]=await db.query(\"SELECT COUNT(*) AS count FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('holiday_dossiers','holiday_jobs','holiday_files','holiday_events')\");if(r[0].count!==4)throw Error('Schema verification failed');console.log('FOUR_CAMPAIGN_TABLES_READY');}finally{await db.end();}"""
+    js="""import mysql from 'mysql2/promise';const db=await mysql.createConnection({uri:process.env.DATABASE_URL.split('?')[0],ssl:{rejectUnauthorized:false}});try{const sql=Buffer.from(process.argv[1],'base64').toString();for(const q of sql.split(';').filter(s=>s.trim()))await db.query(q);const [r]=await db.query(\"SELECT COUNT(*) AS count FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('holiday_dossiers','holiday_jobs','holiday_files','holiday_events','holiday_automation')\");if(r[0].count!==5)throw Error('Schema verification failed');console.log('FIVE_CAMPAIGN_TABLES_READY');}finally{await db.end();}"""
     import base64
     print(command(['docker','exec',CONTAINER,'node','--input-type=module','-e',js,base64.b64encode(ddl.encode()).decode()]).strip())
     next_compose=(ROOT/'next-compose.json').read_text();raw=(ROOT/'next-source-compose.json').read_text()

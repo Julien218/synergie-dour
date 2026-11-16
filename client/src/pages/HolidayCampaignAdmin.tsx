@@ -15,11 +15,19 @@ const labels: Record<string, string> = {
   julien_review: "Validation Julien ou Olivier",
   awaiting_approval: "Validation Julien ou Olivier",
   olivier_review: "Validation Julien ou Olivier",
-  ready_to_publish: "Validé · publication désactivée",
+  ready_to_publish: "Validé · en attente de diffusion",
+  rendering: "Création de la vidéo en cours",
+  render_failed: "Création interrompue · éléments à vérifier",
+  publishing: "Publication en cours",
+  publish_uncertain:
+    "Résultat de publication à vérifier · aucun nouvel envoi automatique",
+  published: "Publié",
   cancelled: "Annulé",
 };
 export default function HolidayCampaignAdmin() {
   const merchants = trpc.merchants.listAll.useQuery();
+  const [automation, setAutomation] = useState<any>(null);
+  const [watched, setWatched] = useState<Record<number, boolean>>({});
   const [selected, setSelected] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [link, setLink] = useState("");
@@ -28,7 +36,6 @@ export default function HolidayCampaignAdmin() {
   const [files, setFiles] = useState<Record<string, any[]>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<Record<number, string>>({});
   const [attachments, setAttachments] = useState<Record<string, string>>({});
   const [membershipChecks, setMembershipChecks] = useState<
     Record<string, boolean>
@@ -38,6 +45,7 @@ export default function HolidayCampaignAdmin() {
     setDossiers(d.dossiers);
     const j = await holidayApi("/admin/jobs");
     setJobs(j.jobs);
+    setAutomation(await holidayApi("/admin/automation"));
   }
   async function run(fn: () => Promise<void>) {
     setError("");
@@ -346,10 +354,15 @@ export default function HolidayCampaignAdmin() {
           ))}
         </section>
         <section className="space-y-4">
-          <h2 className="font-bold text-xl">Production & double validation</h2>
+          <h2 className="font-bold text-xl">Vidéos et validation</h2>
           <p>
-            La file Elynea est préparée. Son raccordement à la génération et au
-            module de publication reste à valider avant activation.
+            {automation?.enabled && automation?.agentOnline
+              ? "La création automatique est active. Après vérification de l’adhésion et réception de médias suffisants, la vidéo sera proposée ici."
+              : "La création automatique attend son raccordement. Les dossiers restent conservés."}
+            {automation?.publishing
+              ? " Une validation de Julien ou Olivier déclenche la diffusion sur la page Facebook Synergie Dour."
+              : " La publication automatique reste désactivée."}{" "}
+            Instagram et TikTok attendent leur connexion.
           </p>
           {jobs.map(j => (
             <article key={j.id} className="border rounded-xl p-5 space-y-3">
@@ -358,13 +371,20 @@ export default function HolidayCampaignAdmin() {
               </h3>
               {j.result && (
                 <>
+                  <video
+                    controls
+                    preload="none"
+                    src={j.result.videoUrl}
+                    className="max-h-[600px] w-full rounded bg-blue-950"
+                    aria-label={`Vidéo à vérifier pour ${j.businessName}`}
+                  />
                   <a
                     className="underline"
-                    href={j.result.videoUrl}
                     target="_blank"
                     rel="noreferrer"
+                    href={`/api/holiday/admin/jobs/${j.id}/proof`}
                   >
-                    Voir la vidéo produite
+                    Voir la planche de contrôle
                   </a>
                   <p className="whitespace-pre-wrap">
                     Voix off : {j.result.voiceover}
@@ -382,62 +402,38 @@ export default function HolidayCampaignAdmin() {
                 "olivier_review",
                 "awaiting_approval",
               ].includes(j.status) && (
-                <button
-                  className="bg-blue-950 text-white rounded px-4 py-2"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      await holidayApi(`/admin/jobs/${j.id}/approve`, "POST", {
-                        stage: "approve",
-                      });
-                    })
-                  }
-                >
-                  Valider cette vidéo (Julien ou Olivier)
-                </button>
-              )}
-              {[
-                "awaiting_elynea",
-                "awaiting_approval",
-                "julien_review",
-                "olivier_review",
-                "ready_to_publish",
-              ].includes(j.status) && (
-                <details>
-                  <summary className="cursor-pointer">
-                    Importer le résultat de production (préparation)
-                  </summary>
-                  <p className="text-sm">
-                    Toute modification du résultat annule les deux validations.
-                  </p>
-                  <textarea
-                    aria-label="Résultat Elynea JSON"
-                    className="border rounded w-full p-3 font-mono text-xs"
-                    rows={7}
-                    placeholder={
-                      '{"videoUrl":"https://…","voiceover":"…","facebook":"…","instagram":"…","decorations":"noel-2026","subtitles":true}'
-                    }
-                    value={result[j.id] || ""}
-                    onChange={e =>
-                      setResult({ ...result, [j.id]: e.target.value })
-                    }
-                  />
+                <div className="space-y-3">
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={watched[j.id] || false}
+                      onChange={e =>
+                        setWatched({ ...watched, [j.id]: e.target.checked })
+                      }
+                    />
+                    J’ai regardé toute la vidéo avec le son et vérifié les
+                    informations et le texte de publication.
+                  </label>
                   <button
-                    className="underline"
-                    disabled={busy}
+                    className="bg-blue-950 text-white rounded px-4 py-2 disabled:opacity-40"
+                    disabled={busy || !watched[j.id]}
                     onClick={() =>
                       void run(async () => {
                         await holidayApi(
-                          `/admin/jobs/${j.id}/result`,
+                          `/admin/jobs/${j.id}/approve`,
                           "POST",
-                          JSON.parse(result[j.id])
+                          {
+                            stage: "approve",
+                            reviewedVideoAndSound: true,
+                            resultHash: j.resultHash,
+                          }
                         );
                       })
                     }
                   >
-                    Enregistrer pour validation
+                    Valider cette vidéo et autoriser sa publication
                   </button>
-                </details>
+                </div>
               )}
             </article>
           ))}

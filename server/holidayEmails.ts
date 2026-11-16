@@ -105,3 +105,16 @@ export function holidayCustomerReceiptEmail(
   );
   return mail;
 }
+
+export function holidayReviewEmail(businessName: string) {
+  const link = "https://www.synergiedour.be/dashboard/fetes-2026";
+  const mail = draft(
+    `Vidéo Fêtes 2026 à valider — ${businessName.replace(/[\r\n]/g, " ")}`,
+    `Bonjour,\n\nLa vidéo festive du commerce « ${businessName} » et son texte sont prêts pour votre relecture :\n${link}\n\nRegardez la vidéo complète avec le son, puis vérifiez les informations et le texte. Une validation de Julien OU Olivier autorise la publication automatique sur la page Facebook Synergie Dour.\n\nSans cet accord, aucune publication n’est déclenchée.\n\nL’équipe Synergie Dour`
+  );
+  mail.html = mail.html.replace(
+    escape(link),
+    `<a href="${link}">Voir et valider la vidéo</a>`
+  );
+  return mail;
+}

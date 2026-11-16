@@ -653,7 +653,9 @@ export default function HolidayCampaign() {
                 <p>
                   Logo, façade, produits, équipe ou menu PDF : privilégiez vos
                   fichiers originaux. Évitez les données de clients, les visages
-                  sans accord et les musiques sans autorisation.
+                  sans accord et les musiques sans autorisation. Pour le montage,
+                  prévoyez au moins quatre photos différentes ou une vidéo
+                  exploitable d’au moins quinze secondes.
                 </p>
                 <label className="holiday-upload">
                   <Upload />

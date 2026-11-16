@@ -1,3 +1,7 @@
+import {
+  holidayAgentRouter,
+  holidayAutomationStatus,
+} from "./holidayAutomation";
 import express, {
   type Request,
   type Response,
@@ -117,6 +121,7 @@ holidayRouter.use((_req, res, next) => {
   }
   next();
 });
+holidayRouter.use("/agent", holidayAgentRouter);
 holidayRouter.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -404,7 +409,15 @@ holidayRouter.post(
         "SELECT id FROM holiday_files WHERE dossierId=?",
         [row.id]
       );
-      for (const file of files)
+      const [renders] = await db.execute(
+        "SELECT a.fileId AS id FROM holiday_automation a JOIN holiday_jobs j ON j.id=a.jobId WHERE j.dossierId=? AND a.fileId IS NOT NULL",
+        [row.id]
+      );
+      const [proofs] = await db.execute(
+        "SELECT a.proofId AS id FROM holiday_automation a JOIN holiday_jobs j ON j.id=a.jobId WHERE j.dossierId=? AND a.proofId IS NOT NULL",
+        [row.id]
+      );
+      for (const file of [...files, ...renders, ...proofs])
         await unlink(privateFilePath(file.id)).catch((e: any) => {
           if (e.code !== "ENOENT") throw e;
         });
@@ -426,6 +439,35 @@ holidayRouter.use("/admin", (req, res, next) => {
   void Promise.resolve(requireAdmin(req, res, next)).catch(next);
 });
 holidayRouter.get(
+  "/admin/jobs/:id/proof",
+  wrap(async (req, res) => {
+    const [rs] = await (
+      await pool()
+    ).execute(
+      "SELECT a.proofId FROM holiday_automation a JOIN holiday_jobs j ON j.id=a.jobId JOIN holiday_dossiers d ON d.id=j.dossierId WHERE j.id=? AND j.revision=d.revision AND d.status!='withdrawn'",
+      [z.coerce.number().int().positive().parse(req.params.id)]
+    );
+    if (!rs[0]?.proofId) fail("Planche introuvable", 404);
+    res.type("image/jpeg").sendFile(privateFilePath(rs[0].proofId));
+  })
+);
+holidayRouter.get("/admin/automation", (_req, res) =>
+  res.json(holidayAutomationStatus())
+);
+holidayRouter.get(
+  "/admin/jobs/:id/video",
+  wrap(async (req, res) => {
+    const [rows] = await (
+      await pool()
+    ).execute(
+      "SELECT a.fileId FROM holiday_automation a JOIN holiday_jobs j ON j.id=a.jobId JOIN holiday_dossiers d ON d.id=j.dossierId WHERE j.id=? AND j.revision=d.revision AND d.status!='withdrawn'",
+      [z.coerce.number().int().positive().parse(req.params.id)]
+    );
+    if (!rows[0]?.fileId) fail("Vidéo privée introuvable.", 404);
+    res.type("video/mp4").sendFile(privateFilePath(rows[0].fileId));
+  })
+);
+holidayRouter.get(
   "/admin/jobs",
   wrap(async (_req, res) => {
     const [jobs] = await (
@@ -434,7 +476,11 @@ holidayRouter.get(
       "SELECT j.*,m.businessName FROM holiday_jobs j JOIN holiday_dossiers d ON d.id=j.dossierId JOIN merchants m ON m.id=d.merchantId WHERE d.status!='withdrawn' AND j.revision=d.revision ORDER BY j.id DESC LIMIT 500"
     );
     res.json({
-      jobs: jobs.map((j: any) => ({ ...j, result: parseJson(j.result) })),
+      jobs: jobs.map((j: any) => ({
+        ...j,
+        result: parseJson(j.result),
+        resultHash: hash(JSON.stringify(parseJson(j.result))),
+      })),
     });
   })
 );
@@ -443,6 +489,16 @@ holidayRouter.post(
   "/admin/jobs/:id/result",
   wrap(async (req, res) => {
     const result = holidayProductionResult.parse(req.body);
+    const [automation] = await (
+      await pool()
+    ).execute("SELECT jobId FROM holiday_automation WHERE jobId=?", [
+      z.coerce.number().int().positive().parse(req.params.id),
+    ]);
+    if (automation[0])
+      fail(
+        "La production automatique doit être corrigée depuis les éléments du dossier.",
+        409
+      );
     await transaction(async db => {
       const [rows] = await db.execute(
         "SELECT * FROM holiday_jobs WHERE id=? FOR UPDATE",
@@ -483,6 +539,7 @@ holidayRouter.post(
 holidayRouter.post(
   "/admin/jobs/:id/approve",
   wrap(async (req, res) => {
+    z.literal(true).parse(req.body.reviewedVideoAndSound);
     const requestedStage = z
       .enum(["julien", "olivier", "approve"])
       .parse(req.body.stage);
@@ -506,6 +563,11 @@ holidayRouter.post(
         [job.dossierId]
       );
       const d = ds[0];
+      if (req.body.resultHash !== hash(JSON.stringify(parseJson(job.result))))
+        fail(
+          "La vidéo ou le texte a changé. Relisez la nouvelle version avant de valider.",
+          409
+        );
       let next: string;
       try {
         next = holidayApproval(
@@ -525,7 +587,11 @@ holidayRouter.post(
       );
       await event(db, d, `${stage}_approved`, (req as any).user.id);
     });
-    res.json({ ok: true, publication: "disabled_until_launch_validation" });
+    res.json({
+      ok: true,
+      publication:
+        process.env.HOLIDAY_PUBLISH_ENABLED === "true" ? "queued" : "disabled",
+    });
   })
 );
 holidayRouter.get(
