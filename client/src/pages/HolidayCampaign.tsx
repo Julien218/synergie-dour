@@ -17,6 +17,7 @@ import {
   normalizeHolidayLink,
   type HolidayInput,
 } from "@shared/holidayCampaign";
+import { transferHolidayFile } from "@/lib/holidayUpload";
 import "./holiday.css";
 
 type FileInfo = { id: string; name: string; size: number };
@@ -61,6 +62,9 @@ export default function HolidayCampaign() {
   const creationKey = useRef("");
   const [form, setForm] = useState<HolidayInput>({ ...emptyHoliday });
   const [files, setFiles] = useState<FileInfo[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadError, setUploadError] = useState("");
   const [revision, setRevision] = useState(0);
   const [status, setStatus] = useState("draft");
   const [busy, setBusy] = useState(false);
@@ -200,6 +204,12 @@ export default function HolidayCampaign() {
     </label>
   );
   async function save(submit: boolean) {
+    if (submit && pendingFiles.length) {
+      setError(
+        "Des fichiers attendent encore leur transfert. Envoyez-les ou retirez-les dans la section 5 avant de transmettre le dossier."
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -234,40 +244,40 @@ export default function HolidayCampaign() {
       setBusy(false);
     }
   }
-  async function upload(list: FileList | null) {
-    if (!list) return;
+  async function upload(selected: File[]) {
+    if (!selected.length) return;
+    setMessage("");
+    setUploadError("");
     if (!form.processingConsent || !form.rightsConfirmed) {
-      setError(
-        "Cochez les accords de traitement et de droits dans la section 4 avant d’envoyer vos fichiers."
-      );
+      const message =
+        "Fichiers en attente : cochez les accords de traitement et de droits dans la section 4, puis cliquez sur Envoyer les fichiers en attente.";
+      setUploadError(message);
+      setError(message);
       return;
     }
     setBusy(true);
     setError("");
+    let confirmed = 0;
     try {
       const { access } = await ensureAccess();
-      for (const file of Array.from(list)) {
-        if (file.size > 50 * 1024 * 1024)
-          throw new Error(`${file.name} dépasse 50 Mo.`);
-        const r = await fetch("/api/holiday/files", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${access}`,
-            "Content-Type": "application/octet-stream",
-            "X-File-Name": encodeURIComponent(file.name),
-            "X-Processing-Consent": NOTICE_VERSION,
-          },
-          body: file,
-        });
-        if (!r.ok)
-          throw new Error((await r.json()).message || "Envoi interrompu.");
-        await load(access);
+      for (const file of selected) {
+        setUploadStatus(`Transfert et analyse antivirus : ${file.name}…`);
+        await transferHolidayFile(file, access, load);
+        confirmed++;
+        setPendingFiles(current => current.filter(f => f !== file));
+        setUploadStatus(`${file.name} : reçu et enregistré.`);
       }
       setMessage(
-        "Fichiers reçus. Pensez à transmettre votre dossier lorsque tout est prêt."
+        `${confirmed} fichier(s) reçu(s) et enregistré(s). Pensez à transmettre votre dossier lorsque tout est prêt.`
       );
     } catch (e: any) {
       setError(e.message);
+      setUploadError(e.message);
+      setUploadStatus(
+        confirmed
+          ? `${confirmed} fichier(s) reçu(s). Les autres restent en attente.`
+          : "Aucun nouveau fichier reçu : votre sélection reste en attente."
+      );
     } finally {
       setBusy(false);
     }
@@ -653,9 +663,9 @@ export default function HolidayCampaign() {
                 <p>
                   Logo, façade, produits, équipe ou menu PDF : privilégiez vos
                   fichiers originaux. Évitez les données de clients, les visages
-                  sans accord et les musiques sans autorisation. Pour le montage,
-                  prévoyez au moins quatre photos différentes ou une vidéo
-                  exploitable d’au moins quinze secondes.
+                  sans accord et les musiques sans autorisation. Pour le
+                  montage, prévoyez au moins quatre photos différentes ou une
+                  vidéo exploitable d’au moins quinze secondes.
                 </p>
                 <label className="holiday-upload">
                   <Upload />
@@ -671,17 +681,87 @@ export default function HolidayCampaign() {
                     multiple
                     accept=".jpg,.jpeg,.png,.webp,.pdf,.mp4,.mov"
                     onChange={e => {
-                      void upload(e.target.files);
-                      e.target.value = "";
+                      // FileList is live: copy BEFORE resetting the input or awaiting.
+                      const selected = Array.from(e.currentTarget.files ?? []);
+                      e.currentTarget.value = "";
+                      if (!selected.length) return;
+                      setPendingFiles(current => [...current, ...selected]);
+                      void upload(selected);
                     }}
                   />
                 </label>
+                <div aria-live="polite" className="space-y-3">
+                  <p>
+                    <strong>
+                      {files.length} fichier(s) reçu(s) et enregistré(s)
+                    </strong>{" "}
+                    dans votre dossier.
+                  </p>
+                  {uploadStatus && <p role="status">{uploadStatus}</p>}
+                  {uploadError && (
+                    <p role="alert" className="holiday-error">
+                      {uploadError}
+                    </p>
+                  )}
+                  {pendingFiles.length > 0 && (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3">
+                      <strong>
+                        Fichiers en attente — pas encore enregistrés
+                      </strong>
+                      <ul>
+                        {pendingFiles.map((f, i) => (
+                          <li
+                            key={i}
+                            className="flex justify-between gap-3 py-2"
+                          >
+                            <span>
+                              {f.name} ·{" "}
+                              {busy
+                                ? "transfert en cours"
+                                : uploadError
+                                  ? "échec ou transfert à reprendre"
+                                  : "en attente"}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                setPendingFiles(current =>
+                                  current.filter((_, index) => index !== i)
+                                )
+                              }
+                            >
+                              Retirer
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="holiday-primary"
+                        onClick={() => void upload([...pendingFiles])}
+                      >
+                        {busy
+                          ? "Transfert et analyse en cours…"
+                          : "Envoyer les fichiers en attente"}
+                      </button>
+                      <p>
+                        Gardez cette page ouverte : les fichiers en attente ne
+                        sont pas conservés si vous la fermez.
+                      </p>
+                    </div>
+                  )}
+                </div>
                 <ul className="holiday-files">
                   {files.map(f => (
                     <li key={f.id}>
                       <span>
                         {f.name}{" "}
-                        <small>({(f.size / 1024 / 1024).toFixed(1)} Mo)</small>
+                        <small>
+                          ({(f.size / 1024 / 1024).toFixed(1)} Mo) · ✓ Reçu et
+                          enregistré
+                        </small>
                       </span>
                       <button
                         type="button"
